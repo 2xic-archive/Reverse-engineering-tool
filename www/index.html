@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>reversing</title>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.3/socket.io.min.js"></script>
+
+		<script src="flat-view/flat-view.js"></script>
+		<script src="grapth-view/grapth.js"></script>
+		<script src="grapth-view/grapth-view.js"></script>
+
+		<link rel="stylesheet" type="text/css" href="css/flat-view.css">
+		<link rel="stylesheet" type="text/css" href="css/index.css">
+		<link rel="stylesheet" type="text/css" href="css/grapth-view.css">
+	</head>
+
+	<body>
+
+		<div id="container">
+			<div id="container-item">
+				<!--	flat-view	!-->
+				<table id="myTable">
+					<tr>
+						<th>section</th>
+						<th>address</th>
+						<th>code</th>
+					</tr>
+				</table>
+			</div>
+			<!--	Grapth-view	!-->		
+			<div id="container-item">
+				<h1>Basic grapth</h1>
+				<div id="grapth" >
+					<canvas id="canvas">
+						<!--	will be drawn	!-->
+					</canvas>
+				</div>
+			</div>
+		</div>
+
+
+		<script type="text/javascript">
+			var socket = io.connect('http://' + document.domain + ':' + location.port);
+			
+			socket.on( 'connect', function() {
+				socket.emit( 'online', {
+				data: 'User Connected'
+				})
+			});
+
+			socket.emit('get control', {data:""});
+
+			socket.on('error', function(msg){
+				if(msg.indexOf("xhr") == -1){
+					alert(msg);
+				}
+			});
+
+			socket.on('control', function(msg){
+				create_grapth(msg);
+			});
+
+			socket.on('code', function( msg ) {
+				create_view(msg);
+			});
+		</script>
+	</body>
+</html>

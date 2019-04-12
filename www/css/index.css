@@ -1,0 +1,19 @@
+
+
+#container{
+	display: flex;
+}
+
+#container-item{
+	max-width: 50%;
+	min-width: 50%;
+
+	max-height: 600px; /* will make it dynamic with javascript */
+	overflow-y: scroll;
+
+	border-style: solid;;
+}
+
+body{
+	margin: 0px;
+}

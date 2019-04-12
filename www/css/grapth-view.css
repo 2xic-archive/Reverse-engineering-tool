@@ -1,0 +1,26 @@
+.nodes{
+	border: 1px solid;
+	font-size: 12px;
+	border-radius: 5px;
+	padding-left: 10px;
+	position: absolute;
+
+}
+
+#grapth{
+	display: inline-flex;
+	overflow:scroll;
+	position: relative;
+	
+
+/*	max-width: 50%;
+	min-height: 10000px;*/
+
+}
+
+
+#canvas{
+	border-style: solid;;
+	position: relative;;
+}
+

@@ -1,0 +1,10 @@
+
+input{
+	border-style: none;
+	min-width: 300px;
+}
+
+th{
+	text-align:left;
+	padding-left: 30px;
+}
