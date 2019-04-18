@@ -37,6 +37,8 @@ function create_grapth(msg){
 	var canvas_position_left = canvas_position[1];
 
 	
+	console.log(msg);
+
 	var nodes = Object.keys(msg["edges"]);
 	var refrence_key_node = {
 

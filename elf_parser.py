@@ -1,6 +1,6 @@
-from disassemble import *
 import sys
-from control_flow_last import *
+from disassemble import *
+from elf_parser_key_value import *
 
 def reverse_bytearray(wokring_bytearray):
 	new_byte_array = list(wokring_bytearray)
@@ -43,17 +43,57 @@ class elf:
 			section_virtual_address = (hex(int_from_bytearray(self.read_with_offset(start + 0x10, 8))))
 			section_file_offset = int_from_bytearray(self.read_with_offset(start + 0x18, 8))
 			section_size = int_from_bytearray(self.read_with_offset(start + 0x20, 8))
+
+			entries_size =  int_from_bytearray(self.read_with_offset(start + 0x38, 4))
+
+			section_link = int_from_bytearray(self.read_with_offset(start + 0x28, 4))
 		else:
 			section_virtual_address = (hex(int_from_bytearray(self.read_with_offset(start + 0x0C, 4))))
 			section_file_offset = int_from_bytearray(self.read_with_offset(start + 0x10, 4))
 			section_size = int_from_bytearray(self.read_with_offset(start + 0x14, 4))
+			entries_size = int_from_bytearray(self.read_with_offset(start + 0x24, 4))
+
+			section_link = int_from_bytearray(self.read_with_offset(start + 0x18, 4))
+
+
+		section_type_name = {
+			0x0:"SHT_NULL",
+			0x1:"SHT_PROGBITS",
+			0x2:"SHT_SYMTAB",
+			0x3:"SHT_STRTAB",
+			0x4:"SHT_RELA",
+			0x5:"SHT_HASH",
+			0x6:"SHT_DYNAMIC",
+			0x7:"SHT_NOTE",
+			0x8:"SHT_NOBITS",
+			0x9:"SHT_REL",
+			0x0A:"SHT_SHLIB",
+			0x0B:"SHT_DYNSYM",
+			0x0E:"SHT_INIT_ARRAY",
+			0x0F:"SHT_FINI_ARRAY",
+			0x10:"SHT_PREINIT_ARRAY",
+			0x11:"SHT_GROUP",
+			0x12:"SHT_SYMTAB_SHNDX",
+			0x13:"SHT_NUM",
+			0x60000000:"SHT_LOOS"
+		}
+
+		type_name = "NULL"
+		try:
+			type_name = section_type_name[int_from_bytearray(section_type)]
+		except Exception as e:
+			pass
+
 
 		section = {
 			"section_location":start,
 			"orginal_size":self.read_with_offset(start + 0x20, 8),
 			"name_index":section_name,
 			"type":int_from_bytearray(section_type),
+			"type_name":type_name,
 			"flags":int_from_bytearray(section_flags),
+			"section_link":section_link,
+			"entries_size":entries_size,
 			"virtual_address":section_virtual_address,
 			"file_offset":section_file_offset,
 			"size":section_size	
@@ -61,16 +101,66 @@ class elf:
 		return section
 
 	def parse_program_header(self, start):
-		program_header_type = self.read_with_offset(start, 4)
 
+		program_header_type_name = {
+			0x00000000:"PT_NULL",
+			0x00000001:"PT_LOAD",
+			0x00000002:"PT_DYNAMIC",
+			0x00000003:"PT_INTERP",
+			0x00000004:"PT_NOTE",
+			0x00000005:"PT_SHLIB",
+			0x00000006:"PT_PHDR",
+			0x60000000:"PT_LOOS",
+			0x6FFFFFFF:"PT_HIOS",
+			0x70000000:"PT_LOPROC",
+			0x7FFFFFFF:"PT_HIPROC"
+		}
+
+		program_header_type = int_from_bytearray(self.read_with_offset(start, 4))
 
 		if(self.is_64_bit):
-			program_header_viritual_address = int_from_bytearray(self.read_with_offset(start + 0x10, 8))
-		else:
-			program_header_viritual_address = int_from_bytearray(self.read_with_offset(start + 0x10, 8))
-#		print(hex(program_header_viritual_address))
-#		print(hex(int_from_bytearray(program_header_type)))
+			program_header_flags = int_from_bytearray(self.read_with_offset(start + 0x04, 4))
 
+			program_header_offset = int_from_bytearray(self.read_with_offset(start + 0x08, 8))
+
+			program_header_viritual_address = int_from_bytearray(self.read_with_offset(start + 0x10, 8))
+
+			program_header_physcial_address = int_from_bytearray(self.read_with_offset(start + 0x18, 8))
+
+			program_header_size_file = int_from_bytearray(self.read_with_offset(start + 0x20, 8))
+
+			program_header_size_memory = int_from_bytearray(self.read_with_offset(start + 0x20, 8))
+
+			program_header_align = int_from_bytearray(self.read_with_offset(start + 0x30, 8))
+
+
+		else:
+		
+			program_header_offset = int_from_bytearray(self.read_with_offset(start + 0x04, 4))
+		
+			program_header_viritual_address = int_from_bytearray(self.read_with_offset(start + 0x08, 4))
+		
+			program_header_physcial_address = int_from_bytearray(self.read_with_offset(start + 0x0C, 4))
+
+			program_header_size_file = int_from_bytearray(self.read_with_offset(start + 0x10, 4))
+
+			program_header_size_memory = int_from_bytearray(self.read_with_offset(start + 0x14, 4))
+
+			program_header_flags = int_from_bytearray(self.read_with_offset(start + 0x18, 4))
+
+			program_header_align = int_from_bytearray(self.read_with_offset(start + 0x1C, 4))
+
+		name = "NULL"
+		try:
+			name = program_header_type_name[program_header_type]
+		except Exception as e:
+			pass
+		return {
+			"type":program_header_type,
+			"type_name":name,
+			"file_offset":program_header_offset,
+			"file_size":program_header_size_file
+		}
 
 
 	def read_zero_terminated_string(self, offset):
@@ -90,8 +180,7 @@ class elf:
 
 		}
 		for i in self.section_headers:
-			name = (self.read_zero_terminated_string(string_table_offset + self.section_headers[i]["name_index"]))
-#			print(name)
+			name = self.read_zero_terminated_string(string_table_offset + self.section_headers[i]["name_index"])
 			self.sections_with_name[name] = self.section_headers[i]
 
 
@@ -117,8 +206,8 @@ class elf:
 			text_content = self.read_with_offset(text_seciton["file_offset"], text_seciton["size"], False)
 			
 			#if(text_seciton["name"])
-			if(i == ".init"):
-				print(text_content)
+		#	if(i == ".init"):
+		#		print(text_content)
 
 			results = decompile(text_content, int(text_seciton["virtual_address"].replace("0x", ""), 16), self.is_64_bit)
 			full_source.extend(results)
@@ -127,9 +216,9 @@ class elf:
 
 
 	def reconstruct_small(self, section, input_bytes):
-		print(self.sections_with_name[section])
-		print(len(input_bytes))
-		print(len(bytearray(input_bytes)))
+	#	print(self.sections_with_name[section])
+	#	print(len(input_bytes))
+	#	print(len(bytearray(input_bytes)))
 
 		readjust_section = [
 
@@ -137,7 +226,7 @@ class elf:
 		#	[48,8B,05,6D,0B,20,00]
 
 		delta = len(bytearray(input_bytes)) - self.sections_with_name[section]["size"]
-		print(delta)
+#		print(delta)
 #		print(bytearray(input_bytes))
 #		print()
 		for key in self.sections_with_name.keys():
@@ -170,30 +259,15 @@ class elf:
 
 		open("test_patch", "wb").write(self.file)
 
-		'''
-		#for 
-		import sys
-		some_int = 0
-
-		some_bytes = some_int.to_bytes(32, sys.byteorder)
-		my_bytearray = bytearray(some_bytes)
-		'''
-		print(readjust_section)
 
 
-
-	def reconstruct(self, start, end, new_bytes):
-		
-
-
+	def reconstruct(self, start, end, new_bytes):		
 		window_start = self.file[0:start]
 		window_end = self.file[end:]
 		window = new_bytes
 
 		reconstructed = window_start + window + window_end
 
-
-#		print(reconstructed)
 
 	def __init__(self, name):
 		self.file = open(name, "rb").read()
@@ -210,6 +284,8 @@ class elf:
 		}
 
 		if(self.is_64_bit):
+			self.program_entry_point = int_from_bytearray(self.read_with_offset(0x18, 8))
+
 			self.program_header_start = int_from_bytearray(self.read_with_offset(0x20, 8))
 			self.program_header_count = int_from_bytearray(self.read_with_offset(0x38, 2))
 			self.program_header_size = int_from_bytearray(self.read_with_offset(0x36, 2))
@@ -219,6 +295,8 @@ class elf:
 			self.section_headers_count = int_from_bytearray(self.read_with_offset(0x3C, 2))
 			self.section_headers_names = int_from_bytearray(self.read_with_offset(0x3E, 2))		
 		else:
+			self.program_entry_point = int_from_bytearray(self.read_with_offset(0x18, 4))
+
 			self.program_header_start = int_from_bytearray(self.read_with_offset(0x1C, 4))
 			self.program_header_count = int_from_bytearray(self.read_with_offset(0x2C, 2))
 			self.program_header_size = int_from_bytearray(self.read_with_offset(0x2A, 2))
@@ -237,33 +315,7 @@ class elf:
 
 		assert self.program_header_start < self.section_headers_start
 
-
-#		print(self.section_headers[2]["orginal_size"])
-#		print(self.section_headers[2]["size"])
-#		print(list(self.section_headers[2]["orginal_size"]))
-#		print(list(int_to_bytearray(32, 8)))
-
 		self.get_section_names()
-	
-		self.decompile_text()
-		
-
-		ret_stop = []
-		code = self.decompile_section(".text")
-#		code = self.decompile_section(".init")
-		for i in range(len(code)):
-			ret_stop.append(code[i])
-			if("ret" in code[i][1][0]):
-				break
-
-		self.control = dowork(ret_stop)
-		print(self.control)
-	#	print(self.program_header_start)		
-	#	print(hex(int_from_bytearray(self.program_header_start)))
-	#	self.start_program_header = self.file[0x18: 0x18 + 4 + self.extra_offset]
-	#	self.start_program_header = reverse_bytearray(self.start_program_header)
-	#	self.start_program_header = int_from_bytearray(self.start_program_header)
-
 
 if __name__ == "__main__":
 	elf(sys.argv[1])

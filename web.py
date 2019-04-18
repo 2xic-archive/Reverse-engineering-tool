@@ -6,6 +6,7 @@ from elf_parser import *
 from flask import Flask, render_template
 from flask_socketio import SocketIO
 from assembler import *
+from model import *
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = b'u\xe6\xd6\x80\xda 5C\xeb\xa2\xec\xb5\x1fx\xf4J|\xe1\xa0\xb8n\xc3^\x9c'
@@ -26,17 +27,18 @@ def sessions():
 def folder_path(path):
 	return send_from_directory(static_file_dir, path)
 
-
 @socketio.on('online')
 def event_code(json, methods=['GET', 'POST']):
 	global target
-	target = elf(sys.argv[1])
+	target = model(elf(sys.argv[1]))
 	json = target.decompile_text()
 	socketio.emit('code', json)
 
 @socketio.on('assemble instruction')
 def event_code(json_data, methods=['GET', 'POST']):
 	import json
+	socketio.emit('error', 'disabled')	
+	'''
 	assembly = ";".join(json_data["data"][1:])
 	target_section = json_data["data"][0]
 	new_byte_section = []
@@ -46,6 +48,7 @@ def event_code(json_data, methods=['GET', 'POST']):
 	except Exception as e:
 		socketio.emit('error', '{}	=	{}'.format(assembly, e))	
 	target.reconstruct_small(target_section, new_byte_section)
+	'''
 
 @socketio.on('get instruciton size')
 def event_code(json_data, methods=['GET', 'POST']):
@@ -53,7 +56,7 @@ def event_code(json_data, methods=['GET', 'POST']):
 
 @socketio.on('get control')
 def event_code(json_data, methods=['GET', 'POST']):
-	socketio.emit('control', target.control)
+	socketio.emit('control', target.get_cfg())
 
 @app.after_request
 def add_header(request):
@@ -65,7 +68,7 @@ def add_header(request):
 
 if __name__ == '__main__':
 	if(len(sys.argv) > 1):
-		target = elf(sys.argv[1])
+		target = model(elf(sys.argv[1]))
 		socketio.run(app, debug=True)
 	else:
 		print("scripy.py elf-binary")

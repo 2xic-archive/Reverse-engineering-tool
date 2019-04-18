@@ -21,8 +21,8 @@ def decompile(input_bytes, start_address, is_64=True, check=True):
 	for dissably in mode.disasm(input_bytes, start_address):
 		#print("0x%x:\t%s\t[%s]" % (dissably.address, dissably.mnemonic, dissably.op_str))
 		
-		if(dissably.mnemonic == "ret"):
-			print("")
+#		if(dissably.mnemonic == "ret"):
+#			print("")
 		'''
 		if("rip +" in dissably.op_str):
 			truth = decode_control_flow(dissably.op_str , dissably.address + 1)
@@ -48,5 +48,8 @@ def decompile(input_bytes, start_address, is_64=True, check=True):
 	#assert diff_decompileiton(bytes(assemble(string)), start_address) 
 
 	return results
+
+#def hex_capstone()
+
 
 
