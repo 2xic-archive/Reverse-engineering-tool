@@ -186,31 +186,33 @@ class elf:
 
 	def decompile_section(self, section_name):
 		text_seciton = self.sections_with_name[section_name]
+		capstone_mode = get_capstone_mode(self.target_architecture, self.is_64_bit)
+	#	print(self.target_architecture)
 		if(text_seciton["type"] == 0x1 and text_seciton["flags"] == 0x6):
 			text_content = self.read_with_offset(text_seciton["file_offset"], text_seciton["size"], False)
-			results = decompile(text_content, int(text_seciton["virtual_address"].replace("0x", ""), 16), self.is_64_bit)
-			return results
+			decompiled, registered_touched = decompile(text_content, int(text_seciton["virtual_address"].replace("0x", ""), 16), capstone_mode)
+			return decompiled
 		return None
 
 	def decompile_text(self):
-		full_source = []
-		for i in self.sections_with_name.keys():
-			text_seciton = self.sections_with_name[i]
+		full_source = {
+
+		}
+		code_sections = []
+		capstone_mode = get_capstone_mode(self.target_architecture, self.is_64_bit)
+		for index, key in enumerate(self.sections_with_name.keys()):
+			text_seciton = self.sections_with_name[key]
 			#if(text_seciton["flags"] == 0x4 and text_seciton["flags"] == 0x1):
 			#	pass
 			if(text_seciton["type"] == 0x1 and text_seciton["flags"] == 0x6):
 				pass
 			else:
 				continue
-			full_source.append([[i]])
-			text_content = self.read_with_offset(text_seciton["file_offset"], text_seciton["size"], False)
-			
-			#if(text_seciton["name"])
-		#	if(i == ".init"):
-		#		print(text_content)
-
-			results = decompile(text_content, int(text_seciton["virtual_address"].replace("0x", ""), 16), self.is_64_bit)
-			full_source.extend(results)
+			text_content = self.read_with_offset(text_seciton["file_offset"], text_seciton["size"], False)			
+			decompiled, registered_touched = decompile(text_content, int(text_seciton["virtual_address"].replace("0x", ""), 16), capstone_mode)
+			full_source[index] = [key, decompiled, registered_touched]
+			code_sections.append(key)
+		self.code_sections = code_sections
 
 		return full_source
 
@@ -283,6 +285,24 @@ class elf:
 
 		}
 
+		target_architecture_lookup = {
+			0x00:"No specific instruction set",
+			0x02:"SPARC",
+			0x03:"x86",
+			0x08:"MIPS",
+			0x14:"PowerPC",
+			0x16:"S390",
+			0x28:"ARM",
+			0x2A:"SuperH",
+			0x32:"IA-64",
+			0x3E:"x86-64",
+			0xB7:"AArch64",
+			0xF3:"RISC-V"
+		}
+
+		self.target_architecture_int = int_from_bytearray(self.read_with_offset(0x12, 2))
+		self.target_architecture = target_architecture_lookup[self.target_architecture_int]
+
 		if(self.is_64_bit):
 			self.program_entry_point = int_from_bytearray(self.read_with_offset(0x18, 8))
 
@@ -316,7 +336,8 @@ class elf:
 		assert self.program_header_start < self.section_headers_start
 
 		self.get_section_names()
-
+		self.decompile_text()
+		
 if __name__ == "__main__":
 	elf(sys.argv[1])
 

@@ -1,55 +1,59 @@
 from capstone import *
 from assembler import *
 
-def diff_decompileiton(input_, start_address):
-	mode = Cs(CS_ARCH_X86, CS_MODE_64)
-	string = ""
-	for dissably in mode.disasm(input_, start_address):
-		string += "%s %s;" % (dissably.mnemonic, dissably.op_str)
-	return string
-
-def decompile(input_bytes, start_address, is_64=True, check=True):
-	mode = None 
-	results = []
+def get_capstone_mode(architecture, is_64, extra=None):
+	lookup_architecture_capstone =	{
+			"SPARC":CS_ARCH_SPARC,
+			"x86":CS_ARCH_X86,
+			"MIPS":CS_ARCH_MIPS,
+			"PowerPC":CS_ARCH_PPC,
+			"ARM":CS_ARCH_ARM,
+			"x86-64":CS_ARCH_X86
+	}
 	if(is_64):
-		mode = Cs(CS_ARCH_X86, CS_MODE_64)
+		return Cs(lookup_architecture_capstone[architecture], CS_MODE_64)
 	else:
-		mode = Cs(CS_MODE_ARM, CS_MODE_ARM)
+		return Cs(lookup_architecture_capstone[architecture], CS_MODE_32)
+	if(extra):
+		#	needed for arm etc
+		raise Exception("Not implemented")
 
-	string = ""
-	results_stirng = []
+def get_all_registers(CsInsn):
+#	cs_instruction = CsInsn(mode, )
+	registers = []
+	index = 1
+	while True:
+		try:
+			registers.append(CsInsn.reg_name(index))
+		except Exception:
+			break
+	return registers
+
+def decompile(input_bytes, start_address, mode, check=True):	
+	decompiled = {
+		#	address : [instruction , args]
+	}
+	target_registers_ids = set()
+	target_registers_names = []
+	mode.detail = True
+
 	for dissably in mode.disasm(input_bytes, start_address):
-		#print("0x%x:\t%s\t[%s]" % (dissably.address, dissably.mnemonic, dissably.op_str))
-		
-#		if(dissably.mnemonic == "ret"):
-#			print("")
-		'''
-		if("rip +" in dissably.op_str):
-			truth = decode_control_flow(dissably.op_str , dissably.address + 1)
-			op_str = dissably.op_str.split("ptr")[0] + "[{}]".format(hex(truth))
-			#print("")
-		#	print("0x%x:\t%s\t%s" % (dissably.address, dissably.mnemonic, dissably.op_str))
-			results.append([["0x%x" % (dissably.address)], ["%s\t%s" % (dissably.mnemonic, op_str)]])
-			#print("")
-		else:
-		'''
-	#	if("jmp" in dissably.mnemonic and "qword" not in dissably.op_str):
-#			print(dissably.mnemonic)
-#			print(int(dissably.op_str, 16))
-#			print(int(dissably.op_str, 16) - start_address)
-#			exit(0)
-		#	string += "%s %s;" % (dissably.mnemonic, (int(dissably.op_str, 16) - start_address))
-		#	results.append([["0x%x" % (dissably.address)], ["%s\t%s" % (dissably.mnemonic, (int(dissably.op_str, 16) - start_address))]])
-		#else:
-		#	string += "%s %s;" % (dissably.mnemonic, dissably.op_str)
-		results.append([["0x%x" % (dissably.address)], ["%s\t%s" % (dissably.mnemonic, dissably.op_str)]])
-		string += "%s %s;" % (dissably.mnemonic, dissably.op_str)
+		registers = []
+		(regs_read, regs_write) = dissably.regs_access()
 
-	#assert diff_decompileiton(bytes(assemble(string)), start_address) 
+		if len(regs_read) > 0:
+			for r in regs_read:
+				registers.append(dissably.reg_name(r))
+	
+		if len(regs_write) > 0:
+			for r in regs_write:
+				registers.append(dissably.reg_name(r))
 
-	return results
-
-#def hex_capstone()
+		decompiled["0x%x" % (dissably.address)] = [dissably.mnemonic, dissably.op_str, list(set(registers))]
 
 
+	for register_id in target_registers_ids:
+		target_registers_names.append(dissably.reg_name(register_id))
+
+	return decompiled, target_registers_names
 

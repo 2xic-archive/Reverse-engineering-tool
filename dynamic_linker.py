@@ -32,14 +32,14 @@ def parse_dynamic(elf_target):
 	dynamic_section_end = dynamic_section_start + elf_target.sections_with_name[".dynamic"]["size"]
 
 	for offset in range(dynamic_section_start, dynamic_section_end, dynamic_section_size_entry):
-		tag, identity = struct.unpack('QQ', (elf_target.file[offset:offset+dynamic_section_size_entry]))
+		tag, identity = struct.unpack("QQ", (elf_target.file[offset:offset+dynamic_section_size_entry]))
 		if tag in TAG:
 			if tag == 1 or tag == 15:
-				print('0x%018x %20s [%s]' %(tag, TAG[tag], elf_target.read_zero_terminated_string(dynamic_section_str_start + identity)))
+				print("0x%018x %20s [%s]" %(tag, TAG[tag], elf_target.read_zero_terminated_string(dynamic_section_str_start + identity)))
 			else:
-				print('0x%018x %20s [0x%x]' %(tag, TAG[tag], identity))
+				print("0x%018x %20s [0x%x]" %(tag, TAG[tag], identity))
 		else:
-			print('0x%018x %20s [0x%x]' %(tag, tag, identity))
+			print("0x%018x %20s [0x%x]" %(tag, tag, identity))
 
 
 def get_got(elf_target):

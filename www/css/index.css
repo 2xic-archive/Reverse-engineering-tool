@@ -2,16 +2,19 @@
 
 #container{
 	display: flex;
+	padding-left: 1%;
+	padding-top: 2.5%;
 }
 
 #container-item{
-	max-width: 50%;
-	min-width: 50%;
+	max-width: 49%;
+	min-width: 49%;
 
 	max-height: 600px; /* will make it dynamic with javascript */
 	overflow-y: scroll;
 
 	border-style: solid;;
+
 }
 
 body{

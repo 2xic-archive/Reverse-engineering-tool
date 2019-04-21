@@ -1,0 +1,4 @@
+flask-socketio
+flask
+capstone
+unicorn

@@ -1,13 +1,13 @@
 
 class tree_node {
-	constructor(content, head_positon) {
+	constructor(code_block, head_positon) {
 		this.edges = [];
 		this.direction = [];
 
 		this.x = 0;
 		this.y = 0;
 
-		this.heigth = content.split("<br>").length * 15;
+		this.heigth = 1;
 		this.width = 200;
 
 		this.largest_padding = 0;
@@ -19,7 +19,9 @@ class tree_node {
 		this.horizontal_gap = 220;
 		this.vertical_gap = 100;
 
-		this.content = content;
+		this.code_block = code_block;
+		this.is_root = false;
+		this.draw();
 	}
 
 	get is_leaf() {
@@ -51,6 +53,7 @@ class tree_node {
 	}
 		
 	get node_half_top(){
+
 		return 0.5 * this.heigth;
 	}
 
@@ -73,9 +76,43 @@ class tree_node {
 			}
 			return hash;
 		}
-		return this.content.hashCode();
+		var full_code = "";
+		for(var i = 0; i < this.code_block.length; i++){
+			full_code += this.code_block[i]["address"];
+		}
+		return full_code.hashCode();
 	}
 
+	generate_table(){
+		var code_table = document.createElement("table");
+		var table_body = document.createElement("tbody");
+
+		var table_id = "table" + this.gethash;
+
+		code_table.setAttribute("id", table_id);
+		code_table.setAttribute("name", "grapth_table_code");
+
+		for(var i = 0; i < this.code_block.length; i++){
+			var row = table_body.insertRow(i);
+			row.setAttribute("name", "row_" + this.code_block[i]["address"]);
+			row.setAttribute("type", "grapth");
+
+			var address_cell = row.insertCell(0);
+			var instruction_cell = row.insertCell(1);
+			var argument_cell = row.insertCell(2);
+
+			address_cell.innerHTML = this.code_block[i]["address"];
+			address_cell.id = "address_cell";
+
+			instruction_cell.innerHTML = this.code_block[i]["instruction"];
+			argument_cell.innerHTML = this.code_block[i]["argument"];
+
+			table_body.appendChild(row);
+		}
+		code_table.appendChild(table_body);
+		code_table.style.minWidth = "100%";
+		return [code_table.outerHTML, table_id];
+	}
 
 	draw(){
 		var element = document.getElementById(this.gethash.toString());
@@ -84,31 +121,39 @@ class tree_node {
 			node_div.setAttribute("class", "nodes");
 			node_div.setAttribute("id", this.gethash.toString());
 				
-			node_div.style.top = this.node_top+ 'px';
-			node_div.style.left = this.node_left+ 'px';
+			node_div.style.top = this.node_top + "px";
+			node_div.style.left = this.node_left + "px";
 				
-			node_div.style.minHeight = this.heigth  + 'px';
-			node_div.style.minWidth = this.width+ 'px';
+			node_div.style.minHeight = this.heigth + "px";
+			node_div.style.minWidth = this.width + "px";
 
-			node_div.style.maxHeight = this.heigth  + 'px';
-			node_div.style.maxWidth = this.width+ 'px';			
-				
-			node_div.innerHTML = this.content;
-			//; +'		[' + this.node_left + "	" + this.node_top + ']' +'		[' + this.node_top + "	" + this.node_left + ']';
+			node_div.style.maxHeight = this.heigth  + "px";
+			node_div.style.maxWidth = this.width + "px";			
+			
+			var table = this.generate_table(this.code_block);
+			node_div.innerHTML = table[0];
+
 			document.getElementById("grapth").appendChild(node_div);
 
-			this.element_refrence = document.getElementById(this.content.hashCode().toString());
+			//	finding the actual heigth and readjusting the node size 
+			this.heigth = document.getElementById(table[1]).offsetHeight;
+			this.width = document.getElementById(table[1]).offsetWidth + 30;
+			node_div.style.minHeight = this.heigth + "px";
+			node_div.style.maxHeight = this.heigth + "px";
+
+		//	node_div.style.minWidth = this.width + "px";
+		//	node_div.style.maxWidth = this.width + "px";			
+			
+			this.element_reference = document.getElementById(this.gethash.toString());
 		}else{
-			element.style.top = this.node_top+ 'px';
-			element.style.left = this.node_left+ 'px';
-
-			this.element_refrence = element;
-
+			element.style.top = this.node_top + "px";
+			element.style.left = this.node_left + "px";
+			this.element_reference = element;
 		}
-
 	}
 
 	padding_nodes(){
+
 		var padding = 0;
 		var rightmost = new Array(this.edges.length);
 		var highest_heigth = 0;

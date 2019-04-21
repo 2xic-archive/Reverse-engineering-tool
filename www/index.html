@@ -5,6 +5,7 @@
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.3/socket.io.min.js"></script>
 
+		<script src="interface/highlighter.js"></script>
 		<script src="flat-view/flat-view.js"></script>
 		<script src="grapth-view/grapth.js"></script>
 		<script src="grapth-view/grapth-view.js"></script>
@@ -19,8 +20,8 @@
 		<div id="container">
 			<div id="container-item">
 				<!--	flat-view	!-->
-				<table id="myTable">
-					<tr>
+				<table id="flat_view_table">
+					<tr id="table_header">
 						<th>section</th>
 						<th>address</th>
 						<th>code</th>
@@ -28,8 +29,7 @@
 				</table>
 			</div>
 			<!--	Grapth-view	!-->		
-			<div id="container-item">
-				<h1>Basic grapth</h1>
+			<div id="container-item" name="grapth-div">
 				<div id="grapth" >
 					<canvas id="canvas">
 						<!--	will be drawn	!-->
@@ -57,10 +57,12 @@
 			});
 
 			socket.on('control', function(msg){
-				create_grapth(msg);
+				create_blocks(msg);
+				create_grapth(msg, 0);
 			});
 
 			socket.on('code', function( msg ) {
+				console.log(msg);
 				create_view(msg);
 			});
 		</script>

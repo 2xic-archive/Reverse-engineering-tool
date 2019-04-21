@@ -91,34 +91,34 @@ TAG = {
 
 
 STT_TYPE = {
-	0: 'NOTYPE',
-	1: 'OBJECT',
-	2: 'FUNC',
-	3: 'SECTION',
-	4: 'FILE',
-	5: 'COMMON',
-	6: 'TLS',
-	10: 'LOOS',
-	12: 'HIOS',
-	13: 'LOPROC',
-	15: 'HIPROC'
+	0: "NOTYPE",
+	1: "OBJECT",
+	2: "FUNC",
+	3: "SECTION",
+	4: "FILE",
+	5: "COMMON",
+	6: "TLS",
+	10: "LOOS",
+	12: "HIOS",
+	13: "LOPROC",
+	15: "HIPROC"
 }
 
 
 STB_BIND = {
-	0: 'LOCAL',
-	1: 'GLOBAL',
-	2: 'WEAK',
-	13: 'LOPROC',
-	15: 'HIPROC'
+	0: "LOCAL",
+	1: "GLOBAL",
+	2: "WEAK",
+	13: "LOPROC",
+	15: "HIPROC"
 }
 
 
 STV_VISIBILITY = {
-	0: 'DEFAULT',
-	1: 'INTERNAL',
-	2: 'HIDDEN',
-	3: 'PROTECTED'
+	0: "DEFAULT",
+	1: "INTERNAL",
+	2: "HIDDEN",
+	3: "PROTECTED"
 }
 
 SH_TYPE = {
