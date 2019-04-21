@@ -1,0 +1,158 @@
+#	thanks https://github.com/detailyang/readelf/blob/master/readelf/readelf.py
+TAG = {
+	0:"NULL",
+	1:"NEEDED",
+	2:"PLTRELSZ",
+	3:"PLTGOT",
+	4:"HASH",
+	5:"STRTAB",
+	6:"SYMTAB",
+	7:"RELA",
+	8:"RELASZ",
+	9:"RELAENT",
+	10:"STRSZ",
+	11:"SYMENT",
+	12:"INIT",
+	13:"FINI",
+	14:"SONAME",
+	15:"RPATH",
+	16:"SYMBOLIC",
+	17:"REL",
+	18:"RELSZ",
+	19:"RELENT",
+	20:"PLTREL",
+	21:"DEBUG",
+	22:"TEXTREL",
+	23:"JMPREL",
+	24:"BIND_NOW",
+	25:"INIT_ARRAY",
+	26:"FINI_ARRAY",
+	27:"INIT_ARRAYSZ",
+	28:"FINI_ARRAYSZ",
+	29:"RUNPATH",
+	30:"FLAGS",
+	32:"ENCODING",
+	32:"PREINIT_ARRAY",
+	33:"PREINIT_ARRAYSZ",
+	34:"MAXPOSTAGS",
+	0x6000000d:"LOOS",
+	0x6000000d:"SUNW_AUXILIARY",
+	0x6000000e:"SUNW_RTLDINF",
+	0x6000000e:"SUNW_FILTER",
+	0x60000010:"SUNW_CAP",
+	0x60000011:"SUNW_SYMTAB",
+	0x60000012:"SUNW_SYMSZ",
+	0x60000013:"SUNW_ENCODING",
+	0x60000013:"SUNW_SORTENT",
+	0x60000014:"SUNW_SYMSORT",
+	0x60000015:"SUNW_SYMSORTSZ",
+	0x60000016:"SUNW_TLSSORT",
+	0x60000017:"SUNW_TLSSORTSZ",
+	0x60000018:"SUNW_CAPINFO",
+	0x60000019:"SUNW_STRPAD",
+	0x6000001a:"SUNW_CAPCHAIN",
+	0x6000001b:"SUNW_LDMACH",
+	0x6000001d:"SUNW_CAPCHAINENT",
+	0x6000001f:"SUNW_CAPCHAINSZ",
+	0x6ffff000:"HIOS",
+	0x6ffffd00:"VALRNGLO",
+	0x6ffffdf8:"CHECKSUM",
+	0x6ffffdf9:"PLTPADSZ",
+	0x6ffffdfa:"MOVEENT",
+	0x6ffffdfb:"MOVESZ",
+	0x6ffffdfd:"POSFLAG_1",
+	0x6ffffdfe:"SYMINSZ",
+	0x6ffffdff:"SYMINENT",
+	0x6ffffdff:"VALRNGHI",
+	0x6ffffe00:"ADDRRNGLO",
+	0x6ffffefa:"CONFIG",
+	0x6ffffefb:"DEPAUDIT",
+	0x6ffffefc:"AUDIT",
+	0x6ffffefd:"PLTPAD",
+	0x6ffffefe:"MOVETAB",
+	0x6ffffeff:"SYMINFO",
+	0x6ffffeff:"ADDRRNGHI",
+	0x6ffffff9:"RELACOUNT",
+	0x6ffffffa:"RELCOUNT",
+	0x6ffffffb:"FLAGS_1",
+	0x6ffffffc:"VERDEF",
+	0x6ffffffd:"VERDEFNUM",
+	0x6ffffffe:"VERNEED",
+	0x6fffffff:"VERNEEDNUM",
+	0x70000000:"LOPROC",
+	0x70000001:"SPARC_REGISTER",
+	0x7ffffffd:"AUXILIARY",
+	0x7ffffffe:"USED",
+	0x7fffffff:"FILTER",
+	0x7fffffff:"HIPROC",
+	}
+
+
+
+
+STT_TYPE = {
+	0: "NOTYPE",
+	1: "OBJECT",
+	2: "FUNC",
+	3: "SECTION",
+	4: "FILE",
+	5: "COMMON",
+	6: "TLS",
+	10: "LOOS",
+	12: "HIOS",
+	13: "LOPROC",
+	15: "HIPROC"
+}
+
+
+STB_BIND = {
+	0: "LOCAL",
+	1: "GLOBAL",
+	2: "WEAK",
+	13: "LOPROC",
+	15: "HIPROC"
+}
+
+
+STV_VISIBILITY = {
+	0: "DEFAULT",
+	1: "INTERNAL",
+	2: "HIDDEN",
+	3: "PROTECTED"
+}
+
+SH_TYPE = {
+	0:"NULL",
+	1:"PROGBITS",
+	2:"SYMTAB",
+	3:"STRTAB",
+	4:"RELA",
+	5:"HASH",
+	6:"DYNAMIC",
+	7:"NOTE",
+	8:"NOBITS",
+	9:"REL",
+	10:"SHLIB",
+	11:"DYNSYM",
+	14:"INIT_ARRAY",
+	15:"FINI_ARRAY",
+	16:"PREINIT_ARRAY",
+	17:"GROUP",
+	18:"SYMTAB_SHNDX",
+	0x60000000:"LOOS",
+	0x6fffffff:"HIOS",
+	0x70000000:"LOPROC",
+	0x7fffffff:"HIPROC",
+	0x80000000:"LOUSER",
+	0xffffffff:"HIUSER",
+}
+
+
+def ELF_ST_TYPE(i):
+	return ((i)&0x0f)
+
+def ELF_ST_VISIBILITY(i):
+	return ((i)&0x3)
+
+def ELF_ST_BIND(i):
+	return ((i) >> 4)

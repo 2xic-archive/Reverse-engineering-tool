@@ -1,5 +1,5 @@
 
-from control_flow import *
+from static.control_flow import *
 
 
 class model:

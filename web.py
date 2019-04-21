@@ -2,10 +2,10 @@
 from flask import send_from_directory
 import os
 from flask_socketio import SocketIO
-from elf_parser import *
+from elf.elf_parser import *
 from flask import Flask, render_template
 from flask_socketio import SocketIO
-from assembler import *
+from static.assembler import *
 from model import *
 
 app = Flask(__name__)
