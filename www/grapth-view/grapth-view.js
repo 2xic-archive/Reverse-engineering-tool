@@ -1,16 +1,7 @@
 var last_message = undefined;
 var last_index = 0;
-var target_section = ".init";
-var look_up_table = {
-
-};
-
-var refrence_key_node = {
-
-}
-
-var ligther = new highlighter(); 
-var global_row_index = undefined;
+var target_section = undefined;
+var look_up_table = {};
 
 function look_up_section(address){
 	var i;
@@ -31,11 +22,13 @@ function setup_canvas(){
 	var canvas = document.getElementById("canvas");
 	var ctx = canvas.getContext("2d");
 
-	canvas.width = 1500;
+	canvas.width = 1000;
 	canvas.height = 2500;
 
 	return ctx;
 }
+
+
 
 function get_canvas_position(){
 	var offsets = document.getElementById("canvas").getBoundingClientRect();
@@ -61,215 +54,36 @@ function create_blocks(msg){
 
 			for(var j = 0; j < nodes.length; j++){
 				var node = nodes[j];
-				var target = document.getElementById("flat_view_row_" + node);
-				if(target != undefined){
-					target.setAttribute("block_start", "");
-				}
+				/*var edges = msg[section][i]["edges"][node];
+				for(var y = 0; y < edges.length; y++){
+					document.getElementById("flat_view_row_" + edges[y]).setAttribute("block_start", "");				
+				}*/
+				document.getElementById("flat_view_row_" + node).setAttribute("block_start", "");
 			}
 			for(var j = 0; j < edges.length; j++){
 				var node = edges[j];
-				var target = document.getElementById("flat_view_row_" + node);
-				if(target != undefined){
-					target.setAttribute("block_start", "");
-				}
+				/*var edges = msg[section][i]["edges"][node];
+				for(var y = 0; y < edges.length; y++){
+					document.getElementById("flat_view_row_" + edges[y]).setAttribute("block_start", "");				
+				}*/
+				document.getElementById("flat_view_row_" + node).setAttribute("block_start", "");
 			}
-
-			if(!look_up_table.hasOwnProperty(section)){
+			if(Object.keys(look_up_table).indexOf(section) == -1){
 				look_up_table[section] = [];
 			}
 			look_up_table[section].push(msg[section][i]["start"]);
 		}
 		if(target_section == undefined){
 			target_section = section;
-
 		}
 	}
 }
-
-
-function dfs_create_positon(stack){
-	var visited = [];
-	while(stack.length > 0){
-		var new_node = stack.shift();
-		//console.log(new_node);
-		if(visited.indexOf(new_node.unqiue_id) == -1){
-			visited.push(new_node.unqiue_id);
-		}else{
-			continue;
-		}
-		new_node.position_edges();
-		for(var i = 0; i < new_node.edges.length; i++){
-			stack.push(new_node.edges[i]);
-			new_node.edges[i].position_edges();
-		}
-	}
-}
-
-function dfs_set_in_position(stack, coordinates, levels){
-	var visited = [];
-	var level_look_up = {
-
-	};
-	while(stack.length > 0){
-		var new_node = stack.shift();
-		var new_coordinates = coordinates.shift();
-		var new_level = levels.shift();
-
-		if(visited.indexOf(new_node.unqiue_id) == -1){
-			visited.push(new_node.unqiue_id);
-		}else{
-			if(level_look_up[new_node.hirachy_level] < new_coordinates[1]){
-				var hirachy_level = Object.keys(level_look_up).length;
-				var continuity = true;
-
-				new_node.debug("trying to find a new location ... ");
-
-				if(0 <= (new_node.hirachy_level - 1) && (new_node.hirachy_level + 1) <= hirachy_level){
-					var previous_level = level_look_up[new_node.hirachy_level - 1];
-					var next_level = level_look_up[new_node.hirachy_level + 1];
-
-					if(!((previous_level < new_coordinates[1]) && (new_coordinates[1] < next_level))){
-						continuity = false;
-					}
-					new_node.debug("stage 2 ..");
-				}else if(0 <= (new_node.hirachy_level - 1) && new_node.hirachy_level == new_node.max_level){
-					console.log(hirachy_level);
-					console.log(new_node.hirachy_level);
-					var previous_level = level_look_up[new_node.hirachy_level - 1];
-					if(!(previous_level < new_coordinates[1])){
-						continuity = false;
-					}
-					new_node.debug("stage 1..");		
-				}else{
-					continuity = false;
-				}
-				new_node.debug(JSON.stringify(level_look_up));
-				new_node.debug("sucess ? " + continuity)
-				if(continuity){
-					level_look_up[new_node.hirachy_level] = new_coordinates[1];	
-					new_node.place(new_node.x, new_coordinates[1]);
-					new_node.debug(JSON.stringify(level_look_up));
-				}
-			}
-			continue;
-		}
-
-		if(Object.keys(level_look_up).indexOf(new_node.hirachy_level) == -1){
-			level_look_up[new_node.hirachy_level] = new_coordinates[1];
-			new_node.place(new_coordinates[0], new_coordinates[1]);	
-			new_node.last_level = new_level;
-		}
-
-		new_node.element_reference.setAttribute("orginal_x", new_coordinates[0]);
-
-		var edge_count = new_node.edges.length;
-		for(var i = 0; i < edge_count; i++){
-			stack.push(new_node.edges[i]);
-			if(edge_count > 1){
-				coordinates.push([new_coordinates[0] + new_node.edges[i].padding, 
-					new_coordinates[1] + new_node.vertical_gap + new_node.highest_heigth]);
-			}else{
-				coordinates.push([new_coordinates[0] + new_node.edges[i].padding, 
-					new_coordinates[1] + new_node.vertical_gap + new_node.heigth]);
-			}
-			levels.push(new_node.edges[i].hirachy_level);
-		}		
-	}
-}
-
-
-
-function dfs_draw(stack, ctx, mapping){
-	var visited = [];
-	var drawn_lines = {
-
-	}
-	while(stack.length > 0){
-		var new_node = stack.shift();
-			
-		if(visited.indexOf(new_node.unqiue_id) == -1){
-			visited.push(new_node.unqiue_id);
-		}else{
-			continue;
-		}
-
-		for(var i = 0; i < new_node.edges.length; i++){
-			stack.push(new_node.edges[i]);
-			var node_from = new_node.code_block[0]["address"];
-			var node_to = new_node.edges[i].code_block[0]["address"];
-
-			var connection = node_from + node_to;
-			var reversed_connection = node_to + node_from;
-				
-			if(Object.keys(drawn_lines).indexOf(reversed_connection) != -1 || Object.keys(drawn_lines).indexOf(connection) != -1){
-				continue;
-			}
-				
-			var x0 = new_node.node_left + (new_node.width) / 2;
-			var y0 = new_node.node_top + new_node.heigth;
-
-			var x1 = new_node.edges[i].node_left +  (new_node.edges[i].width) / 2;
-			var y1 = new_node.edges[i].node_top;
-
-			var color = "black";
-			if(mapping[new_node.unqiue_id][i] == "followed"){
-				color = "red";
-			}else if(mapping[new_node.unqiue_id][i] == "jumpted"){
-				color = "green";
-			}
-
-			if(new_node.direction[i] == 1){
-				if(y0 < y1){
-					new_node.connect_nodes(
-						ctx,
-						x0, y0, 
-						x1, y1, 
-						color);
-
-				}else{
-					y1 = new_node.node_top;
-					x1 = new_node.node_left + (new_node.width) / 2;
-
-					y0 = new_node.edges[i].node_top + (new_node.edges[i].heigth);
-					x0 = new_node.edges[i].node_left +  (new_node.edges[i].width) / 2;
-					new_node.connect_nodes(
-						ctx,
-						x0, y0, 
-						x1, y1,
-						color);
-				}
-			}else{
-				//	backward ... 
-				if(x0 > x1 && y0 < y1){
-					new_node.connect_nodes_curve(
-						ctx,
-						x0, y0, 
-						x1, y1,
-						300,
-						color
-					);
-				}else{
-					new_node.connect_nodes_curve(
-						ctx,
-						x0, y0, 
-						x1, y1,
-						-300,
-						color);
-				}
-			}
-		}
-		new_node.draw();
-	}
-}
-
 
 function create_grapth(msg, index){
-	if(index != undefined){
-		last_message = msg;
-		last_index = index;
-		
-		msg = msg[target_section][index];
-	}
+	last_message = msg;
+	last_index = index;
+	
+	msg = msg[target_section][index];
 
 	clear_grapth();	
 	
@@ -278,93 +92,207 @@ function create_grapth(msg, index){
 	var canvas_position = get_canvas_position();
 	var canvas_position_top = canvas_position[0];
 	var canvas_position_left = canvas_position[1];
-	var canvas_position_array = [canvas_position_top, canvas_position_left];
+
 	
-	var nodes = Object.keys(msg["code"]);	
-	refrence_key_node = {
+	var nodes = Object.keys(msg["edges"]);
+	var refrence_key_node = {
 
 	}
 
-//	console.log(JSON.stringify(msg));
 
-	var level_zero_nodes = [];
-	
-	for(var j = 0; j < nodes.length; j++){
-		var node = nodes[j];
-		var target = document.getElementById("flat_view_row_" + node);
-		if(target != undefined){
-			target.setAttribute("block_start", "")
+	for(var i = 0; i < nodes.length; i++){
+		var node = nodes[i];
+		//console.log(node);
+//		console.log(document.getElementById("flat_view_row_" + node));
+		document.getElementById("flat_view_row_" + node).setAttribute("block_start", "")
+		//document.getElementById("row_" + node).style.background = "red";
+		for(var j = 0; j < msg["edges"][node].length; j++){
+			var edge_node = msg["edges"][node][j];
+			document.getElementById("flat_view_row_" + edge_node).setAttribute("block_start", "");//.style.background = "red";
+
+			if(Object.keys(refrence_key_node).indexOf(edge_node) == -1){
+				refrence_key_node[edge_node] = new tree_node(get_code(msg, edge_node), [canvas_position_top, canvas_position_left]);
+			}
 		}
-		refrence_key_node[node] = new tree_node(get_code(msg, node), canvas_position_array, msg["hirachy"][node]);
-		if(msg["hirachy"][node] == 0){
-			level_zero_nodes.push(refrence_key_node[node]);
-		}
-		refrence_key_node[node].max_level = msg["max_level"];
+		refrence_key_node[node] = new tree_node(get_code(msg, node), [canvas_position_top, canvas_position_left]);
 	}
+
+
+	var root_node = undefined;
+	var root_heigth = undefined;
 	
-	var edges = Object.keys(msg["edges"]);
-	for(var i = 0; i < edges.length; i++){
-		var key = edges[i];
+	for(var i = 0; i < nodes.length; i++){
+		var key = nodes[i];
 		var children = [];
 		var children_val = [];			
 		for(var j = 0; j < msg["edges"][key].length; j++){
 			var edge_node = msg["edges"][key][j];
 			children.push(refrence_key_node[edge_node]);
 			children_val.push(edge_node);
-			if(edge_node == key){
-				refrence_key_node[key].enable_self_refrence();
-			}
 		}	
 
 		var new_root_node = refrence_key_node[key]; 
-		var low_children = undefined;
 		for(var q = 0; q < children.length; q++){
 			if(key < children_val[q]){
 				new_root_node.add_edge(children[q], 1);
-			}else{				
+			}else{
 				new_root_node.add_edge(children[q], -1);	
+			}
+		}
+		if(root_node == undefined || parseInt(root_heigth, 16) > parseInt(key, 16)){
+			root_heigth = key;
+			root_node = new_root_node;
+		}
+	}
+	if(root_node == undefined){
+		//	if there are no edges, there will be no root...
+		var node = Object.keys(msg["code"])[0];
+		root_node =  new tree_node(get_code(msg, node), [canvas_position_top, canvas_position_left]);
+	}
+
+	function dfs_create_positon(stack){
+		var visited = [];
+		while(stack.length > 0){
+			var new_node = stack.shift();
+			if(visited.indexOf(new_node.gethash) == -1){
+				visited.push(new_node.gethash);
+			}else{
+				continue;
+			}
+			new_node.position_edges();
+			for(var i = 0; i < new_node.edges.length; i++){
+				stack.push(new_node.edges[i]);
+				new_node.edges[i].position_edges();
 			}
 		}
 	}
 
-//		console.log(refrence_key_node);
+
+	function dfs_set_in_position(stack, coordinates){
+		var visited = [];
+		while(stack.length > 0){
+			var new_node = stack.shift();
+			var new_coordinates = coordinates.shift();
+
+			if(visited.indexOf(new_node.gethash) == -1){
+				visited.push(new_node.gethash);
+			}else{
+				continue;
+			}
+			new_node.place(new_coordinates[0], new_coordinates[1]);
+			for(var i = 0; i < new_node.edges.length; i++){
+				stack.push(new_node.edges[i]);
+
+				if(new_node.edges[i].highest_node_heigth == 0){
+					if(new_node.is_root){
+						coordinates.push([new_coordinates[0]  + new_node.edges[i].padding, new_coordinates[1]  + new_node.vertical_gap + new_node.heigth + new_node.edges[i].highest_node_heigth]);
+					}else{
+						coordinates.push([new_coordinates[0]  + new_node.edges[i].padding, new_coordinates[1]  + new_node.vertical_gap + new_node.edges[i].heigth]);
+					}
+				}else{
+					coordinates.push([new_coordinates[0]  + new_node.edges[i].padding, new_coordinates[1]  + new_node.vertical_gap + new_node.heigth + new_node.edges[i].highest_node_heigth]);
+				}
+			}		
+		}
+	}
 
 
-	var root_node = refrence_key_node[msg["start"]];
-	var root_heigth = parseInt(msg["start"], 16);
+
+	function dfs_draw(stack){
+		var visited = [];
+		var drawn_lines = {
+
+		}
+		var heigth = 0;
+		while(stack.length > 0){
+			var new_node = stack.shift();
+			
+			if(visited.indexOf(new_node.gethash) == -1){
+				visited.push(new_node.gethash);
+			}else{
+				continue;
+			}
+
+			for(var i = 0; i < new_node.edges.length; i++){
+				stack.push(new_node.edges[i]);
+				var node_from = new_node.code_block[0]["address"];
+				var node_to = new_node.edges[i].code_block[0]["address"];
+
+				var connection = node_from + node_to;
+				var reversed_connection = node_to + node_from;
+				
+				if(Object.keys(drawn_lines).indexOf(reversed_connection) != -1 || Object.keys(drawn_lines).indexOf(connection) != -1){
+					continue;
+				}
+
+				var x0 = new_node.x;
+				var y0 = new_node.y + new_node.node_half_top;
+
+				var x1 = new_node.edges[i].x;
+				var y1 = new_node.edges[i].y - new_node.edges[i].node_half_top;
+
+				if(new_node.highest_node_heigth != 0){
+
+					if(new_node.direction[i] == 1){
+						if(y1 < y0){
+							new_node.connect_nodes(								
+								ctx,
+								x1, new_node.edges[i].y + new_node.edges[i].node_half_top,
+								x0, new_node.y - new_node.heigth);
+						}else{
+							new_node.connect_nodes(
+								ctx,
+								x0, y0 , 
+								x1, y1);
+						}
+					}			
+				}
+				else{
+					if(new_node.direction[i] == 1){
+						new_node.connect_nodes(
+							ctx,
+							x0, y0, 
+							x1, new_node.edges[i].y - new_node.edges[i].node_half_top);	
+					}
+				}
+				if(heigth < new_node.node_top ){
+					heigth = new_node.node_top;
+				}
+				if(heigth < new_node.edges[i].node_top){
+					heigth = new_node.edges[i].node_top;
+				}
+			}
+			new_node.draw();
+		}
+//		console.log(heigth);
+//		document.getElementById("canvas").setAttribute("height", heigth);
+//		document.getElementById("grapth").style.maxHeight = "100px";
+	}
 	root_node.is_root = true;
 
-	var root_x = root_node.horizontal_gap + (50 + root_node.largest_padding / 2);
-	var root_y = root_node.heigth / 2 + canvas_position_top;
-
 	dfs_create_positon([root_node]);
-	dfs_set_in_position([root_node], [[root_x, root_y ]], [root_node.hirachy_level]);
-	dfs_draw([root_node], ctx, msg["type"]);
+	dfs_set_in_position([root_node], [[root_node.horizontal_gap + (50 + root_node.largest_padding / 2)  , root_node.heigth / 2 + canvas_position_top ]]);
+	dfs_draw([root_node]);
 
 
-	/*
-	//	this are nodes that are not attached to the main tree
-	var root_x = root_node.x;
-	var root_y = root_node.y;
-	
-	var redraw_nodes = [];
-	for(var i = 0; i < level_zero_nodes.length; i++){
-		var node = level_zero_nodes[i];
-
-		if(node.hirachy_level == 0){
-			node.x = root_x + node.width * 2 ;
-			node.y = root_y;
-			node.highest_node_heigth = root_node.highest_node_heigth;
-			node.heigth = root_node.heigth;
-			node.draw();
-			
-			dfs_create_positon([node]);
-			dfs_set_in_position([node], [[node.x, node.y ]], [node.hirachy_level]);
-			dfs_draw([node], ctx, msg["type"]);
-			root_x +=  node.width * 2;
+	var ligther = new highlighter(); 
+	$("tr").click(function(e){
+		if(this.getAttribute("type") == "flat"){
+			var old_target = target_section;
+			target_section = this.getAttribute("section");
+			console.log(target_section);
+			var section = look_up_section(this.getAttribute("name").replace("row_", ""));
+			if(section != last_index || old_target != target_section){
+				create_grapth(last_message, section);
+				document.getElementsByName("grapth-div")[0].scroll(0, 0);
+			}
 		}
-	}	
-	*/
+//		console.log(this.rowIndex);
+		var last_target = this.rowIndex;
+		var target = document.getElementsByName(this.getAttribute("name"));
+		ligther.highligth(target);
+	});
+
 }
 
 function recalculate(){
@@ -377,5 +305,4 @@ function recalculate(){
 window.onresize = function(){
 	recalculate();
 }
-
 

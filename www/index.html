@@ -5,7 +5,6 @@
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.3/socket.io.min.js"></script>
 
-		<script src="interface/actions.js"></script>
 		<script src="interface/highlighter.js"></script>
 		<script src="flat-view/flat-view.js"></script>
 		<script src="grapth-view/grapth.js"></script>
@@ -51,12 +50,11 @@
 
 			socket.emit('get control', {data:""});
 
-			/*
 			socket.on('error', function(msg){
 				if(msg.indexOf("xhr") == -1){
 					alert(msg);
 				}
-			});*/
+			});
 
 			socket.on('control', function(msg){
 				create_blocks(msg);
@@ -64,7 +62,7 @@
 			});
 
 			socket.on('code', function( msg ) {
-			//	console.log(msg);
+				console.log(msg);
 				create_view(msg);
 			});
 		</script>

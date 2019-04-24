@@ -45,7 +45,7 @@ function parse(current, registers){
 				if(key_word_index == word_length){
 					if(refrence_count == 0){
 						var span_end = "</span>";
-						var span_start = "<span style='color:red;' contenteditable='true' key='" + word +"'>";
+						var span_start = "<span style='color:red;' key='" + word +"'>";
 						current_text = current_text.insert(j + 1, span_end);
 						current_text = current_text.insert(j - word_length + 1, span_start);
 
@@ -130,12 +130,9 @@ function create_table_row(row_name, section, address, code, index){
 	var code_cell = row.insertCell(2);
 	var instruction = document.createElement("span");
 	var instruction_args = document.createElement("span");
-	instruction_args.setAttribute("contenteditable", "true");
-
 
 	instruction.innerHTML = code[0] + "\t";
 	instruction.setAttribute("id", "instruction");
-	instruction.setAttribute("contenteditable", "true");
 
 	var new_code = code[1];
 
@@ -150,7 +147,6 @@ function create_table_row(row_name, section, address, code, index){
 
 	instruction_args.innerHTML = parse(new_code, code[2]);
 	instruction_args.setAttribute("id", "instruction_args");
-	instruction_args.setAttribute("contenteditable", "true");
 
 	//input_code_cell.setAttribute("value", code.join("\t"));
 	//input_code_cell.setAttribute("readonly", "true");
