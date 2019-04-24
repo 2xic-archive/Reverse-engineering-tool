@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>reversing</title>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.3/socket.io.min.js"></script>
+
+		<script src="interface/highlighter.js"></script>
+		<script src="flat-view/flat-view.js"></script>
+		<script src="grapth-view/grapth.js"></script>
+		<script src="grapth-view/grapth-view.js"></script>
+
+		<link rel="stylesheet" type="text/css" href="css/flat-view.css">
+		<link rel="stylesheet" type="text/css" href="css/index.css">
+		<link rel="stylesheet" type="text/css" href="css/grapth-view.css">
+	</head>
+
+	<body>
+
+		<div id="container">
+
+			<!--	Grapth-view	!-->		
+			<div  name="grapth-div">
+				<div id="grapth" >
+					<canvas id="canvas">
+						<!--	will be drawn	!-->
+					</canvas>
+				</div>
+			</div>
+		</div>
+
+		<script type="text/javascript">
+			//	,"0x400490":["0x400492"]
+			/*
+			create_grapth({"edges":{"0x400480":["0x400492","0x400490"]},"code":{"0x400480":[{"address":"0x400480","instruction":"sub","argument":"rsp, 8"},{"address":"0x400484","instruction":"mov","argument":"rax, qword ptr [rip + 0x200b6d]"},{"address":"0x40048b","instruction":"test","argument":"rax, rax"},{"address":"0x40048e","instruction":"je","argument":"0x400492"}],"0x400492":[{"address":"0x400492","instruction":"add","argument":"rsp, 8"},{"address":"0x400496","instruction":"ret","argument":""}],"0x400490":[{"address":"0x400490","instruction":"call","argument":"rax"}]},"flow":["0x400480","0x400490"],"start":"0x400480","end":"0x400496"});*/
+		
+			create_grapth({"edges":{"0x4004a0":["0x4004a0"],"0x4004c0":["0x4004a0"],"0x4004d0":["0x4004a0"]},"code":{"0x4004a0":[{"address":"0x4004a0","instruction":"push","argument":"qword ptr [rip + 0x200b62]"},{"address":"0x4004a6","instruction":"jmp","argument":"qword ptr [rip + 0x200b64]"},{"address":"0x4004ac","instruction":"nop","argument":"dword ptr [rax]"},{"address":"0x4004b0","instruction":"jmp","argument":"qword ptr [rip + 0x200b62]"},{"address":"0x4004b6","instruction":"push","argument":"0"},{"address":"0x4004bb","instruction":"jmp","argument":"0x4004a0"}],"0x4004c0":[{"address":"0x4004c0","instruction":"jmp","argument":"qword ptr [rip + 0x200b5a]"},{"address":"0x4004c6","instruction":"push","argument":"1"},{"address":"0x4004cb","instruction":"jmp","argument":"0x4004a0"}],"0x4004d0":[{"address":"0x4004d0","instruction":"jmp","argument":"qword ptr [rip + 0x200b52]"},{"address":"0x4004d6","instruction":"push","argument":"2"},{"address":"0x4004db","instruction":"jmp","argument":"0x4004a0"}]},"flow":["0x4004a0","0x4004c0","0x4004d0"],"start":"0x4004a0","end":"0x4004db","hirachy":{"0x4004a0":1,"0x4004c0":0,"0x4004d0":0}});
+			/*
+			create_grapth({'edges': {'0x400480': ['0x400492', '0x400490'], '0x400490': ['0x400492']}, 'code': {'0x400480': [{'address': '0x400480', 'instruction': 'sub', 'argument': 'rsp, 8'}, {'address': '0x400484', 'instruction': 'mov', 'argument': 'rax, qword ptr [rip + 0x200b6d]'}, {'address': '0x40048b', 'instruction': 'test', 'argument': 'rax, rax'}, {'address': '0x40048e', 'instruction': 'je', 'argument': '0x400492'}], '0x400492': [{'address': '0x400492', 'instruction': 'add', 'argument': 'rsp, 8'}, {'address': '0x400496', 'instruction': 'ret', 'argument': ''}], '0x400490': [{'address': '0x400490', 'instruction': 'call', 'argument': 'rax'}]}, 'flow': ['0x400480', '0x400490'], 'start': '0x400480', 'end': '0x400496', 'hirachy': {'0x400480': 1, '0x400492': 3, '0x400490': 2}});
+			*/
+
+			/*
+			create_grapth({"edges":{"0x40051b":["0x400518","0x400549"],"0x400549":["0x400570","0x400558"],"0x400558":["0x400510"],"0x400510":["0x40051b"],"0x400518":["0x40051b"],"0x4004e0":["0x400510"]},"code":{"0x4004e0":[{"address":"0x4004e0","instruction":"push","argument":"rbp"},{"address":"0x4004e1","instruction":"push","argument":"rbx"},{"address":"0x4004e2","instruction":"xor","argument":"esi, esi"},{"address":"0x4004e4","instruction":"mov","argument":"ebp, 0x4007e1"},{"address":"0x4004e9","instruction":"xor","argument":"ebx, ebx"},{"address":"0x4004eb","instruction":"sub","argument":"rsp, 0x18"},{"address":"0x4004ef","instruction":"mov","argument":"rdi, qword ptr [rip + 0x200b42]"},{"address":"0x4004f6","instruction":"call","argument":"0x4004b0"},{"address":"0x4004fb","instruction":"mov","argument":"edi, 0x4007d0"},{"address":"0x400500","instruction":"xor","argument":"eax, eax"},{"address":"0x400502","instruction":"call","argument":"0x4004c0"},{"address":"0x400507","instruction":"mov","argument":"r9d, 0x49"},{"address":"0x40050d","instruction":"nop","argument":"dword ptr [rax]"}],"0x40051b":[{"address":"0x40051b","instruction":"lea","argument":"edi, [rbx + r8]"},{"address":"0x40051f","instruction":"lea","argument":"rsi, [rsp + 0xc]"},{"address":"0x400524","instruction":"mov","argument":"dword ptr [rsp + 0xc], 0"},{"address":"0x40052c","instruction":"call","argument":"0x400670"},{"address":"0x400531","instruction":"mov","argument":"edi, dword ptr [rsp + 0xc]"},{"address":"0x400535","instruction":"mov","argument":"ecx, r8d"},{"address":"0x400538","instruction":"add","argument":"r8, 1"},{"address":"0x40053c","instruction":"shl","argument":"edi, cl"},{"address":"0x40053e","instruction":"mov","argument":"eax, edi"},{"address":"0x400540","instruction":"xor","argument":"edi, r9d"},{"address":"0x400543","instruction":"cmp","argument":"r8, 8"},{"address":"0x400547","instruction":"jne","argument":"0x400518"}],"0x400518":[{"address":"0x400518","instruction":"mov","argument":"r9d, edi"}],"0x400549":[{"address":"0x400549","instruction":"add","argument":"ebx, 8"},{"address":"0x40054c","instruction":"cmp","argument":"al, r9b"},{"address":"0x40054f","instruction":"mov","argument":"rsi, qword ptr [rip + 0x200ae2]"},{"address":"0x400556","instruction":"je","argument":"0x400570"}],"0x400570":[{"address":"0x400570","instruction":"mov","argument":"edi, 0xa"},{"address":"0x400575","instruction":"call","argument":"0x4004d0"},{"address":"0x40057a","instruction":"add","argument":"rsp, 0x18"},{"address":"0x40057e","instruction":"xor","argument":"eax, eax"},{"address":"0x400580","instruction":"pop","argument":"rbx"},{"address":"0x400581","instruction":"pop","argument":"rbp"},{"address":"0x400582","instruction":"ret","argument":""}],"0x400558":[{"address":"0x400558","instruction":"movsx","argument":"edi, dil"},{"address":"0x40055c","instruction":"add","argument":"rbp, 1"},{"address":"0x400560","instruction":"call","argument":"0x4004d0"},{"address":"0x400565","instruction":"movzx","argument":"r9d, byte ptr [rbp - 1]"},{"address":"0x40056a","instruction":"jmp","argument":"0x400510"}],"0x400510":[{"address":"0x400510","instruction":"xor","argument":"r8d, r8d"},{"address":"0x400513","instruction":"jmp","argument":"0x40051b"}]},"flow":["0x4004e0","0x400510","0x400518","0x40051b","0x400549","0x400558"],"start":"0x4004e0","end":"0x400582","hirachy":{"0x4004e0":1,"0x40051b":3,"0x400518":4,"0x400549":4,"0x400570":5,"0x400558":5,"0x400510":2}});
+			*/
+
+		</script>
+	</body>
+</html>
