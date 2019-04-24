@@ -25,9 +25,10 @@ class block:
  
  
 class relation:
-	def __init__(self, from_node, to_node):
+	def __init__(self, from_node, to_node, relation_type=None):
 		self.from_node = from_node
 		self.to_node = to_node
+		self.type = relation_type
  
 	def __str__(self):
 		return self.from_node + "->" + self.to_node
@@ -51,6 +52,7 @@ class cfg:
 		if(address[0].isalpha()):
 			return False
 		address = int(address, 16)
+
 		return int(self.start_address, 16) <= address <= int(self.end_address, 16)
 
 	def is_branch(self, code):
@@ -89,12 +91,10 @@ class cfg:
 
 				if("jne" in code_block[i]["instruction"] or "je" in code_block[i]["instruction"] or "jmp" in code_block[i]["instruction"] ):
 					if(self.in_scope(code_block[i]["argument"])):
-						new_relations.append(relation(start, code_block[i]["argument"]))
-					else:
-						continue
+						new_relations.append(relation(start, code_block[i]["argument"], "jumpted"))
 
 				if("jne" in code_block[i]["instruction"] or "je" in code_block[i]["instruction"] ):
-					new_relations.append(relation(start, code_block[i + 1]["address"]))
+					new_relations.append(relation(start, code_block[i + 1]["address"], "followed"))
  				
 				#if("call" in code_block[i]["instruction"]):
 					#if(int(self.start_address, 16) < int(code_block[i]["address"], 16)):
@@ -114,7 +114,7 @@ class cfg:
 					target = node_relation.to_node
  
 					if not str(node_relation) in self.node_relation.keys():
-						self.node_relation[str(node_relation)] = [source, target]
+						self.node_relation[str(node_relation)] = [source, target, node_relation.type]
 					 
 					if target in self.visited_node.keys():
 						continue
@@ -136,7 +136,8 @@ class cfg:
 				start_blockStart = other_blocks.start
 				start_blockEnd = other_blocks.end
 			 
-			#   overlap = (blockStart < start_blockEnd) and start_blockEnd < blockEnd 
+				overlap = (blockStart < start_blockEnd) and start_blockEnd < blockEnd 
+			#	print(overlap)
 			#   if not overlap:
 			#       continue
 				 
@@ -179,6 +180,7 @@ class cfg:
 	def store_blocks(self, target=None):
 		for blocks in self.parse_code_block(target):
 			self.blocks.append(blocks)
+		
 		found_all = False
 		highest_address = None
 		for j in self.blocks:
@@ -197,6 +199,9 @@ class cfg:
 		dfs_edges = {
  
 		}
+		edge_type = {
+
+		}
 		for j in self.node_relation:
 			from_node = j.split("->")[0]
 			 
@@ -204,13 +209,16 @@ class cfg:
 				continue
  
 			dfs_edges[from_node] = []
- 
+			edge_type[from_node] = []
+
 			for i in self.node_relation:
 				if(from_node in i.split("->")[0]):
 					to_node = i.split("->")[1]
 					dfs_edges[from_node].append(to_node)
- 
-		return dfs_edges
+					edge_type[from_node].append(self.node_relation[i][- 1])
+
+#		print(edge_type)
+		return dfs_edges, edge_type
  
 	def return_node_code(self):
 		code_nodes = {
@@ -223,6 +231,9 @@ class cfg:
 #	helps for debugging :=)
 def test_graphviz(input_cfg):
 	from graphviz import Digraph
+
+	print(input_cfg["code"]["0x400518"])
+	
 	grapth = Digraph()
 	print(input_cfg)
 	for node_key, node_value in input_cfg["code"].items():
@@ -230,13 +241,19 @@ def test_graphviz(input_cfg):
 		for code_block in node_value:
 #			print(node_value)
 			code += "%s\t%s\t%s\n" % (code_block["address"], code_block["instruction"], code_block["argument"])
+		print(node_key)
+		print(code)
 		grapth.node(node_key, label=code)
-
+	
 	for node_key, node_value in input_cfg["edges"].items():
 		for edges in node_value:
 			grapth.edge(node_key, edges)
+			print("{}->{}".format(node_key, edges))
+
 	grapth.view()
-	input("press enter") 
+#	input("press enter") 
+	exit(0)
+
 
 def make_cfg(code):
 	#   based on some code from 
@@ -248,11 +265,71 @@ def make_cfg(code):
 	code_cfg.store_blocks()
 	code_cfg.clean_blocks()
  
-	dfs_edges = code_cfg.return_edge_map()
+	dfs_edges, dfs_edges_type = code_cfg.return_edge_map()
 	codebase = code_cfg.return_node_code()
 #	test_graphviz({"edges":dfs_edges, "code":codebase, "flow":sorted(list(dfs_edges.keys()))})
 #	exit(0)
-	return {"edges":dfs_edges, "code":codebase, "flow":sorted(list(dfs_edges.keys())), 
-		"start":code_cfg.start_address, "end":code_cfg.end_address}
+	return test_hirachy({"edges":dfs_edges, "type":dfs_edges_type, "code":codebase, "flow":sorted(list(dfs_edges.keys())), 
+		"start":code_cfg.start_address, "end":code_cfg.end_address})
+
+
+def dfs_path(grapth, start, end):
+	stack = [(start, [start])]
+
+	while len(stack) > 0:
+		(vertex, current_path) = stack.pop()
+		if(vertex in grapth.keys()):
+			for edges in (set(grapth[vertex]) - set(current_path)):
+				if(edges == end):
+					yield current_path + [edges]
+				else:
+					stack.append((edges, current_path + [edges]))
+
+def test_hirachy(code):
+	head = code["start"]
+	code["hirachy"] = {
+
+	}
+	code["hirachy"][head] = 1
+	zero_nodes = []
+
+	highest_level = 0
+	for j in code["code"].keys():
+		if(j == head):
+			continue
+		size = 0
+		for q in (dfs_path(code["edges"], head, j)):
+			if(len(q) > size):
+				size = len(q)
+		code["hirachy"][j] = size
+		if(size == 0):
+			zero_nodes.append(j)
+		if(size > highest_level):
+			highest_level = size
+
+	code["max_level"] = highest_level
+
+	if(len(zero_nodes) > 0):
+		head = zero_nodes[0]
+		found_non_zero = False
+		for j in zero_nodes:
+			if(j == head):
+				continue
+			size = 0
+			for q in (dfs_path(code["edges"], head, j)):
+				if(len(q) > size):
+					size = len(q)
+			#print("{}->{}".format(head, j))
+			#print(size)
+			code["hirachy"][j] = size
+			if(size > 0):
+				found_non_zero = True
+
+	return code
+
+if __name__ == "__main__":
+	test_graphviz({"edges":{"0x4004b6":["0x4004a0"],"0x4004c6":["0x4004a0"],"0x4004d6":["0x4004a0"]},"type":{"0x4004b6":["jumpted"],"0x4004c6":["jumpted"],"0x4004d6":["jumpted"]},"code":{"0x4004a0":[{"address":"0x4004a0","instruction":"push","argument":"qword ptr [rip + 0x200b62]"},{"address":"0x4004a6","instruction":"jmp","argument":"qword ptr [rip + 0x200b64]"}],"0x4004ac":[{"address":"0x4004ac","instruction":"nop","argument":"dword ptr [rax]"},{"address":"0x4004b0","instruction":"jmp","argument":"qword ptr [rip + 0x200b62]"}],"0x4004b6":[{"address":"0x4004b6","instruction":"push","argument":"0"},{"address":"0x4004bb","instruction":"jmp","argument":"0x4004a0"}],"0x4004c0":[{"address":"0x4004c0","instruction":"jmp","argument":"qword ptr [rip + 0x200b5a]"}],"0x4004c6":[{"address":"0x4004c6","instruction":"push","argument":"1"},{"address":"0x4004cb","instruction":"jmp","argument":"0x4004a0"}],"0x4004d0":[{"address":"0x4004d0","instruction":"jmp","argument":"qword ptr [rip + 0x200b52]"}],"0x4004d6":[{"address":"0x4004d6","instruction":"push","argument":"2"},{"address":"0x4004db","instruction":"jmp","argument":"0x4004a0"}]},"flow":["0x4004b6","0x4004c6","0x4004d6"],"start":"0x4004a0","end":"0x4004db","hirachy":{"0x4004a0":1,"0x4004ac":0,"0x4004b6":0,"0x4004c0":0,"0x4004c6":0,"0x4004d0":0,"0x4004d6":0}})
+#	pass
+
 
 

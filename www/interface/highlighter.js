@@ -13,7 +13,8 @@ class highlighter {
 			}
 		}
 		for(var i = 0; i < target.length; i++){
-			target[i].style.background = "red";
+			target[i].style.backgroundColor = "rgba(255, 255, 255, 0.7)";
+		//	console.log(target[i]);
 		}
 		this.last_highighlight = target;
 	}
