@@ -3,6 +3,24 @@
 # a reverse engineering tool [IN PRODUCTION]
 
 
+<img src="README/current_state.png"  width="500px" />
+
+#	features
+-	flat view (see all the sections with code)
+-	code grapth (click in a section, view traces of the block)
+-	hex view (click an instruction see where it is in the binary)
+
+#	work in progress / ideas
+-	unicorn support
+	-	see what each instruction has done to the memory and other registers
+		-	basically like gdb break on every instruction
+	-	rewind, go to the previous state just by moving the arrow keys(like QIRA)...
+-	binary patching
+	-	I have coded parts of this already, however it needs a better interface
+-	visualizing a binary
+	-	see the entropy
+	-	regions with text/data etc
+
 #   what is the plan?
 static and dynamic reverse engineering, one package.
 
