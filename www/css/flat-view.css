@@ -2,6 +2,7 @@
 table{
 	background: #C0C0C0;
 	border-collapse: collapse;
+	width:100%;
 }
 
 th{
@@ -28,6 +29,7 @@ td{
 
 #flat_view_table{
 	min-width: 100%;
+	width:100%;
 }
 
 td#comment{

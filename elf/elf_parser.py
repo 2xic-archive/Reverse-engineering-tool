@@ -347,6 +347,14 @@ class elf:
 
 		}
 
+		self.symbol_table = {
+	
+		}
+
+		self.qword_helper = {
+
+		}
+
 		self.target_architecture_int = int_from_bytearray(self.read_with_offset(0x12, 2))
 		self.target_architecture = target_architecture_lookup[self.target_architecture_int]
 

@@ -6,6 +6,7 @@
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.3/socket.io.min.js"></script>
 
 		<script src="interface/actions.js"></script>
+		<script src="interface/build_register_table.js"></script>
 		<script src="interface/highlighter.js"></script>
 		<script src="interface/search.js"></script>
 		<script src="flat-view/flat-view.js"></script>
@@ -34,7 +35,7 @@
 						<li><button onclick="open_close_search()" onfocusout="check_focus()">Search</button></li>
 						<li><button onclick="save_project()">Save</button></li>
 						<li><button onclick="hide_hex()">Hide hex view</button></li>
-
+						<li><button onclick="hide_grapth()">Hide grapth view</button></li>
 					</ul>
 					<div id="search_content" class="search_box" tabindex="2">
 						<input type="text" autocomplete="off" placeholder="Search.." id="search" onkeyup="filter_search()">
@@ -48,10 +49,12 @@
 !-->
 					</div>
 				</div>
+			</div>
+
+			<div id="menu">
 				<!--
-					YOu want to look up a section ? 
+					maybe add a image of the binary structure or something...
 				!-->
-			
 			</div>
 
 			<div id="container">
@@ -66,11 +69,8 @@
 								<th>comment</th>
 							</tr>
 						</table>
-
 					</div>
-
 					<div id="hex_view" class="container_item_small">
-						<!--    flat-view   !-->
 						<div id="container_50">
 							<div id="container_small">
 								<table id="hex_table">
@@ -82,15 +82,25 @@
 								</table>
 							</div>
 						</div>
-
 					</div>
 				</div>
+
 				<!--    Grapth-view !-->        
-				<div id="container_item" name="grapth-div">
-					<div id="grapth" >
-						<canvas id="canvas">
-							<!--    will be drawn   !-->
-						</canvas>
+				<div id="container_row">
+				
+					<div id="container_item_normal" name="grapth-div">
+						<div id="grapth" >
+							<canvas id="canvas">
+								<!--    will be drawn   !-->
+							</canvas>
+						</div>
+					</div>
+
+					<div class="container_item_small">
+						<table id="registers">
+
+
+						</table>
 					</div>
 				</div>
 			</div>
@@ -136,11 +146,8 @@
 				code_sections = msg["sections"];
 
 				for (var key in msg["code"]) {
-					var element = document.createElement("a");
-					element.innerText = msg["code"][key][0];
-					element.setAttribute("onClick", "find_section(this);");
-					element.setAttribute("tabindex", "0");
-					document.getElementById("search_content").appendChild(element);
+					var location = Object.keys(msg["code"][key][1])[0];
+					block_list[location] = msg["code"][key][0];
 				}
 				create_flat_view(msg["code"]);
 			});

@@ -193,6 +193,15 @@ function hide_hex(){
 	}
 }
 
+function hide_grapth(){
+	var target_element = document.getElementsByName("grapth-div")[0];
+	if(target_element.style.display == "none"){
+		target_element.style.display = "block";
+	}else{
+		target_element.style.display = "none";
+	}
+}
+
 
 function save_project(){
 	if(file_name == undefined){

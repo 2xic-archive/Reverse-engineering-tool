@@ -4,7 +4,7 @@ from capstone import *
 import struct
 
 from dynamic_linker import *
-from elf_parser import *
+from elf.elf_parser import *
 
 
 def bold_print(text):
@@ -34,7 +34,8 @@ emulator.reg_write(UC_X86_REG_RSP, stack_adr + stack_size - 1)
 
 #	haven't integrated the dynamic linker yet!
 emulator.mem_map(0x600000, 1024 * 1024)
-emulator.mem_write(0x600fd8, bytes(bytearray.fromhex('deadbeef')))
+emulator.mem_write(0x600fd8, bytes(bytearray.fromhex('40053f')))
+
 
 
 '''
@@ -48,7 +49,7 @@ emulator.mem_write(0x800000, libc)
 #	having problems with the stack
 #	maybe I found a bug?
 	#	https://github.com/unicorn-engine/unicorn/issues/1083
-emulator.mem_write(0xfffd8, bytes(bytearray.fromhex('deadbeef')))
+emulator.mem_write(0xfffd8, bytes(bytearray.fromhex('40053f')))
 
 
 address_space = {
@@ -87,31 +88,36 @@ def hook_block(uc, address, size, user_data):
 
 
 instruction_number = 0
+
+#print(mu.reg_read())
+
 def hook_code(mu, address, size, user_data):  
 	global instruction_number
 	print('\t>>> Tracing instruction at 0x%x (%s), instruction size = 0x%x' % (address, determine_location(address), size))
 	try:
 		print("\t %s" % (get_insstruction(bytes(mu.mem_read(address, size)))))
+		mu.mem_write(0xfffd8, bytes(bytearray.fromhex('40055a')))
+		print(mu.mem_read(0xfffd8, 8))
 	except Exception as e:
 		print(e)
+	'''
 	if(hex(address) == "0x400535"):
 		mu.reg_write(UC_X86_REG_RIP, mu.reg_read(UC_X86_REG_RIP) + size)
 	if(hex(address) == hex(0x400995)):
 		mu.reg_write(UC_X86_REG_RIP, mu.reg_read(UC_X86_REG_RIP) + size)
 
-	if(address == 0x400554 and False):
-		'''
-			call qword ptr [rip + 0x200a7e];
-		'''
+	'''
 
-		'''
+	'''
+	if(address == 0x400554 and False):
+			call qword ptr [rip + 0x200a7e];
+
 			calling the libc_start function
 
 				first read the qword[hardcoded]
 				push return address onto the stack.
 				(both are hardcoded :=) )
 
-		'''
 		mu.reg_write(UC_X86_REG_RIP, start_libc_c_program)
 		mu.mem_write(0xfffd8, hex_address(0x40055a))
 		mu.reg_write(UC_X86_REG_RSP, mu.reg_read(UC_X86_REG_RSP) - 8)
@@ -123,7 +129,7 @@ def hook_code(mu, address, size, user_data):
 		if(bytearray(b'\x00\x00\x00\x00\x00\x00\x00\x00') == mu.mem_read(location, 8)):
 			print("trampoline .... ")
 			mu.reg_write(UC_X86_REG_RIP, frame_dummy)
-		
+	'''
 	instruction_number += 1
 	if(address == 0x0):
 		exit(0)
@@ -135,15 +141,28 @@ def hook_code(mu, address, size, user_data):
 
 def hook_mem_access(uc, access, address, size, value, user_data):
 	if access == UC_MEM_WRITE:
+		print(hex(uc.reg_read(UC_X86_REG_RIP)))
+		print(hex(uc.reg_read(UC_X86_REG_RSP)))
 		bold_print(">>> Memory is being WRITE at 0x%x(%s), data size = %u, data value = 0x%x" %(address, determine_location(address) , size, value))
 		if(address == 0xfffd8):
 			print(uc.mem_read(0xfffd8, 8))
+			hex_string = "".join("%02x" % b for b in uc.mem_read(0xfffd8, 8))
+			print(hex_string)
 	else:
+		print(hex(uc.reg_read(UC_X86_REG_RIP)))
+		print(hex(uc.reg_read(UC_X86_REG_RSP)))
 		bold_print(">>> Memory is being READ at 0x%x (%s), data size = %u" %(address, determine_location(address),  size))
 		print(uc.mem_read(address, size))
+		hex_string = "".join("%02x" % b for b in uc.mem_read(address, 8))
+		print(hex_string)
+		return True
 
 def hook_mem_invalid(uc, access, address, size, value, user_data):
 	bold_print("Address hit {}, size {}".format(hex(address), size))
+
+#	writing fake args 
+emulator.reg_write(UC_X86_REG_RSP, emulator.reg_read(UC_X86_REG_RSP) - 8)
+
 
 emulator.hook_add(UC_HOOK_MEM_WRITE, hook_mem_access)
 emulator.hook_add(UC_HOOK_MEM_READ, hook_mem_access)

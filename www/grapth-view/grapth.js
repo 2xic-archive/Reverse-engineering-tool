@@ -2,7 +2,7 @@
 class tree_node {
 
 
-	constructor(code_block, head_positon, hirachy_level) {
+	constructor(code_block, hirachy_level) {
 		this.edges = [];
 		this.direction = [];
 
@@ -16,7 +16,7 @@ class tree_node {
 		this.highest_node_heigth = 0;
 
 		this.padding = 0;
-		this.head_positon = head_positon;
+		
 
 		this.horizontal_gap = 220;
 		this.vertical_gap = 200;

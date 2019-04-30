@@ -14,9 +14,7 @@ import struct
 
 def get_dynamic_symbols(elf_target, name):
 #	global symbol_table
-	elf_target.symbol_table = {
-	
-	}
+
 
 	dynamic_section_str_start = elf_target.sections_with_name[".dynstr"]["file_offset"]
 
@@ -50,16 +48,16 @@ def parse_relocation(elf_target, target):
 	dynamic_section_sym_end = elf_target.sections_with_name[target]["file_offset"] + elf_target.sections_with_name[target]["size"]
 
 	index = 0
-	elf_target.qword_helper = {
-
-	}
+	
 #	print("offset 	symbol 	type")
 	for offset in range(dynamic_section_sym_start, dynamic_section_sym_end, dynamic_section_sym_entry_size):
 		if(elf_target.is_64_bit):
 			struct_format = "QQQ"
 			address,info,addend = struct.unpack(struct_format, elf_target.file[offset:offset+dynamic_section_sym_entry_size])
-	#		print("0x%x	%s 		" % (address, elf_target.symbol_table[ELF64_R_SYM(info)]))
-			elf_target.qword_helper[hex(address)] = elf_target.symbol_table[ELF64_R_SYM(info)]
+			try:
+				elf_target.qword_helper[hex(address)] = elf_target.symbol_table[ELF64_R_SYM(info)]
+			except Exception as e:
+				print("erorr in parse_relocation")
 	#		print(ELF_ST_TYPE(info))
 #	print("")
 

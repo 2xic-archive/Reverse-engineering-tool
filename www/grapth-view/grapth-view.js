@@ -9,6 +9,11 @@ var refrence_key_node = {
 
 }
 
+
+var block_list = {
+
+}
+
 var ligther = new highlighter(); 
 var global_row_index = undefined;
 
@@ -27,12 +32,12 @@ function clear_grapth(){
 	document.getElementById("grapth").innerHTML = "<canvas id=\"canvas\"></canvas>";
 }
 
-function setup_canvas(){
+function setup_canvas(size_width, size_heigth){
 	var canvas = document.getElementById("canvas");
 	var ctx = canvas.getContext("2d");
 
-	canvas.width = 1500;
-	canvas.height = 2500;
+	canvas.width = size_width;
+	canvas.height = size_heigth;
 
 	return ctx;
 }
@@ -63,7 +68,10 @@ function create_blocks(msg){
 				var node = nodes[j];
 				var target = document.getElementById("flat_view_row_" + node);
 				if(target != undefined){
-					target.setAttribute("block_start", "");
+					target.setAttribute("block_start", "");			
+					if(block_list[node] == undefined){
+						block_list[node] = "loc_" + node;
+					}
 				}
 			}
 			for(var j = 0; j < edges.length; j++){
@@ -71,6 +79,9 @@ function create_blocks(msg){
 				var target = document.getElementById("flat_view_row_" + node);
 				if(target != undefined){
 					target.setAttribute("block_start", "");
+					if(block_list[node] == undefined){
+						block_list[node] = "loc_" + node;
+					}
 				}
 			}
 
@@ -89,6 +100,8 @@ function create_blocks(msg){
 
 function dfs_create_positon(stack){
 	var visited = [];
+	var lowest_x = 0;
+	var highest_x = 0;
 	while(stack.length > 0){
 		var new_node = stack.shift();
 		//console.log(new_node);
@@ -101,8 +114,17 @@ function dfs_create_positon(stack){
 		for(var i = 0; i < new_node.edges.length; i++){
 			stack.push(new_node.edges[i]);
 			new_node.edges[i].position_edges();
+
+			if(new_node.edges[i].padding < lowest_x){
+				lowest_x = new_node.edges[i].padding;
+			}
+			if(highest_x < new_node.edges[i].padding ){
+				highest_x = new_node.edges[i].padding;
+			}
+			
 		}
 	}
+	return [lowest_x,  highest_x];
 }
 
 function dfs_set_in_position(stack, coordinates, levels){
@@ -110,6 +132,7 @@ function dfs_set_in_position(stack, coordinates, levels){
 	var level_look_up = {
 
 	};
+	var max_heigth = 0;
 	while(stack.length > 0){
 		var new_node = stack.shift();
 		var new_coordinates = coordinates.shift();
@@ -149,6 +172,11 @@ function dfs_set_in_position(stack, coordinates, levels){
 					level_look_up[new_node.hirachy_level] = new_coordinates[1];	
 					new_node.place(new_node.x, new_coordinates[1]);
 					new_node.debug(JSON.stringify(level_look_up));
+
+					if(max_heigth < (new_coordinates[1] + new_node.heigth)){
+						max_heigth = new_coordinates[1] + new_node.heigth;
+					}
+
 				}
 			}
 			continue;
@@ -158,7 +186,12 @@ function dfs_set_in_position(stack, coordinates, levels){
 			level_look_up[new_node.hirachy_level] = new_coordinates[1];
 			new_node.place(new_coordinates[0], new_coordinates[1]);	
 			new_node.last_level = new_level;
+
+			if(max_heigth < (new_coordinates[1] + new_node.heigth)){
+				max_heigth = new_coordinates[1] + new_node.heigth;
+			}
 		}
+
 
 		new_node.element_reference.setAttribute("orginal_x", new_coordinates[0]);
 
@@ -175,6 +208,7 @@ function dfs_set_in_position(stack, coordinates, levels){
 			levels.push(new_node.edges[i].hirachy_level);
 		}		
 	}
+	return max_heigth;
 }
 
 
@@ -272,14 +306,7 @@ function create_grapth(msg, index){
 	}
 
 	clear_grapth();	
-	
-	var ctx = setup_canvas();
-
-	var canvas_position = get_canvas_position();
-	var canvas_position_top = canvas_position[0];
-	var canvas_position_left = canvas_position[1];
-	var canvas_position_array = [canvas_position_top, canvas_position_left];
-	
+		
 	var nodes = Object.keys(msg["code"]);	
 	refrence_key_node = {
 
@@ -295,7 +322,7 @@ function create_grapth(msg, index){
 		if(target != undefined){
 			target.setAttribute("block_start", "")
 		}
-		refrence_key_node[node] = new tree_node(get_code(msg, node), canvas_position_array, msg["hirachy"][node]);
+		refrence_key_node[node] = new tree_node(get_code(msg, node), msg["hirachy"][node]);
 		if(msg["hirachy"][node] == 0){
 			level_zero_nodes.push(refrence_key_node[node]);
 		}
@@ -334,14 +361,19 @@ function create_grapth(msg, index){
 	var root_heigth = parseInt(msg["start"], 16);
 	root_node.is_root = true;
 
-	var root_x = root_node.horizontal_gap + (50 + root_node.largest_padding / 2);
-	var root_y = root_node.heigth / 2 + canvas_position_top;
 
-	dfs_create_positon([root_node]);
-	dfs_set_in_position([root_node], [[root_x, root_y ]], [root_node.hirachy_level]);
-	dfs_draw([root_node], ctx, msg["type"]);
+	var results = dfs_create_positon([root_node]);
+	var lowest_x = Math.abs(results[0]) ;
 
 
+	var root_x = root_node.horizontal_gap + lowest_x;
+	var root_y = root_node.heigth / 2 + document.getElementsByName("grapth-div")[0].getBoundingClientRect().top;
+
+	var max_heigth = dfs_set_in_position([root_node], [[root_x, root_y ]], [root_node.hirachy_level]);
+	var max_width = lowest_x + results[1]+ root_node.width * 2;
+
+	dfs_draw([root_node], setup_canvas(max_width, max_heigth), msg["type"]);
+	
 	/*
 	//	this are nodes that are not attached to the main tree
 	var root_x = root_node.x;
@@ -365,6 +397,7 @@ function create_grapth(msg, index){
 		}
 	}	
 	*/
+	build();
 }
 
 function recalculate(){

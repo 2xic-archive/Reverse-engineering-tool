@@ -20,12 +20,12 @@ class model(model_configs):
 
 
 		self.comments = {
-			"0x400480":"hei"
+	
 		}
 
 		self.decompile_binary()
 
-		self.cfg = self.create_cfg()
+		self.cfg = self.create_CFG()
 		self.hex = self.parse_hex()
 
 	def add_comment(self, address, content):
@@ -41,38 +41,9 @@ class model(model_configs):
 			location += "/"
 		return location
 
-	def get_text_location(self):
-		location = os.path.dirname(os.path.abspath(__file__)) 
-		if not location.endswith("/"):
-			location += "/"
-		return location + "text.pickle"
-
 	def save_model(self, name):
 		filehandler = open(self.get_working_dir() + name + ".pickle", "wb") 
 		pickle.dump(self, filehandler)
-
-	def load_comment(self):
-		if(os.path.isfile(self.get_text_location())):
-			pikcle_data = open(self.get_text_location(), "rb") 
-			return json.loads(pickle.load(pikcle_data))
-		return {}
-
-	def save_comment(self):	
-		filehandler = open(self.get_text_location(), "wb") 
-		pickle.dump(json.dumps(self.custom_comments), filehandler)
-
-	def hex_print(self):
-		for j in range(0, len(self.hex), 12):
-			content = ""
-			string = ""
-			for q in range(12):
-				content += self.hex[j + q] + " "
-				if(int(self.hex[j + q], 16) == 0):
-					string += "."
-				else:
-					string += chr(int(self.hex[j + q], 16))
-			print("%s 	|%s" % (content, string))
-
 
 	def decompile_binary(self):
 		code_sections = self.static.get_sections_parsed()
@@ -113,7 +84,7 @@ class model(model_configs):
 
 		return self.binary_sections
 		
-	def create_cfg(self):
+	def create_CFG(self):
 		entrie_code_blocks = {
 
 		}

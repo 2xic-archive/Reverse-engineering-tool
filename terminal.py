@@ -5,9 +5,13 @@ from elf.elf_parser_key_value import *
 
 
 from dynamic.dynamic_linker import *
+from dynamic.emulator import *
 
 
-target = model(elf(sys.argv[1]))
+#target = model(elf(sys.argv[1]))
+
+
+
 #print(target)
 
 
@@ -16,7 +20,7 @@ target = model(elf(sys.argv[1]))
 
 
 
-target.decompile_binary()
+#target.decompile_binary()
 
 
 '''
