@@ -1,3 +1,56 @@
+
+section_type_name = {
+	0x0:"SHT_NULL",
+	0x1:"SHT_PROGBITS",
+	0x2:"SHT_SYMTAB",
+	0x3:"SHT_STRTAB",
+	0x4:"SHT_RELA",
+	0x5:"SHT_HASH",
+	0x6:"SHT_DYNAMIC",
+	0x7:"SHT_NOTE",
+	0x8:"SHT_NOBITS",
+	0x9:"SHT_REL",
+	0x0A:"SHT_SHLIB",
+	0x0B:"SHT_DYNSYM",
+	0x0E:"SHT_INIT_ARRAY",
+	0x0F:"SHT_FINI_ARRAY",
+	0x10:"SHT_PREINIT_ARRAY",
+	0x11:"SHT_GROUP",
+	0x12:"SHT_SYMTAB_SHNDX",
+	0x13:"SHT_NUM",
+	0x60000000:"SHT_LOOS"
+}
+
+
+program_header_type_name = {
+	0x00000000:"PT_NULL",
+	0x00000001:"PT_LOAD",
+	0x00000002:"PT_DYNAMIC",
+	0x00000003:"PT_INTERP",
+	0x00000004:"PT_NOTE",
+	0x00000005:"PT_SHLIB",
+	0x00000006:"PT_PHDR",
+	0x60000000:"PT_LOOS",
+	0x6FFFFFFF:"PT_HIOS",
+	0x70000000:"PT_LOPROC",
+	0x7FFFFFFF:"PT_HIPROC"
+}
+
+target_architecture_lookup = {
+	0x00:"No specific instruction set",
+	0x02:"SPARC",
+	0x03:"x86",
+	0x08:"MIPS",
+	0x14:"PowerPC",
+	0x16:"S390",
+	0x28:"ARM",
+	0x2A:"SuperH",
+	0x32:"IA-64",
+	0x3E:"x86-64",
+	0xB7:"AArch64",
+	0xF3:"RISC-V"
+}
+
 #	thanks https://github.com/detailyang/readelf/blob/master/readelf/readelf.py
 TAG = {
 	0:"NULL",
@@ -156,3 +209,12 @@ def ELF_ST_VISIBILITY(i):
 
 def ELF_ST_BIND(i):
 	return ((i) >> 4)
+
+def ELF64_R_SYM(i):
+	return i >> 32
+
+def ELF32_R_SYM(i):
+	return i >> 8
+
+
+

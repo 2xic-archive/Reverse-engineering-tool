@@ -1,15 +1,29 @@
 
 var last_target = -1;
+var look_up_row = {
 
-
+};
+var all_registers = new Set([]);
 var current_section = undefined;
 
+
+var code_comments = {
+
+}
+
+var code_sections = {
+
+}
 
 function parse(current, registers){
 	var current_text = current;
 	if(registers.length == 0){
 		registers.push("fake");
-	}
+	}/*else{
+		//	for(var i = 0; i < )
+		//	all_registers = all_registers.concat(registers);
+	}*/
+
 	for(var i = 0; i < registers.length; i++){
 		var word_length = registers[i].length;
 		var word = registers[i];
@@ -23,6 +37,11 @@ function parse(current, registers){
 
 		var hex_mode = false;
 		var hex_start = 0;
+
+		if(word != "fake"){
+			all_registers.add(word);
+		}
+
 		while(j < size){
 			if(current_text[j] == "<"){
 				refrence_count += 1;
@@ -89,20 +108,19 @@ function parse(current, registers){
 	return current_text;
 }
 
-function create_table_row(row_name, section, address, code, index){
+function create_table_row(row_name, section, address, code, size){
 	var table = document.getElementById("flat_view_table");
-		
-	if(index == -1){
-		index = table.rows.length;
-	}
-
-	var row = table.insertRow(index);
+	var row = table.insertRow(-1);
 
 	//row.setAttribute("name", row_name);
-	row.setAttribute("name", "row_" + address);
+	if(address == undefined){
+		row.setAttribute("name", "row_" + section);
+	}else{
+		row.setAttribute("name", "row_" + address);
+	}
+
 	row.setAttribute("id", "flat_view_row_" + address);
-	
-//	row.setAttribute("tabindex", "0");
+	row.setAttribute("onClick", "moving_rows(this)");
 	row.setAttribute("type", "flat");
 
 	if(section != undefined){
@@ -148,7 +166,7 @@ function create_table_row(row_name, section, address, code, index){
 	};
 
 
-	instruction_args.innerHTML = parse(new_code, code[2]);
+	instruction_args.innerHTML = code[0] + "\t" + parse(new_code, code[2]);
 	instruction_args.setAttribute("id", "instruction_args");
 	instruction_args.setAttribute("contenteditable", "true");
 
@@ -156,7 +174,37 @@ function create_table_row(row_name, section, address, code, index){
 	//input_code_cell.setAttribute("readonly", "true");
 
 	code_cell.id = "code_cell";
-	code_cell.innerHTML = instruction.outerHTML + instruction_args.outerHTML;
+	code_cell.innerHTML = instruction_args.outerHTML;
+
+
+	var comment_cell = row.insertCell(3);
+	comment_cell.id = "comment";
+
+	if(code_comments.hasOwnProperty(address)){
+		//alert(1);
+		var span_comment = document.createElement("span");
+		span_comment.innerHTML = code_comments[address];
+		span_comment.setAttribute("contenteditable", "true");
+		comment_cell.innerHTML = span_comment.outerHTML;
+	}else{		
+		var span_comment = document.createElement("span");
+//		span_comment.innerHTML = code_comments[address];
+		span_comment.setAttribute("contenteditable", "true");
+		comment_cell.innerHTML = span_comment.outerHTML;
+	}
+
+	row.setAttribute("start", size[0]);
+	row.setAttribute("end", size[1]);
+
+	/*
+	if(comment != undefined){
+		var span_comment = document.createElement("span");
+		span_comment.innerHTML = comment;
+		span_comment.setAttribute("contenteditable", "true");
+		comment_cell.innerHTML = span_comment.outerHTML;
+	}
+
+	*/
 
 	//	span transfer to input ? not sure...
 	/*
@@ -238,8 +286,9 @@ function create_table_row(row_name, section, address, code, index){
 }
 
 
-function create_view(msg){
+function create_flat_view(msg){
 	var table = document.getElementById("flat_view_table");
+	table.setAttribute("tabindex", "0");
 	if(table.rows.length == 1){
 		var row_name = undefined;
 		var section_size = Object.keys(msg);
@@ -249,11 +298,36 @@ function create_view(msg){
 			
 			var section_code = msg[section_size[i]][1];
 			var section_addreses = Object.keys(section_code);
-//			console.log(section_code);
 		
-			create_table_row(section_name, section_name, undefined, undefined, -1);
+			create_table_row(section_name, section_name, undefined, undefined, undefined);
+
+			var instruction_position = 0;
+			var padding = code_sections[section_name][0];
 			for(var j = 0; j < section_addreses.length; j++){
-				create_table_row(section_name, undefined, section_addreses[j], section_code[section_addreses[j]], -1);	
+				/*if(section_code[section_addreses[j]].length == 4){
+					create_table_row(section_name, undefined, section_addreses[j], section_code[section_addreses[j]], section_code[section_addreses[j]][3]);	
+					look_up_row[section_addreses[j][0]] = table.rows[table.rows.length - 1];
+				}else{
+				*/
+				var instruction_size = undefined;
+				if((j + 1) < section_addreses.length){
+					instruction_size = (parseInt(section_addreses[j + 1], 16) - parseInt(section_addreses[j], 16));
+				}else{
+					instruction_size = code_sections[section_name][1] - instruction_position;
+				}
+				if(section_code[section_addreses[j]].length == 1){
+					console.log(section_addreses[j]);
+				}
+				if(section_addreses[j] == undefined){
+					console.log("i cry");
+					alert(1);
+				}
+				if(section_code[section_addreses[j]] == undefined){
+					console.log("da fak");
+				}
+				create_table_row(section_name, undefined, section_addreses[j], section_code[section_addreses[j]], [padding + instruction_position, padding + instruction_position + instruction_size ]);	
+
+				instruction_position += instruction_size;
 			}
 		}
 	}

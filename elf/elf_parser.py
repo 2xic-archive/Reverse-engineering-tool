@@ -1,6 +1,7 @@
 import sys
 from static.disassemble import *
 from .elf_parser_key_value import *
+from dynamic.dynamic_linker import *
 
 def reverse_bytearray(wokring_bytearray):
 	new_byte_array = list(wokring_bytearray)
@@ -17,6 +18,7 @@ def int_to_bytearray(input_int, size):
 
 
 class elf:
+
 	def read_with_offset(self, offset, size, reverse=True):
 		if(reverse):
 			return reverse_bytearray(self.file[offset:offset + size])
@@ -33,8 +35,6 @@ class elf:
 		section_type = (self.read_with_offset(start + 4, 4))
 
 		if(self.is_64_bit):
-	#		print(self.read_with_offset(start + 0x8, 8))
-	#		exit(0)
 			section_flags = (self.read_with_offset(start + 0x8, 8))
 		else:
 			section_flags = (self.read_with_offset(start + 0x8, 4))
@@ -56,28 +56,7 @@ class elf:
 			section_link = int_from_bytearray(self.read_with_offset(start + 0x18, 4))
 
 
-		section_type_name = {
-			0x0:"SHT_NULL",
-			0x1:"SHT_PROGBITS",
-			0x2:"SHT_SYMTAB",
-			0x3:"SHT_STRTAB",
-			0x4:"SHT_RELA",
-			0x5:"SHT_HASH",
-			0x6:"SHT_DYNAMIC",
-			0x7:"SHT_NOTE",
-			0x8:"SHT_NOBITS",
-			0x9:"SHT_REL",
-			0x0A:"SHT_SHLIB",
-			0x0B:"SHT_DYNSYM",
-			0x0E:"SHT_INIT_ARRAY",
-			0x0F:"SHT_FINI_ARRAY",
-			0x10:"SHT_PREINIT_ARRAY",
-			0x11:"SHT_GROUP",
-			0x12:"SHT_SYMTAB_SHNDX",
-			0x13:"SHT_NUM",
-			0x60000000:"SHT_LOOS"
-		}
-
+	
 		type_name = "NULL"
 		try:
 			type_name = section_type_name[int_from_bytearray(section_type)]
@@ -102,19 +81,7 @@ class elf:
 
 	def parse_program_header(self, start):
 
-		program_header_type_name = {
-			0x00000000:"PT_NULL",
-			0x00000001:"PT_LOAD",
-			0x00000002:"PT_DYNAMIC",
-			0x00000003:"PT_INTERP",
-			0x00000004:"PT_NOTE",
-			0x00000005:"PT_SHLIB",
-			0x00000006:"PT_PHDR",
-			0x60000000:"PT_LOOS",
-			0x6FFFFFFF:"PT_HIOS",
-			0x70000000:"PT_LOPROC",
-			0x7FFFFFFF:"PT_HIPROC"
-		}
+		
 
 		program_header_type = int_from_bytearray(self.read_with_offset(start, 4))
 
@@ -150,14 +117,15 @@ class elf:
 
 			program_header_align = int_from_bytearray(self.read_with_offset(start + 0x1C, 4))
 
-		name = "NULL"
-		try:
-			name = program_header_type_name[program_header_type]
-		except Exception as e:
-			pass
+		if(0x60000000 < program_header_type < 0x7FFFFFFF):
+			name = "reserved for os"
+		else:
+			name = program_header_type_name.get(program_header_type, "NULL")
+
 		return {
 			"type":program_header_type,
 			"type_name":name,
+			"virtual_address":program_header_viritual_address,
 			"file_offset":program_header_offset,
 			"file_size":program_header_size_file
 		}
@@ -166,7 +134,7 @@ class elf:
 	def read_zero_terminated_string(self, offset):
 		string = ""
 		index = 0
-		while True:
+		while (offset + index) < len(self.file):
 			char = self.read_with_offset(offset + index, 1, reverse=False).decode()
 			if(char == '\0'):
 				break
@@ -174,26 +142,75 @@ class elf:
 			index += 1	
 		return string
 
+
+	def get_section_name_by_index(self, index):
+		string_table_offset = self.section_headers[self.section_headers_names]["file_offset"]
+		return self.read_zero_terminated_string(string_table_offset + self.section_headers[index]["name_index"])
+
 	def get_section_names(self):
 		string_table_offset = self.section_headers[self.section_headers_names]["file_offset"]
 		self.sections_with_name = {
 
 		}
+		self.section_sizes = {
+
+		}
+		un_named_count = 0
 		for i in self.section_headers:
 			name = self.read_zero_terminated_string(string_table_offset + self.section_headers[i]["name_index"])
+			if(len(name) == 0):
+				name = "unnamed_%i" % (un_named_count)
+				un_named_count += 1
 			self.sections_with_name[name] = self.section_headers[i]
+			self.section_sizes[name] = [self.section_headers[i]["file_offset"], self.section_headers[i]["size"]] 
 
-
+	'''
 	def decompile_section(self, section_name):
 		text_seciton = self.sections_with_name[section_name]
 		capstone_mode = get_capstone_mode(self.target_architecture, self.is_64_bit)
 	#	print(self.target_architecture)
 		if(text_seciton["type"] == 0x1 and text_seciton["flags"] == 0x6):
 			text_content = self.read_with_offset(text_seciton["file_offset"], text_seciton["size"], False)
-			decompiled, registered_touched = decompile(text_content, int(text_seciton["virtual_address"].replace("0x", ""), 16), capstone_mode)
+			decompiled, registered_touched = decompile(text_content, int(text_seciton["virtual_address"].replace("0x", ""), 16), capstone_mode, self.qword_helper)
 			return decompiled
 		return None
+	'''
 
+	def read_section(self, key):
+		section = self.sections_with_name[key]
+		return self.read_with_offset(section["file_offset"], section["size"], False), int(section["virtual_address"].replace("0x", ""), 16)
+
+
+	def read_section_bytes(self, key):
+		section = self.sections_with_name[key]
+		location = int(section["virtual_address"].replace("0x", ""), 16)
+		fake_index = 0
+
+		range_bytes = {
+
+		}
+	#	print(section["file_offset"])	
+	#	print(section["file_offset"] + section["size"])	
+		for j in range(section["file_offset"], section["file_offset"] + section["size"]):
+			range_bytes[hex(location + fake_index)] = [hex(self.file[j]), chr(self.file[j]), []]
+			fake_index += 1
+		return range_bytes
+
+	def get_sections_parsed(self):
+		code_sections = {
+
+		}
+		for index, key in enumerate(self.sections_with_name.keys()):
+			text_seciton = self.sections_with_name[key]
+			
+			if(text_seciton["type"] == 0x1 and text_seciton["flags"] == 0x6):
+				code_sections[index] = key
+			else:
+				pass
+		self.code_sections = code_sections
+		return code_sections
+
+	'''
 	def decompile_text(self):
 		full_source = {
 
@@ -207,15 +224,43 @@ class elf:
 			if(text_seciton["type"] == 0x1 and text_seciton["flags"] == 0x6):
 				pass
 			else:
+				range_bytes = {
+
+				}
+				location = int(text_seciton["virtual_address"].replace("0x", ""), 16)
+				fake_index = 0
+
+				actual_index = text_seciton["size"]
+				if(actual_index == 0):
+					if((index + 1) < len(self.sections_with_name.keys())):
+						print("hm...")
+						ref_actual_index = self.sections_with_name[list(self.sections_with_name.keys())[index + 1]]
+						if not ((ref_actual_index["file_offset"] - 1) == text_seciton["file_offset"]):
+							actual_index = ref_actual_index["file_offset"] - 1
+						print(ref_actual_index["file_offset"])
+
+				for j in range(text_seciton["file_offset"], text_seciton["file_offset"] + actual_index):
+					range_bytes[hex(location + fake_index)] = [hex(self.file[j]), chr(self.file[j]), []]
+					fake_index += 1
+		
+				if(len(key) == 0):
+					key = "segaaa"
+
+				full_source[index] = [key, range_bytes, []]
 				continue
+#				continue
+
 			text_content = self.read_with_offset(text_seciton["file_offset"], text_seciton["size"], False)			
-			decompiled, registered_touched = decompile(text_content, int(text_seciton["virtual_address"].replace("0x", ""), 16), capstone_mode)
+			decompiled, registered_touched = decompile(text_content, int(text_seciton["virtual_address"].replace("0x", ""), 16), capstone_mode, self.qword_helper)
 			full_source[index] = [key, decompiled, registered_touched]
+		#	print(decompiled)
 			code_sections.append(key)
+
+
 		self.code_sections = code_sections
-
+#		print(full_source)
 		return full_source
-
+	'''
 
 	def reconstruct_small(self, section, input_bytes):
 	#	print(self.sections_with_name[section])
@@ -271,6 +316,23 @@ class elf:
 		reconstructed = window_start + window + window_end
 
 
+	def load_relocation(self):
+		for section_key, section_info in self.sections_with_name.items():
+			if(section_info["type"] == 0x4):
+				parse_relocation(self, section_key)
+
+	def parse_dynamic_symbol_table(self):
+		for section_key, section_info in self.sections_with_name.items():
+			if(section_info["type"] == 0x0B):
+				get_dynamic_symbols(self, section_key)
+	'''
+	def over_write_qword(self, comments):
+		for key, content in comments.items():
+			self.qword_helper[key] = content
+		self.decompile_text()
+	'''
+
+
 	def __init__(self, name):
 		self.file = open(name, "rb").read()
 
@@ -283,21 +345,6 @@ class elf:
 
 		self.program_headers = {
 
-		}
-
-		target_architecture_lookup = {
-			0x00:"No specific instruction set",
-			0x02:"SPARC",
-			0x03:"x86",
-			0x08:"MIPS",
-			0x14:"PowerPC",
-			0x16:"S390",
-			0x28:"ARM",
-			0x2A:"SuperH",
-			0x32:"IA-64",
-			0x3E:"x86-64",
-			0xB7:"AArch64",
-			0xF3:"RISC-V"
 		}
 
 		self.target_architecture_int = int_from_bytearray(self.read_with_offset(0x12, 2))
@@ -335,9 +382,15 @@ class elf:
 
 		assert self.program_header_start < self.section_headers_start
 
+
 		self.get_section_names()
-		self.decompile_text()
-		
+
+		self.parse_dynamic_symbol_table()
+		self.load_relocation()
+
+	#	self.decompile_text()
+
+
 if __name__ == "__main__":
 	elf(sys.argv[1])
 

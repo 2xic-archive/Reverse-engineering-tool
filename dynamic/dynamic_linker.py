@@ -1,4 +1,5 @@
-from elf_parser_key_value import *
+
+from elf.elf_parser_key_value import *
 import struct
 
 
@@ -6,12 +7,23 @@ import struct
 	-	need to be able to know what symbols and what libraries
 		are needed to be loaded into unicorn.
 '''
-def get_dynamic_symbols(elf_target):
+
+
+#	good manpage http://manpages.courier-mta.org/htmlman5/elf.5.html
+
+
+def get_dynamic_symbols(elf_target, name):
+#	global symbol_table
+	elf_target.symbol_table = {
+	
+	}
+
 	dynamic_section_str_start = elf_target.sections_with_name[".dynstr"]["file_offset"]
 
-	dynamic_section_sym_start = elf_target.sections_with_name[".dynsym"]["file_offset"]
-	dynamic_section_sym_entry_size = elf_target.sections_with_name[".dynsym"]["entries_size"]
-	dynamic_section_sym_end = elf_target.sections_with_name[".dynsym"]["file_offset"] + elf_target.sections_with_name[".dynsym"]["size"]
+	dynamic_section_sym_start = elf_target.sections_with_name[name]["file_offset"]
+	dynamic_section_sym_entry_size = elf_target.sections_with_name[name]["entries_size"]
+	dynamic_section_sym_end = elf_target.sections_with_name[name]["file_offset"] + elf_target.sections_with_name[name]["size"]
+
 
 	index = 0
 	for offset in range(dynamic_section_sym_start, dynamic_section_sym_end, dynamic_section_sym_entry_size):
@@ -20,9 +32,41 @@ def get_dynamic_symbols(elf_target):
 		st_name, st_info, st_other, st_shndx, st_value, st_size = struct.unpack(struct_format, elf_target.file[offset:offset+dynamic_section_sym_entry_size])
 
 		st_name = elf_target.read_zero_terminated_string(dynamic_section_str_start + st_name)
-		print("%04d%10d%10d%10s%10s%10s%10d\t%s" %(index, st_value, st_size, STT_TYPE[ELF_ST_TYPE(st_info)],
+#		print(hex(dynamic_section_sym_entry_size * index + int(elf_target.sections_with_name[".dynsym"]["virtual_address"], 16)))
+#		print("%x" % (offset))
+		'''
+		print("%x\t%04d%10d%10d%10s%10s%10s%10d\t%s" % (offset, index, st_value, st_size, STT_TYPE[ELF_ST_TYPE(st_info)],
 					STB_BIND[ELF_ST_BIND(st_info)], STV_VISIBILITY[ELF_ST_VISIBILITY(st_other)], st_shndx, st_name))
+		'''
+		elf_target.symbol_table[index] = st_name
 		index += 1
+
+
+
+def parse_relocation(elf_target, target):
+	
+	dynamic_section_sym_start = elf_target.sections_with_name[target]["file_offset"]
+	dynamic_section_sym_entry_size = elf_target.sections_with_name[target]["entries_size"]
+	dynamic_section_sym_end = elf_target.sections_with_name[target]["file_offset"] + elf_target.sections_with_name[target]["size"]
+
+	index = 0
+	elf_target.qword_helper = {
+
+	}
+#	print("offset 	symbol 	type")
+	for offset in range(dynamic_section_sym_start, dynamic_section_sym_end, dynamic_section_sym_entry_size):
+		if(elf_target.is_64_bit):
+			struct_format = "QQQ"
+			address,info,addend = struct.unpack(struct_format, elf_target.file[offset:offset+dynamic_section_sym_entry_size])
+	#		print("0x%x	%s 		" % (address, elf_target.symbol_table[ELF64_R_SYM(info)]))
+			elf_target.qword_helper[hex(address)] = elf_target.symbol_table[ELF64_R_SYM(info)]
+	#		print(ELF_ST_TYPE(info))
+#	print("")
+
+
+
+
+
 
 def parse_dynamic(elf_target):
 	dynamic_section_str_start = elf_target.sections_with_name[".dynstr"]["file_offset"]

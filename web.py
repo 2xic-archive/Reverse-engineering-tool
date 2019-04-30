@@ -30,10 +30,14 @@ def folder_path(path):
 @socketio.on("online")
 def event_code(json, methods=["GET", "POST"]):
 	global target
-	target = model(elf(sys.argv[1]))
+	#target = model(elf(sys.argv[1]))
 	json = target.decompile_text()
 #	print(json)
 	socketio.emit("code", json)
+	socketio.emit("code_with_comments", {"code":json, "comments":target.comments, "sections":target.static.section_sizes})
+
+
+
 
 @socketio.on("assemble instruction")
 def event_code(json_data, methods=["GET", "POST"]):
@@ -63,6 +67,29 @@ def event_code(json_data, methods=["GET", "POST"]):
 def event_code(json_data, methods=["GET", "POST"]):
 	socketio.emit("control", target.get_cfg())
 
+
+@socketio.on("comments")
+def event_code(json_data, methods=["GET", "POST"]):
+#	print(json_data)
+	content = json_data["data"]
+	print(content)
+	target.add_comment(content[0], content[1])
+	target.save_comment()
+	#print(target.custom_comments)
+	#socketio.emit("control", target.get_cfg())
+
+@socketio.on("save")
+def event_code(json_data, methods=["GET", "POST"]):
+#	print(json_data)
+	print(json_data)
+	target.save_model(json_data["data"]["file_name"])
+#	content = json_data["data"]
+#	target.add_comment(content[0], content[1])
+#	target.save_comment()
+	#print(target.custom_comments)
+	#socketio.emit("control", target.get_cfg())
+
+
 @app.after_request
 def add_header(request):
 	request.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
@@ -71,11 +98,31 @@ def add_header(request):
 	request.headers["Cache-Control"] = "public, max-age=0"
 	return request
 
+
+
+
+def exit_handler():
+	print('My application is ending!')
+
+
 if __name__ == "__main__":
 	if(len(sys.argv) > 1):
-		target = model(elf(sys.argv[1]))
+		import atexit
+		atexit.register(exit_handler)
+
+		if(sys.argv[1].endswith(".pickle")):
+			pikcle_data = open(sys.argv[1], "rb") 
+			target = pickle.load(pikcle_data)
+		#	print(target.static.file)
+
+		#	exit(0)
+
+		else:
+			target = model(elf(sys.argv[1]))
 		socketio.run(app, debug=True)
+
 	else:
 		print("scripy.py elf-binary")
+
 
 

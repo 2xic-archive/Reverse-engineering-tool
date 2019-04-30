@@ -1,22 +1,17 @@
 
-input{
-	border-style: none;
-	min-width: 300px;
-}
-
-th{
-	text-align:left;
-	padding-left: 30px;
-}
-
 table{
 	background: #C0C0C0;
 	border-collapse: collapse;
 }
 
-input{
-	background: #C0C0C0;
-	color: blue;
+th{
+	font-size: 18px;
+	text-align: left;
+	padding-left: 10px;
+}
+
+td{
+	padding-left: 10px;
 }
 
 #address_cell{
@@ -31,12 +26,12 @@ input{
 	border-bottom: 1px solid black;
 }
 
-#table_header th {
-	border-bottom: 1px solid black;
-}
-
 #flat_view_table{
 	min-width: 100%;
+}
+
+td#comment{
+	color: green;
 }
 
 tr[block_start] {
@@ -46,3 +41,4 @@ tr[block_start] {
 	border-right: 0px;
 	border-style: dotted;
 }
+

@@ -2,45 +2,103 @@
 <html lang="en">
 	<head>
 		<title>reversing</title>
-		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+		<meta charset="utf-8"/>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.3/socket.io.min.js"></script>
 
 		<script src="interface/actions.js"></script>
 		<script src="interface/highlighter.js"></script>
+		<script src="interface/search.js"></script>
 		<script src="flat-view/flat-view.js"></script>
 		<script src="grapth-view/grapth.js"></script>
 		<script src="grapth-view/grapth-view.js"></script>
+		<script src="hex-view/hex-view.js"></script>
 
+		<link rel="stylesheet" type="text/css" href="css/menubar.css">
 		<link rel="stylesheet" type="text/css" href="css/flat-view.css">
 		<link rel="stylesheet" type="text/css" href="css/index.css">
 		<link rel="stylesheet" type="text/css" href="css/grapth-view.css">
+		<link rel="stylesheet" type="text/css" href="css/section-serach.css">
 	</head>
 
 	<body>
 
-		<div id="container">
-			<div id="container-item">
-				<!--	flat-view	!-->
-				<table id="flat_view_table">
-					<tr id="table_header">
-						<th>section</th>
-						<th>address</th>
-						<th>code</th>
-					</tr>
-				</table>
+		<!--
+			menu
+		!-->
+		<div id="container_split">
+			<div id="menu">
+				<div>
+					<ul>
+						<li><button disabled="">&larr;</button></li>
+						<li><button disabled>&rarr;</button></li>
+						<li><button onclick="open_close_search()" onfocusout="check_focus()">Search</button></li>
+						<li><button onclick="save_project()">Save</button></li>
+						<li><button onclick="hide_hex()">Hide hex view</button></li>
+
+					</ul>
+					<div id="search_content" class="search_box" tabindex="2">
+						<input type="text" autocomplete="off" placeholder="Search.." id="search" onkeyup="filter_search()">
+<!--						<a href="#about">About</a>
+						<a href="#base">Base</a>
+						<a href="#blog">Blog</a>
+						<a href="#contact">Contact</a>
+						<a href="#custom">Custom</a>
+						<a href="#support">Support</a>
+						<a href="#tools">Tools</a>
+!-->
+					</div>
+				</div>
+				<!--
+					YOu want to look up a section ? 
+				!-->
+			
 			</div>
-			<!--	Grapth-view	!-->		
-			<div id="container-item" name="grapth-div">
-				<div id="grapth" >
-					<canvas id="canvas">
-						<!--	will be drawn	!-->
-					</canvas>
+
+			<div id="container">
+				<div id="container_row">
+					<div id="container_item_normal">
+						<!--    flat-view   !-->
+						<table id="flat_view_table">
+							<tr id="table_header">
+								<th>section</th>
+								<th>address</th>
+								<th>code</th>
+								<th>comment</th>
+							</tr>
+						</table>
+
+					</div>
+
+					<div id="hex_view" class="container_item_small">
+						<!--    flat-view   !-->
+						<div id="container_50">
+							<div id="container_small">
+								<table id="hex_table">
+								</table>
+							</div>
+							<div id="container_small">
+								<table id="char_table">
+										
+								</table>
+							</div>
+						</div>
+
+					</div>
+				</div>
+				<!--    Grapth-view !-->        
+				<div id="container_item" name="grapth-div">
+					<div id="grapth" >
+						<canvas id="canvas">
+							<!--    will be drawn   !-->
+						</canvas>
+					</div>
 				</div>
 			</div>
 		</div>
 
 
 		<script type="text/javascript">
+
 			var socket = io.connect('http://' + document.domain + ':' + location.port);
 			
 			socket.on( 'connect', function() {
@@ -50,7 +108,7 @@
 			});
 
 			socket.emit('get control', {data:""});
-
+		
 			/*
 			socket.on('error', function(msg){
 				if(msg.indexOf("xhr") == -1){
@@ -58,15 +116,38 @@
 				}
 			});*/
 
+			socket.emit( 'hex', {
+				data: 'User Connected'
+			});
+
+			socket.on('hex_response', function(msg){
+				create_hex_view(msg["data"]);
+
+		//      create_hex_view(msg["data"]);
+			});
+
 			socket.on('control', function(msg){
 				create_blocks(msg);
 				create_grapth(msg, 0);
 			});
 
-			socket.on('code', function( msg ) {
-			//	console.log(msg);
-				create_view(msg);
+			socket.on('code_with_comments', function( msg ) {
+				code_comments = msg["comments"];
+				code_sections = msg["sections"];
+
+				for (var key in msg["code"]) {
+					var element = document.createElement("a");
+					element.innerText = msg["code"][key][0];
+					element.setAttribute("onClick", "find_section(this);");
+					element.setAttribute("tabindex", "0");
+					document.getElementById("search_content").appendChild(element);
+				}
+				create_flat_view(msg["code"]);
 			});
+
+
 		</script>
 	</body>
+	
+
 </html>
