@@ -4,6 +4,10 @@ from model import *
 from elf.elf_parser_key_value import *
 
 
+
+#from dynamic.parsing_libc import *
+#exit(0)
+
 from dynamic.dynamic_linker import *
 from dynamic.emulator import *
 

@@ -286,6 +286,10 @@ def dfs_path(grapth, start, end):
 					stack.append((edges, current_path + [edges]))
 
 def test_hirachy(code):
+	'''
+		this will be merged into the cfg class,
+		want to write some test first.
+	'''
 	head = code["start"]
 	code["hirachy"] = {
 
@@ -308,7 +312,6 @@ def test_hirachy(code):
 			highest_level = size
 
 	code["max_level"] = highest_level
-
 	if(len(zero_nodes) > 0):
 		head = zero_nodes[0]
 		found_non_zero = False
@@ -316,20 +319,14 @@ def test_hirachy(code):
 			if(j == head):
 				continue
 			size = 0
-			for q in (dfs_path(code["edges"], head, j)):
-				if(len(q) > size):
-					size = len(q)
-			#print("{}->{}".format(head, j))
-			#print(size)
+			for path in dfs_path(code["edges"], head, j):
+				if(len(path) > size):
+					size = len(path)
 			code["hirachy"][j] = size
 			if(size > 0):
 				found_non_zero = True
-
 	return code
 
 if __name__ == "__main__":
 	test_graphviz({"edges":{"0x4004b6":["0x4004a0"],"0x4004c6":["0x4004a0"],"0x4004d6":["0x4004a0"]},"type":{"0x4004b6":["jumpted"],"0x4004c6":["jumpted"],"0x4004d6":["jumpted"]},"code":{"0x4004a0":[{"address":"0x4004a0","instruction":"push","argument":"qword ptr [rip + 0x200b62]"},{"address":"0x4004a6","instruction":"jmp","argument":"qword ptr [rip + 0x200b64]"}],"0x4004ac":[{"address":"0x4004ac","instruction":"nop","argument":"dword ptr [rax]"},{"address":"0x4004b0","instruction":"jmp","argument":"qword ptr [rip + 0x200b62]"}],"0x4004b6":[{"address":"0x4004b6","instruction":"push","argument":"0"},{"address":"0x4004bb","instruction":"jmp","argument":"0x4004a0"}],"0x4004c0":[{"address":"0x4004c0","instruction":"jmp","argument":"qword ptr [rip + 0x200b5a]"}],"0x4004c6":[{"address":"0x4004c6","instruction":"push","argument":"1"},{"address":"0x4004cb","instruction":"jmp","argument":"0x4004a0"}],"0x4004d0":[{"address":"0x4004d0","instruction":"jmp","argument":"qword ptr [rip + 0x200b52]"}],"0x4004d6":[{"address":"0x4004d6","instruction":"push","argument":"2"},{"address":"0x4004db","instruction":"jmp","argument":"0x4004a0"}]},"flow":["0x4004b6","0x4004c6","0x4004d6"],"start":"0x4004a0","end":"0x4004db","hirachy":{"0x4004a0":1,"0x4004ac":0,"0x4004b6":0,"0x4004c0":0,"0x4004c6":0,"0x4004d0":0,"0x4004d6":0}})
-#	pass
-
-
 

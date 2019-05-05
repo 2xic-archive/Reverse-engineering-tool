@@ -5,6 +5,11 @@
 
 <img src="README/current_state.png"  width="500px" />
 
+<img src="README/idea.png"  width="500px" />
+
+(from http://www.keystone-engine.org/docs/BHUSA2016-keystone.pdf )
+
+
 #	features
 -	flat view (see all the sections with code)
 -	code grapth (click in a section, view traces of the block)

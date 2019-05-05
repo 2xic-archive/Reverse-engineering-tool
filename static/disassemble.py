@@ -78,12 +78,6 @@ def decompile(input_bytes, start_address, mode, qword):
 		if("rip + " in dissably.op_str and "qword ptr" in dissably.op_str):
 			next_pointer_address = "0x%x" % (dissably.address)
 			next_pointer =  int(dissably.op_str[dissably.op_str.index("0x"):-1], 16)
-#			print(next_pointer)
-		
-
-#			print("hm...")
-#			print(dissably.op_str)
-
 
 
 	for register_id in target_registers_ids:
