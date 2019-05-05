@@ -21,13 +21,5 @@ def get_keystone_mode(architecture, is_64, extra=None):
 
 
 def assemble(instruction, mode):
-#	mode = None 
-#	results = []
-#	if(is_64):
-#		mode = Ks(KS_ARCH_X86, KS_MODE_64)
-#	else:
-#		mode = Ks(KS_MODE_ARM, KS_MODE_ARM)
-#		raise Exception("not prepra")
-
 	encoding, count = mode.asm(instruction)
 	return encoding

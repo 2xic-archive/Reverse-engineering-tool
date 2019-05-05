@@ -5,9 +5,9 @@
 		<meta charset="utf-8"/>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.3/socket.io.min.js"></script>
 
+		<script src="interface/highlighter.js"></script>
 		<script src="interface/actions.js"></script>
 		<script src="interface/build_register_table.js"></script>
-		<script src="interface/highlighter.js"></script>
 		<script src="interface/search.js"></script>
 		<script src="flat-view/flat-view.js"></script>
 		<script src="grapth-view/grapth.js"></script>
@@ -59,7 +59,7 @@
 
 			<div id="container">
 				<div id="container_row">
-					<div id="container_item_normal">
+					<div id="container_item_70">
 						<!--    flat-view   !-->
 						<table id="flat_view_table">
 							<tr id="table_header">
@@ -70,13 +70,13 @@
 							</tr>
 						</table>
 					</div>
-					<div id="hex_view" class="container_item_small">
-						<div id="container_50">
-							<div id="container_small">
+					<div name="hex_view" id="container_item_30">
+						<div id="container_item_50">
+							<div id="container_full">
 								<table id="hex_table">
 								</table>
 							</div>
-							<div id="container_small">
+							<div id="container_full">
 								<table id="char_table">
 										
 								</table>
@@ -87,8 +87,7 @@
 
 				<!--    Grapth-view !-->        
 				<div id="container_row">
-				
-					<div id="container_item_normal" name="grapth-div">
+					<div id="container_item_70" name="grapth-div">
 						<div id="grapth" >
 							<canvas id="canvas">
 								<!--    will be drawn   !-->
@@ -96,11 +95,12 @@
 						</div>
 					</div>
 
-					<div class="container_item_small">
-						<table id="registers">
-
+					<div id="container_item_30">
+<!--						<table id="registers">
 
 						</table>
+						!-->
+						<h1>Unicorn data here, soon</h1>
 					</div>
 				</div>
 			</div>

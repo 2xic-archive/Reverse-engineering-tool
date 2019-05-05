@@ -1,6 +1,9 @@
+
 var last_message = undefined;
+
 var last_index = 0;
 var target_section = ".init";
+
 var look_up_table = {
 
 };
@@ -21,7 +24,6 @@ function look_up_section(address){
 	var i;
 	for(i = 0; i < look_up_table[target_section].length; i++){
 		if(parseInt(address, 16) < parseInt(look_up_table[target_section][i], 16)){
-//			return i;
 			break;
 		}
 	}
@@ -52,7 +54,7 @@ function get_canvas_position(){
 }
 
 function get_code(msg, key){
-	return msg["code"][key];//.join("<br>");
+	return msg["code"][key];
 }
 
 function create_blocks(msg){
@@ -62,7 +64,6 @@ function create_blocks(msg){
 		for(var i = 0; i < Object.keys(msg[section]).length; i++){
 			var nodes = Object.keys(msg[section][i]["code"]);
 			var edges = Object.keys(msg[section][i]["edges"]);
-			//console.log(nodes);
 
 			for(var j = 0; j < nodes.length; j++){
 				var node = nodes[j];
@@ -74,6 +75,7 @@ function create_blocks(msg){
 					}
 				}
 			}
+
 			for(var j = 0; j < edges.length; j++){
 				var node = edges[j];
 				var target = document.getElementById("flat_view_row_" + node);
@@ -84,7 +86,6 @@ function create_blocks(msg){
 					}
 				}
 			}
-
 			if(!look_up_table.hasOwnProperty(section)){
 				look_up_table[section] = [];
 			}
@@ -92,7 +93,6 @@ function create_blocks(msg){
 		}
 		if(target_section == undefined){
 			target_section = section;
-
 		}
 	}
 }
@@ -104,7 +104,6 @@ function dfs_create_positon(stack){
 	var highest_x = 0;
 	while(stack.length > 0){
 		var new_node = stack.shift();
-		//console.log(new_node);
 		if(visited.indexOf(new_node.unqiue_id) == -1){
 			visited.push(new_node.unqiue_id);
 		}else{
@@ -145,7 +144,7 @@ function dfs_set_in_position(stack, coordinates, levels){
 				var hirachy_level = Object.keys(level_look_up).length;
 				var continuity = true;
 
-				new_node.debug("trying to find a new location ... ");
+			//	new_node.debug("trying to find a new location ... ");
 
 				if(0 <= (new_node.hirachy_level - 1) && (new_node.hirachy_level + 1) <= hirachy_level){
 					var previous_level = level_look_up[new_node.hirachy_level - 1];
@@ -154,7 +153,7 @@ function dfs_set_in_position(stack, coordinates, levels){
 					if(!((previous_level < new_coordinates[1]) && (new_coordinates[1] < next_level))){
 						continuity = false;
 					}
-					new_node.debug("stage 2 ..");
+				//	new_node.debug("stage 2 ..");
 				}else if(0 <= (new_node.hirachy_level - 1) && new_node.hirachy_level == new_node.max_level){
 					console.log(hirachy_level);
 					console.log(new_node.hirachy_level);
@@ -162,12 +161,12 @@ function dfs_set_in_position(stack, coordinates, levels){
 					if(!(previous_level < new_coordinates[1])){
 						continuity = false;
 					}
-					new_node.debug("stage 1..");		
+				//	new_node.debug("stage 1..");		
 				}else{
 					continuity = false;
 				}
-				new_node.debug(JSON.stringify(level_look_up));
-				new_node.debug("sucess ? " + continuity)
+			//	new_node.debug(JSON.stringify(level_look_up));
+			//	new_node.debug("sucess ? " + continuity)
 				if(continuity){
 					level_look_up[new_node.hirachy_level] = new_coordinates[1];	
 					new_node.place(new_node.x, new_coordinates[1]);
@@ -185,13 +184,11 @@ function dfs_set_in_position(stack, coordinates, levels){
 		if(Object.keys(level_look_up).indexOf(new_node.hirachy_level) == -1){
 			level_look_up[new_node.hirachy_level] = new_coordinates[1];
 			new_node.place(new_coordinates[0], new_coordinates[1]);	
-			new_node.last_level = new_level;
 
 			if(max_heigth < (new_coordinates[1] + new_node.heigth)){
 				max_heigth = new_coordinates[1] + new_node.heigth;
 			}
 		}
-
 
 		new_node.element_reference.setAttribute("orginal_x", new_coordinates[0]);
 
@@ -312,10 +309,6 @@ function create_grapth(msg, index){
 
 	}
 
-//	console.log(JSON.stringify(msg));
-
-	var level_zero_nodes = [];
-	
 	for(var j = 0; j < nodes.length; j++){
 		var node = nodes[j];
 		var target = document.getElementById("flat_view_row_" + node);
@@ -323,9 +316,6 @@ function create_grapth(msg, index){
 			target.setAttribute("block_start", "")
 		}
 		refrence_key_node[node] = new tree_node(get_code(msg, node), msg["hirachy"][node]);
-		if(msg["hirachy"][node] == 0){
-			level_zero_nodes.push(refrence_key_node[node]);
-		}
 		refrence_key_node[node].max_level = msg["max_level"];
 	}
 	
@@ -345,26 +335,21 @@ function create_grapth(msg, index){
 
 		var new_root_node = refrence_key_node[key]; 
 		var low_children = undefined;
-		for(var q = 0; q < children.length; q++){
-			if(key < children_val[q]){
-				new_root_node.add_edge(children[q], 1);
+		for(var j = 0; j < children.length; j++){
+			if(key < children_val[j]){
+				new_root_node.add_edge(children[j], 1);
 			}else{				
-				new_root_node.add_edge(children[q], -1);	
+				new_root_node.add_edge(children[j], -1);	
 			}
 		}
 	}
-
-//		console.log(refrence_key_node);
-
 
 	var root_node = refrence_key_node[msg["start"]];
 	var root_heigth = parseInt(msg["start"], 16);
 	root_node.is_root = true;
 
-
 	var results = dfs_create_positon([root_node]);
 	var lowest_x = Math.abs(results[0]) ;
-
 
 	var root_x = root_node.horizontal_gap + lowest_x;
 	var root_y = root_node.heigth / 2 + document.getElementsByName("grapth-div")[0].getBoundingClientRect().top;
@@ -373,34 +358,11 @@ function create_grapth(msg, index){
 	var max_width = lowest_x + results[1]+ root_node.width * 2;
 
 	dfs_draw([root_node], setup_canvas(max_width, max_heigth), msg["type"]);
-	
-	/*
-	//	this are nodes that are not attached to the main tree
-	var root_x = root_node.x;
-	var root_y = root_node.y;
-	
-	var redraw_nodes = [];
-	for(var i = 0; i < level_zero_nodes.length; i++){
-		var node = level_zero_nodes[i];
 
-		if(node.hirachy_level == 0){
-			node.x = root_x + node.width * 2 ;
-			node.y = root_y;
-			node.highest_node_heigth = root_node.highest_node_heigth;
-			node.heigth = root_node.heigth;
-			node.draw();
-			
-			dfs_create_positon([node]);
-			dfs_set_in_position([node], [[node.x, node.y ]], [node.hirachy_level]);
-			dfs_draw([node], ctx, msg["type"]);
-			root_x +=  node.width * 2;
-		}
-	}	
-	*/
 	build();
 }
 
-function recalculate(){
+function redraw(){
 	if(last_message != undefined){
 		create_grapth(last_message, last_index);
 		document.getElementsByName("grapth-div")[0].scroll(0, 0);
@@ -408,7 +370,7 @@ function recalculate(){
 }
 
 window.onresize = function(){
-	recalculate();
+	redraw();
 }
 
 

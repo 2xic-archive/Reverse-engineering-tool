@@ -12,12 +12,10 @@ class tree_node {
 		this.heigth = 1;
 		this.width = 200;
 
-		this.largest_padding = 0;
 		this.highest_node_heigth = 0;
 
 		this.padding = 0;
 		
-
 		this.horizontal_gap = 220;
 		this.vertical_gap = 200;
 
@@ -25,14 +23,9 @@ class tree_node {
 		this.is_root = false;
 
 		this.hirachy_level = hirachy_level;
-		this.fake_level = -1;
+		this.adjusted_level = -1;
 
 		this.draw();
-
-		this.last_level = -1;
-		this.max_level = 0;
-
-
 		this.self_refrence = false;
 	}
 
@@ -127,10 +120,6 @@ class tree_node {
 			var instruction_cell = row.insertCell(1);
 			var argument_cell = row.insertCell(2);
 
-
-
-
-
 			address_cell.innerHTML = this.code_block[i]["address"];
 			address_cell.id = "address_cell";
 
@@ -190,17 +179,14 @@ class tree_node {
 			element.style.left = this.node_left + "px";
 			this.element_reference = element;
 		}
+
+
 		if(this.is_root){
 			this.element_reference.setAttribute("root", "yes");
 		}
-		this.debug( this.node_top + "	"  +  this.node_left);
-//		this.debug(this.node_left);
-		
-	}
-	/*
-	testing(){
 
-	}*/
+//		this.debug( this.node_top + "	"  +  this.node_left);		
+	}
 
 	enable_self_refrence(){
 		this.self_refrence = true;
@@ -214,13 +200,13 @@ class tree_node {
 
 		if(this.edges.length == 2 && this.self_refrence){
 			padding = 0;
-			this.debug("1");
+		//	this.debug("1");
 		}else if(this.edges.length == 1){
 			padding = 0;
-			this.debug("1");
+		//	this.debug("1");
 		}else{
 			padding = - this.width;
-			this.debug("2");
+		//	this.debug("2");
 		}
 
 		for (var i = 0; i < this.edges.length; i++) {
@@ -231,18 +217,14 @@ class tree_node {
 			if(highest_heigth < this.edges[i].heigth){
 				highest_heigth = this.edges[i].heigth;
 			}
-
-			if(this.largest_padding < padding){
-				this.largest_padding = padding;
-			}
 			
-			if(!(this.edges[i].fake_level < this.hirachy_level) || this.edges[i].fake_level == -1){		
+			if(!(this.edges[i].adjusted_level < this.hirachy_level) || this.edges[i].adjusted_level == -1){		
 				this.edges[i].padding = padding;	
 			}
 			padding += this.horizontal_gap + this.edges[i].width;
 		}
-		this.highest_heigth = highest_heigth;
 
+		this.highest_heigth = highest_heigth;
 		return padding;
 	}
 
@@ -252,15 +234,14 @@ class tree_node {
 			if(this.unqiue_id  == this.edges[i].unqiue_id){
 				continue;
 			}
-			if(!(this.edges[i].fake_level < this.hirachy_level) || this.edges[i].fake_level == -1){
-				this.edges[i].fake_level = this.hirachy_level;
+			if(!(this.edges[i].adjusted_level < this.hirachy_level) || this.edges[i].adjusted_level == -1){
+				this.edges[i].adjusted_level = this.hirachy_level;
 			}else{
 				continue;
 			}
 			this.edges[i].padding -= this.edges[i].padding * 0.5;
-			this.debug("Setting -> "+ this.edges[i].unqiue_id + "	to " + this.edges[i].padding)
+		//	this.debug("Setting -> "+ this.edges[i].unqiue_id + "	to " + this.edges[i].padding)
 		}
-
 	}
 
 	position_edges(){

@@ -9,6 +9,8 @@ current view
 
 <img src="README/current_state.png"  width="500px" />
 
+#   Notes
+Mostly tested on some CTF binaries, I'm sure you can make the program do weird things if you try it on something different. The program is still under construction.
 
 #	features
 -	flat view (see all the sections with code)

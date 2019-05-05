@@ -8,7 +8,7 @@ function resolve(e){
 	var targets = document.getElementsByName(name);
 	hex_ligther.highligth(targets);	
 }
-
+//	basic hex view
 function create_hex_view(hex){
 	var hex_table = document.getElementById("hex_table");
 	hex_table.id = "hex_table";
@@ -33,7 +33,6 @@ function create_hex_view(hex){
 			var table_data = document.createElement("td");
 			table_data.setAttribute("name", (i * 16) + q); 
 			table_data.setAttribute("onClick", "resolve(this)");
-
 					//= (i * 8) + q;
 			var hex_2_intenger = parseInt(hex_table.rows[i].children[q].innerHTML, 16);
 			if(hex_2_intenger == 0){

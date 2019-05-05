@@ -6,6 +6,7 @@ import struct
 '''
 	-	need to be able to know what symbols and what libraries
 		are needed to be loaded into unicorn.
+	-	not sure if this should be in the elf parser or not...
 '''
 
 
@@ -33,8 +34,7 @@ def get_dynamic_symbols(elf_target, name, debug=False):
 		st_name, st_info, st_other, st_shndx, st_value, st_size = struct.unpack(struct_format, elf_target.file[offset:offset+dynamic_section_sym_entry_size])
 
 		st_name = elf_target.read_zero_terminated_string(dynamic_section_str_start + st_name)
-#		print(hex(dynamic_section_sym_entry_size * index + int(elf_target.sections_with_name[".dynsym"]["virtual_address"], 16)))
-#		print("%x" % (offset))
+
 		if(debug):
 			print("%x\t%04d%10d%10d%10s%10s%10s%10d\t%s" % (offset, index, st_value, st_size, STT_TYPE[ELF_ST_TYPE(st_info)],
 						STB_BIND[ELF_ST_BIND(st_info)], STV_VISIBILITY[ELF_ST_VISIBILITY(st_other)], st_shndx, st_name))
@@ -96,9 +96,3 @@ def parse_dynamic(elf_target):
 				print("0x%018x %20s [0x%x]" %(tag, TAG[tag], identity))
 		else:
 			print("0x%018x %20s [0x%x]" %(tag, tag, identity))
-
-
-def get_got(elf_target):
-	get_dynamic_symbols(elf_target)
-	parse_dynamic(elf_target)
-	exit(0)

@@ -4,7 +4,6 @@
 	min-width: 97%;
 }
 
-
 .search_box {
 	display: none;
 	position: absolute;
@@ -16,8 +15,6 @@
 
 	max-height: 300px;
 }
-
-
 
 .search_box a {
 	color: black;

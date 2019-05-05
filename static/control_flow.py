@@ -80,14 +80,6 @@ class cfg:
 			if(self.is_branch(code_block[i]["instruction"])):
 				if("call" in code_block[i]["instruction"]):
 					continue
-				#	if not self.in_scope(code_block[i]["argument"]):
-					#	print("huh")
-				#		continue
-				#	else:
-					#	print(code_block[i])
-#						print("bruh")
-#				if("ret" in code_block[i]["instruction"]):
-#					yield newb					
 
 				if("jne" in code_block[i]["instruction"] or "je" in code_block[i]["instruction"] or "jmp" in code_block[i]["instruction"] ):
 					if(self.in_scope(code_block[i]["argument"])):
@@ -96,17 +88,6 @@ class cfg:
 				if("jne" in code_block[i]["instruction"] or "je" in code_block[i]["instruction"] ):
 					new_relations.append(relation(start, code_block[i + 1]["address"], "followed"))
  				
-				#if("call" in code_block[i]["instruction"]):
-					#if(int(self.start_address, 16) < int(code_block[i]["address"], 16)):
-				#	print(self.in_scope(code_block[i]["argument"]))
-					#	print("maybe")
-				#	print(code_block[i]["address"])
-				#	print(code_block[i]["argument"])
-				#	exit(0)
- 				#if("call" in code_block[i]["instruction"]):
-
-
-
 				yield new_block
  
 				for node_relation in new_relations:
@@ -137,10 +118,7 @@ class cfg:
 				start_blockEnd = other_blocks.end
 			 
 				overlap = (blockStart < start_blockEnd) and start_blockEnd < blockEnd 
-			#	print(overlap)
-			#   if not overlap:
-			#       continue
-				 
+
 				if(blockEnd == start_blockEnd and start_blockStart !=blockStart):
 					biggest_block = other_blocks if(blockStart > start_blockStart) else blocks
 					small = blocks if(blockStart > start_blockStart) else other_blocks
@@ -169,8 +147,7 @@ class cfg:
  
 					for node_relation in relations_to_remove:
 						self.node_relation.pop(node_relation)
-				#       print(node_relation)
- 
+				
 					new_relation = relation(hex(biggest_block.start), hex(small.start))
 					self.node_relation[str(new_relation)] = [hex(biggest_block.start), hex(small.start)]
 				else:
@@ -196,6 +173,7 @@ class cfg:
 
  
 	def return_edge_map(self):
+
 		dfs_edges = {
  
 		}
@@ -217,7 +195,6 @@ class cfg:
 					dfs_edges[from_node].append(to_node)
 					edge_type[from_node].append(self.node_relation[i][- 1])
 
-#		print(edge_type)
 		return dfs_edges, edge_type
  
 	def return_node_code(self):
@@ -225,33 +202,25 @@ class cfg:
  
 		}
 		for block in self.blocks:
-			code_nodes[hex(block.start)] = block.instructions # block.instruction_string.split("\n")
+			code_nodes[hex(block.start)] = block.instructions
 		return code_nodes
 
 #	helps for debugging :=)
 def test_graphviz(input_cfg):
-	from graphviz import Digraph
-
-	print(input_cfg["code"]["0x400518"])
-	
+	from graphviz import Digraph	
 	grapth = Digraph()
 	print(input_cfg)
 	for node_key, node_value in input_cfg["code"].items():
 		code = ""
 		for code_block in node_value:
-#			print(node_value)
 			code += "%s\t%s\t%s\n" % (code_block["address"], code_block["instruction"], code_block["argument"])
-		print(node_key)
-		print(code)
 		grapth.node(node_key, label=code)
 	
 	for node_key, node_value in input_cfg["edges"].items():
 		for edges in node_value:
 			grapth.edge(node_key, edges)
 			print("{}->{}".format(node_key, edges))
-
 	grapth.view()
-#	input("press enter") 
 	exit(0)
 
 
@@ -267,8 +236,7 @@ def make_cfg(code):
  
 	dfs_edges, dfs_edges_type = code_cfg.return_edge_map()
 	codebase = code_cfg.return_node_code()
-#	test_graphviz({"edges":dfs_edges, "code":codebase, "flow":sorted(list(dfs_edges.keys()))})
-#	exit(0)
+
 	return test_hirachy({"edges":dfs_edges, "type":dfs_edges_type, "code":codebase, "flow":sorted(list(dfs_edges.keys())), 
 		"start":code_cfg.start_address, "end":code_cfg.end_address})
 
