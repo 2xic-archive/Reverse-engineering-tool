@@ -2,19 +2,12 @@
 
 # Triforce
 
-<img src="README/idea.png"  width="500px" />
-(from http://www.keystone-engine.org/docs/BHUSA2016-keystone.pdf )
-
-current view
-
-<img src="README/current_state.png"  width="500px" />
-
 #   Notes
 Mostly tested on some CTF binaries, I'm sure you can make the program do weird things if you try it on something different. The program is still under construction.
 
 #	features
 -	flat view (see all the sections with code)
--	code grapth (click in a section, view traces of the block)
+-	code grapth (click in a section, view the branches of the block)
 -	hex view (click an instruction see where it is in the binary)
 
 #	work in progress / ideas
@@ -30,6 +23,8 @@ Mostly tested on some CTF binaries, I'm sure you can make the program do weird t
 
 #   what is the plan?
 static and dynamic reverse engineering, one package.
+<img src="README/idea.png"  width="500px" />
+(from http://www.keystone-engine.org/docs/BHUSA2016-keystone.pdf )
 
 # setup
 -	install capstone from the next branch
