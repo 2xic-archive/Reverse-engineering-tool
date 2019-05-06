@@ -8,12 +8,27 @@ from elf.elf_parser import *
 from .helpful_linker import *
 from .unicorn_helper import *
 import time
+import sys
+import os
 
-
-test_target = elf("./test_binaries/for_loop_dynamic")
+#test_target = elf("./test_binaries/for_loop_dynamic")
 target = elf("./test_binaries/static_v2")
 
 emulator = Uc(UC_ARCH_X86, UC_MODE_64)
+
+
+
+
+'''
+
+	special instruction 
+
+		cpuid -> https://c9x.me/x86/html/file_module_x86_id_45.html
+
+
+
+'''
+
 
 
 '''
@@ -23,6 +38,7 @@ BASE = 0x400000
 program_size =  1024 * 1024 * 8
 
 emulator.mem_map(BASE, program_size)
+
 
 
 target_start = None
@@ -40,6 +56,7 @@ for name, content in (target.sections_with_name).items():
 	section_map[name] = [BASE +  int(content["virtual_address"],16), BASE +  int(content["virtual_address"],16) + content["size"]]
 	if(name == ".symtab" or name == ".bss"):
 		continue
+
 	file_offset = content["file_offset"]
 	file_end = file_offset + int(content["size"])
 	section_bytes = target.file[file_offset:file_end]
@@ -52,13 +69,15 @@ for name, content in (target.sections_with_name).items():
 	if(content["size"] > 0):
 		#check_section_map(start, end, name)
 		section_viritual_map[name] = [start, end]
+#	print(section_viritual_map)
+#	exit(0)
 
 
 '''
 	stack memory
 
 '''
-stack_adr = 0x0
+stack_adr = 0
 stack_size =  1024 * 1024
 
 emulator.mem_map(stack_adr, stack_size)
@@ -119,7 +138,7 @@ emulator.mem_write(0x600e08, bytes(reversed(bytes(bytearray.fromhex(hex(start_fr
 	reading libc
 '''
 
-libc_target = elf("/lib/x86_64-linux-gnu/libc.so.6")
+#libc_target = elf("/lib/x86_64-linux-gnu/libc.so.6")
 
 '''
 for links in link_lib_and_binary(target, libc_target):
@@ -162,37 +181,76 @@ time.sleep(1)
 
 address_space = {
 	"stack":[stack_adr, stack_adr + stack_size],
-	"program":[BASE, BASE + program_size],
-	"random trampoline_sapce":[tramponline_space, tramponline_space + tramponline_size],
-	"libc":[libc_start, libc_start + libc_size]
+	"program":[BASE, BASE + program_size]
+#	,
+#	"random trampoline_sapce":[tramponline_space, tramponline_space + tramponline_size],
+#	"libc":[libc_start, libc_start + libc_size]
 }
 
 
 
 unicorn_debugger = unicorn_debug(emulator, section_viritual_map, section_map, address_space)
 
+unicorn_debugger.full_trace = False
 
 
-unicorn_debugger.add_breakpoint(0x800990)
-#unicorn_debugger.add_hook_point(0x800990, True, UC_X86_REG_RIP, 10)
+#	unicorn_debugger.add_breakpoint(0x800fe9)
+#	unicorn_debugger.add_breakpoint(0x800992)
+#	unicorn_debugger.add_breakpoint(0x800fd5)
+
+#unicorn_debugger.add_breakpoint(0x800992)
+#unicorn_debugger.add_breakpoint(0x800fc0)
+
+unicorn_debugger.add_breakpoint(BASE + 0x40099d)
+
+unicorn_debugger.add_breakpoint(BASE + 0x400996)
+
+unicorn_debugger.hook_instruction("cpuid", {
+		"EBX":0x756e6547,
+		"EDX":0x49656e69,
+		"ECX":0x6c65746e
+})
+
+
+unicorn_debugger.trace_registers("EFLAGS")
+
+unicorn_debugger.add_breakpoint(BASE + 0x400dc5, "check_mem")
+
+
+'''
+	-	with this hook, the correct path is taken
+
+	-	what instruction messes with the eflags ;(
+
+unicorn_debugger.hook_instruction("0x800dcc", {
+		"EFLAGS":514
+	})
+'''
+
+#pretty_print_bytes(emulator.mem_read(BASE + 0x2b38b8 + 0x400dc5, 8))
+#exit(0)
 
 
 # callback for tracing basic blocks
 def hook_block(uc, address, size, user_data):
-    bold_print("	HIT CALL >>> Tracing basic block at 0x%x(%s), block size = 0x%x" % (address, unicorn_debugger.determine_location(address)  , size))
+    bold_print(">>> Tracing call block at 0x%x(%s), block size = 0x%x" % (address, unicorn_debugger.determine_location(address)  , size))
     print(uc.reg_read(UC_X86_REG_RBP))
 
 def hook_mem_invalid(uc, access, address, size, value, user_data):
-	bold_print("Address hit {}, size {}".format(hex(address), size))
+	bold_print(">>> Address hit {}({}), size {}".format(hex(address), unicorn_debugger.determine_location(address), size))
 
 def hook_code(mu, address, size, user_data):  
 	global unicorn_debugger
 	try:
-		print('\t>>> (%x) Tracing instruction at 0x%x (%s), instruction size = 0x%x' % (unicorn_debugger.instruction_count, address, unicorn_debugger.determine_location(address), size))
+		print('>>> (%x) Tracing instruction at 0x%x (%s), instruction size = 0x%x' % (unicorn_debugger.instruction_count, address, unicorn_debugger.determine_location(address), size))
 		unicorn_debugger.tick(address, size)
 	except  Exception as e:
 		bold_print("exception stop ....")
 		print(e)
+		exc_type, exc_obj, exc_tb = sys.exc_info()
+		fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+		print(exc_type, fname, exc_tb.tb_lineno)
+
 		exit(0)
 
 def hook_mem_access(uc, access, address, size, value, user_data):
@@ -203,7 +261,11 @@ def hook_mem_access(uc, access, address, size, value, user_data):
 		return True
 
 #	writing fake args 
+emulator.mem_write(emulator.reg_read(UC_X86_REG_RSP) - 8, bytes(reversed(bytes(bytearray.fromhex("0x01".replace("0x", ""))))))
 emulator.reg_write(UC_X86_REG_RSP, emulator.reg_read(UC_X86_REG_RSP) - 8)
+
+emulator.reg_write(UC_X86_REG_EFLAGS, 0x202)
+
 
 emulator.hook_add(UC_ERR_WRITE_UNMAPPED, hook_mem_invalid)
 emulator.hook_add(UC_HOOK_MEM_INVALID, hook_mem_invalid)
@@ -219,6 +281,7 @@ emulator.hook_add(UC_HOOK_MEM_READ_UNMAPPED | UC_HOOK_MEM_WRITE_UNMAPPED, hook_m
 emulator.hook_add(UC_HOOK_BLOCK, hook_block)
 emulator.hook_add(UC_HOOK_CODE, hook_code)
 
+unicorn_debugger.setup()
 emulator.emu_start(BASE + target.program_entry_point, BASE + target.program_entry_point + 0x50)
 
 
