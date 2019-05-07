@@ -77,9 +77,6 @@ def parse_relocation(elf_target, target, debug=False):
 	return lookup
 
 
-
-
-
 def parse_dynamic(elf_target):
 	dynamic_section_str_start = elf_target.sections_with_name[".dynstr"]["file_offset"]
 

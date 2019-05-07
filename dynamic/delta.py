@@ -25,29 +25,47 @@ def readable_eflags(current_state):
 
 
 
-unicorn = open("/root/test/test_binaries/unicorn.txt").read().split("\n")
+unicorn = open("/root/test/test_binaries/unicorn.log").read().split("\n")
 gdb = open("/root/test/test_binaries/gdb.log").read().split("\n")
 
 
+count = 0
 
-for i in range(3000):
-	if(unicorn[i].strip() == (gdb[i].strip().split(" ")[1]) or (unicorn[i].strip() == gdb[i].strip().split("\t")[0].split(" ")[-1] )):
-#		print(((unicorn[i].strip(), gdb[i].strip().split(" ")[1] )))
+#for i in range(3000):
+#	if("0x400e08" in unicorn[i]):# and count == 0):
+#		count += 1
+#		continue
+
+i = 0
+j = 0
+while i < len(unicorn) and j < len(gdb):
+	if(unicorn[i].strip() == (gdb[j].strip().split(" ")[1]) or (unicorn[i].strip() == gdb[j].strip().split("\t")[0].split(" ")[-1] )):
+		if("=>" in gdb[j]):
+			print(((unicorn[i].strip(), gdb[j].strip().split(" ")[1] )))
 		pass
 	else:
-		if("=>" in gdb[i]):
-			print("")
-			print("oh no...")
-			print(( ( readable_eflags(int(unicorn[i - 1].strip().replace("0x", ""),16)) , readable_eflags(int(gdb[i - 1].strip().split("\t")[0].split(" ")[-1].replace("0x", ""),16 ))) ) )			
-			print(( ( (int(unicorn[i - 1].strip().replace("0x", ""),16)) , (int(gdb[i - 1].strip().split("\t")[0].split(" ")[-1].replace("0x", ""),16 ))) ) )			
+		if("=>" in gdb[j]):
+			if(unicorn[i].strip() == "0x400e06" and "0x400e03" in gdb[j]):
+				j += 2
+				continue
 
-			print(((unicorn[i].strip(), gdb[i].strip().split(" ")[1] )))
-			exit(0)
-		else:
-			print("unicorn | gdb")
-			print(( ( readable_eflags(int(unicorn[i].strip().replace("0x", ""),16)) , readable_eflags(int(gdb[i].strip().split("\t")[0].split(" ")[-1].replace("0x", ""),16 ))) ) )			
-#			exit(0)
-print("all good?")
+		#	print("")
+			print(((unicorn[i].strip(), gdb[j].strip().split(" ")[1] )))
+		#	print(((unicorn[i].strip(), gdb[j+2].strip().split(" ")[1] )))
+		#	print(((unicorn[i+4].strip(), gdb[j+4].strip().split(" ")[1] )))
+		#	exit(0)
+	i += 1
+	j += 1
+
+
+
+#		else:
+#			print("unicorn | gdb")
+#			print(( ( (int(unicorn[i].strip().replace("0x", ""),16)) , (int(gdb[j].strip().split("\t")[0].split(" ")[-1].replace("0x", ""),16 ))) ) )			
+#print("all good?")
+
+
+
 '''
 	(gdb) info registers sil
 	sil            0x1	1	

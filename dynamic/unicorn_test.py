@@ -9,15 +9,21 @@ from keystone import *
 
 
 
-mode =  Ks(KS_ARCH_X86, Ks_MODE_64)
-encoding, count = mode.asm("CMP 0, 0x6;")
+mode =  Ks(KS_ARCH_X86, KS_MODE_64)
+encoding, count = mode.asm("cmp eax, 0x6;")
 
 
-exit(0)
+#exit(0)
 	
 
 
-X86_CODE32 = encoding #b'H\x83\xe4\xf0' # INC ecx; DEC edx
+X86_CODE32 = bytes(encoding )
+
+#print(encoding)
+#print(bytes(encoding))
+#print(type(encoding))
+#print(type(b'H\x83\xe4\xf0'))
+#b'H\x83\xe4\xf0' # INC ecx; DEC edx
 ADDRESS = 0x1000000
 
 
@@ -33,9 +39,53 @@ def set_bits(value):
 		n += 1
 		val += value
 		value &= value-1
-#	print(val)
+	print(val % 2 == 0)
 	return n
 
+
+
+print("Emulate i386 code")
+try:
+	mu.mem_map(ADDRESS, 2 * 1024 * 1024)
+
+	# write machine code to be emulated to memory
+	mu.mem_write(ADDRESS, X86_CODE32)
+
+	mu.reg_write(UC_X86_REG_EFLAGS, 0x293)
+
+	# initialize machine registers
+	mu.reg_write(UC_X86_REG_ECX, 0x1234)
+	mu.reg_write(UC_X86_REG_EDX, 0x7890)
+
+
+	eflags = mu.reg_read(UC_X86_REG_EFLAGS)
+	print(">>> eflags = 0x%x" % eflags)
+	print(debug.readable_eflags(mu.reg_read(UC_X86_REG_EFLAGS)))
+	print(mu.reg_read(UC_X86_REG_EAX))
+
+
+	# emulate code in infinite time & unlimited instructions
+	mu.emu_start(ADDRESS, ADDRESS + len(X86_CODE32))
+
+	print("=" * 16)
+
+	eflags = mu.reg_read(UC_X86_REG_EFLAGS)
+	print(">>> eflags = 0x%x" % eflags)
+	print(debug.readable_eflags(mu.reg_read(UC_X86_REG_EFLAGS)))
+
+except UcError as e:
+	print("ERROR: %s" % e)
+
+
+
+
+
+print(set_bits(0x6 & 0xFF) % 2 == 0)
+
+
+'''
+		parity flag checks
+'''
 
 '''
 	http://www.c-jump.com/CIS77/ASM/Instructions/I77_0070_eflags_bits.htm
@@ -49,7 +99,7 @@ def set_bits(value):
 		-	not sure if this is a key problem tho
 '''
 
-
+'''
 print(set_bits(140737488350240))
 print(set_bits(140737488350240 & 0xFF))
 
@@ -72,37 +122,4 @@ print("after and unicorn {}".format(debug.readable_eflags(0x206)))
 
 
 exit(0)
-
-
-print("Emulate i386 code")
-try:
-	# Initialize emulator in X86-32bit mode
-#	mu.reg_write(UC_X86_REG_EFLAGS, 0x246)
-
-	print(debug.readable_eflags(mu.reg_read(UC_X86_REG_EFLAGS)))
-
-	eflags = mu.reg_read(UC_X86_REG_EFLAGS)
-	print(">>> ECX = 0x%x" %eflags)
-
-	# map 2MB memory for this emulation
-	mu.mem_map(ADDRESS, 2 * 1024 * 1024)
-
-	# write machine code to be emulated to memory
-	mu.mem_write(ADDRESS, X86_CODE32)
-
-	# initialize machine registers
-	mu.reg_write(UC_X86_REG_ECX, 0x1234)
-	mu.reg_write(UC_X86_REG_EDX, 0x7890)
-
-	# emulate code in infinite time & unlimited instructions
-	mu.emu_start(ADDRESS, ADDRESS + len(X86_CODE32))
-
-	# now print out some registers
-	print("Emulation done. Below is the CPU context")
-
-	eflags = mu.reg_read(UC_X86_REG_EFLAGS)
-	print(">>> ECX = 0x%x" %eflags)
-	print(debug.readable_eflags(mu.reg_read(UC_X86_REG_EFLAGS)))
-
-except UcError as e:
-	print("ERROR: %s" % e)
+'''
