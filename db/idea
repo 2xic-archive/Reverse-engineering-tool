@@ -3,6 +3,16 @@
 
 https://docs.python.org/3/extending/extending.html#a-simple-example
 
-
 need a database for all the registers and access patterns, writing a c moudle seems fun.
-need to fix unicorn first....
+
+What do we want to store?
+	-	Register values
+		-	at different points in time/at different runs
+			-	you should be able to see the difference between all the registers at diffrent runs
+			- 	A dynamic array can point to each run, and each run can be stored as a hashtable.
+				(want that o(1) lookup when checking for a specific addresses)
+
+	-	Memory layout ? 
+		-	Maybe you want to see the difference between the memory layout between two runs
+			-	This migth add a lot of overhead, need to be cleaver! (dumping 4 gb of memory seems a bit much, especially since a lot will be unallocated)
+				-	Unicorn can report changes !

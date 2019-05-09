@@ -1,7 +1,3 @@
-
-
-
-
 def zigZag(arr):
 	srt = sorted(arr)
 	result = []
@@ -15,8 +11,6 @@ def zigZag(arr):
 			result.append(srt[left])
 			left += 1
 	return result
-
-
 
 import matplotlib.pyplot as plt
 import sys

@@ -64,7 +64,7 @@ class elf:
 			"name_index":section_name,
 			"type":int_from_bytearray(section_type),
 			"type_name":type_name,
-			"flags":int_from_bytearray(section_flags),
+			"flags":get_readable_flags(int_from_bytearray(section_flags)),
 			"section_link":section_link,
 			"entries_size":entries_size,
 			"virtual_address":section_virtual_address,
@@ -208,6 +208,9 @@ class elf:
 
 	def __init__(self, name):
 		self.file = open(name, "rb").read()
+
+		self.is_elf = self.file[:4] == b'\x7fELF'
+		assert self.is_elf, "not a elf binary"
 
 		self.is_64_bit = self.file[0x04] == 2
 		self.extra_offset = 0 if not self.is_64_bit else 4

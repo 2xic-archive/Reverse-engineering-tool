@@ -19,7 +19,6 @@ def get_keystone_mode(architecture, is_64, extra=None):
 		raise Exception("Not implemented")
 
 
-
 def assemble(instruction, mode):
 	encoding, count = mode.asm(instruction)
 	return encoding

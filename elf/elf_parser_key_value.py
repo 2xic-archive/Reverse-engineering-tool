@@ -21,6 +21,30 @@ section_type_name = {
 	0x60000000:"SHT_LOOS"
 }
 
+def get_readable_flags(flag_value):
+	flag_id = [
+		[0x1, "SHF_WRITE"],
+		[0x2, "SHF_ALLOC"],
+		[0x4, "SHF_EXECINSTR"],
+		[0x10, "SHF_MERGE"],
+		[0x20, "SHF_STRINGS"],
+		[0x40, "SHF_INFO_LINK"],
+		[0x80, "SHF_LINK_ORDER"],
+		[0x100, "SHF_OS_NONCONFORMING"],
+		[0x200, "SHF_GROUP"],
+		[0x400, "SHF_TLS"],
+		[0x0ff00000, "SHF_MASKOS"],
+		[0xf0000000, "SHF_MASKPROC"],
+		[0x4000000, "SHF_ORDERED"],
+		[0x8000000, "SHF_EXCLUDE"]
+	]
+	flags = []
+	for flag_id in flag_id:
+		if(flag_value & flag_id[0]):
+			flags.append(flag_id[1])
+		if(flag_value < flag_id[0]):
+			break
+	return flags
 
 program_header_type_name = {
 	0x00000000:"PT_NULL",

@@ -9,9 +9,7 @@ import struct
 	-	not sure if this should be in the elf parser or not...
 '''
 
-
 #	good manpage http://manpages.courier-mta.org/htmlman5/elf.5.html
-
 
 def get_dynamic_symbols(elf_target, name, debug=False):
 #	global symbol_table

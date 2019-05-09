@@ -19,8 +19,8 @@ def pretty_print_bytes(results):
 
 
 class unicorn_debug():
-	def __init__(self, unicorn, section_viritual_map, section_map, address_space):
-		self.section_viritual_map = section_viritual_map
+	def __init__(self, unicorn, section_virtual_map, section_map, address_space):
+		self.section_virtual_map = section_virtual_map
 		self.section_map = section_map
 		self.address_space = address_space
 		self.unicorn = unicorn
@@ -31,6 +31,10 @@ class unicorn_debug():
 
 		self.hook_points = {
 
+		}
+
+		self.memory_hooks = {
+		
 		}
 
 		self.instruction_count = 0
@@ -49,6 +53,8 @@ class unicorn_debug():
 
 		}
 
+		self.values_2_look_for = set()
+
 		self.next_break = False
 
 	def add_breakpoint(self, address, identity="none"):
@@ -59,6 +65,18 @@ class unicorn_debug():
 
 	def trace_registers(self, name, pause=False):
 		self.registers_2_trace[name] = [eval("UC_X86_REG_{}".format(name.upper())), pause]
+
+	def add_value_search(self, value):
+		self.values_2_look_for.add(value)
+
+	def add_hook_memory(self, address, write_only=False, read_only=False):
+		assert type(address) == int, "input should be int"
+		if not write_only and not read_only:
+			self.memory_hooks[address] = 1
+		elif(write_only):
+			self.memory_hooks[address] = 0
+		elif(read_only):
+			self.memory_hooks[address] = -1
 
 	def setup(self):
 		self.register_state = {
@@ -159,7 +177,10 @@ class unicorn_debug():
 						locations = []
 						for locations_number in location_argument:
 							locations.append(bold_text(self.determine_location(locations_number) + "[0x%x]" % (locations_number)))
-						
+
+							if(self.check_memory_value(locations_number, check_only=True)):
+								hook_mnemonic = "Memory value"
+
 						locations = " ,".join(locations)
 						string += "%s %s (%s);" % (dissably.mnemonic, dissably.op_str, locations)
 					else:
@@ -184,14 +205,8 @@ class unicorn_debug():
 			print(hex(self.unicorn.reg_read(register)))
 
 	def step(self, tokens):
-		print("doing a step")
+		print("one step")
 		self.next_break = True
-
-	#	if(self.current_breakpoint == "exit"):
-	#		print(hex(self.current_address + self.current_size))
-	#		self.breakpoints[self.current_address + self.current_size] = "exit"
-	#	else:
-	#		self.breakpoints[self.current_address + self.current_size] = True
 
 	def memory_handle(self, tokens):
 
@@ -210,8 +225,11 @@ class unicorn_debug():
 		else:
 			print("Add a address with size")
 
-	def handle_commands(self):
-		command = input("Breakpoint hit({}), write a command or press enter to continue\n".format(hex(self.current_address)))
+	def handle_commands(self, memory_access=False):
+		if(memory_access):
+			command = input("Memory access hit, write a command or press enter to continue\n")
+		else:
+			command = input("Breakpoint hit({}), write a command or press enter to continue\n".format(hex(self.current_address)))
 		commands = {
 			"view":self.get_register,
 			"stepi":self.step,
@@ -249,15 +267,21 @@ class unicorn_debug():
 		print('\t\t%s' % instruction_name)
 
 		if(hook_instruction or self.hook_points.get(hex(address), None) != None):
+			if(hook_name == "Memory value"):
+				self.handle_commands(memory_access=True)
+				return False
+
 			if(self.hook_points.get(hex(address), None) != None):
 				hook_name = hex(address)
+
 			spesification = self.hook_points[hook_name][1]
 			max_hit_count = spesification.get("max_hit_count", None)
+
 
 			hooked_IP = False # don't want to overwrite the hooked instruction pointer
 			if(max_hit_count != None):
 				current_count = spesification.get("count", 0)
-				print("instruction good hooked (%i)" % (current_count))
+				print("instruction got hooked (%i)" % (current_count))
 				if(current_count <= max_hit_count):
 					spesification["count"] = current_count + 1
 				else:
@@ -277,7 +301,7 @@ class unicorn_debug():
 					register = eval("UC_X86_REG_{}".format(register.upper()))
 					self.unicorn.reg_write(register, value)
 			else:
-				print("instruction good hooked")
+				print("instruction got hooked")
 				for register, value in self.hook_points[hook_name][0].items():				
 					if("RIP" in register.upper()):
 						hooked_IP = True
@@ -288,7 +312,24 @@ class unicorn_debug():
 			if not hooked_IP:
 				current_rip = self.unicorn.reg_read(UC_X86_REG_RIP)
 				self.unicorn.reg_write(UC_X86_REG_RIP, current_rip + size)
+
 			return True
+		return False
+
+	def memory_hook_check(self, address, write):
+		assert type(address) == int, "input should be int"
+		memory_hook_type = self.memory_hooks.get(address, None)
+		if(memory_hook_type != None):
+			if(write and memory_hook_type == 0 or memory_hook_type == 1):
+				self.handle_commands(memory_access=True)
+			elif(not write and memory_hook_type == -1):
+				self.handle_commands(memory_access=True)
+
+	def check_memory_value(self, value, check_only=False):
+		if(value in self.values_2_look_for):
+			if(check_only):
+				return True
+			self.handle_commands(memory_access=True)
 		return False
 
 	def resolve_break_point(self):
@@ -352,7 +393,7 @@ class unicorn_debug():
 		)
 
 	def check_section_map(self, start, end, real_name):
-		for name, value in self.section_viritual_map.items():
+		for name, value in self.section_virtual_map.items():
 			if(value[0] < start and start < value[1]):
 				print("overlap")
 				print(name)

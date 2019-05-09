@@ -173,10 +173,10 @@ class cfg:
 
  
 	def return_edge_map(self):
-
 		dfs_edges = {
  
 		}
+		
 		edge_type = {
 
 		}
