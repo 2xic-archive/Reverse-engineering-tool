@@ -127,9 +127,10 @@ class tree_node {
 			argument_cell.innerHTML = this.code_block[i]["argument"];
 
 			if(this.code_block[i]["argument"][0] == "0" && this.code_block[i]["argument"][1] == "x"){
-				argument_cell.setAttribute("onmouseover", "highligth(this)");
-				argument_cell.setAttribute("onmouseout", "highligth_low(this)");
-				argument_cell.setAttribute("onkeydown", "highligth(this)");
+				argument_cell.setAttribute("onmouseover", "highlight(this)");
+				argument_cell.setAttribute("onmouseout", "highlight_low(this)");
+				argument_cell.setAttribute("onkeydown", "highlight(this)");
+				argument_cell.setAttribute("onClick", "jump_2_node(this)");
 			}
 			row.setAttribute("onClick", "moving_rows(this)");
 	

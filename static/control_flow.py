@@ -1,5 +1,6 @@
 import hashlib
-		 
+from collections import OrderedDict
+
 class block:
 	def __init__(self):
 		self.instructions = []
@@ -9,10 +10,18 @@ class block:
  
 	def add(self, instruction):
 		if(self.start == None):
-			self.start = int(instruction["address"].replace("0x", ""), 16)
-		self.instructions.append(instruction)
-		self.instruction_string += instruction["address"] + "\t" + instruction["instruction"] + instruction["argument"] + "\n"
-		self.end =  int(instruction["address"].replace("0x", ""), 16)
+			self.start = instruction["address"]#.replace("0x", ""), 16)
+		
+		from copy import deepcopy
+
+		new_in = deepcopy(instruction)
+		new_in["address"] = hex(new_in["address"])
+
+
+		self.instructions.append(new_in)
+
+		self.instruction_string += hex(instruction["address"]) + "\t" + instruction["instruction"] + instruction["argument"] + "\n"
+		self.end =  instruction["address"]#.replace("0x", ""), 16)
  
 	def reconstruct(self):
 		self.instruction_string = ""
@@ -22,8 +31,19 @@ class block:
 	def __str__(self):
 		hash_object = hashlib.md5(self.instruction_string.encode())
 		return hash_object.hexdigest()
- 
- 
+
+	def __hash__(self):
+	#	hash_object = hashlib.md5(self.instruction_string.encode())
+	#	return hash_object.hexdigest()
+		return hash(self.get_hasb())
+
+	def get_hasb(self):
+		hash_object = hashlib.md5(self.instruction_string.encode())
+		return hash_object.hexdigest()
+	
+	def __eq__(self, other):
+		return self.get_hasb() == other.get_hasb() 
+
 class relation:
 	def __init__(self, from_node, to_node, relation_type=None):
 		self.from_node = from_node
@@ -31,21 +51,17 @@ class relation:
 		self.type = relation_type
  
 	def __str__(self):
-		return self.from_node + "->" + self.to_node
+		return hex(self.from_node) + "->" + hex(self.to_node)
  
 class cfg:
 	def __init__(self, code):
-		self.node_relation = {
- 
-		}
-		self.visited_node = {
- 
-		}
+		self.node_relation = OrderedDict()
+		self.visited_node = OrderedDict()
 		self.instruction = code
 		#self.start_address = code[0]["address"]
 		self.start_address = self.instruction[0]["address"]
 		self.end_address = self.instruction[-1]["address"]
-		self.blocks = []
+		self.blocks = set()
 		self.call_stack = []
  
 	def in_scope(self, address):
@@ -53,7 +69,7 @@ class cfg:
 			return False
 		address = int(address, 16)
 
-		return int(self.start_address, 16) <= address <= int(self.end_address, 16)
+		return self.start_address <= address <= self.end_address
 
 	def is_branch(self, code):
 		return "jne" in code or "je" in code or "jmp" in code \
@@ -83,7 +99,7 @@ class cfg:
 
 				if("jne" in code_block[i]["instruction"] or "je" in code_block[i]["instruction"] or "jmp" in code_block[i]["instruction"] ):
 					if(self.in_scope(code_block[i]["argument"])):
-						new_relations.append(relation(start, code_block[i]["argument"], "jumpted"))
+						new_relations.append(relation(start, int(code_block[i]["argument"],16) , "jumpted"))
 
 				if("jne" in code_block[i]["instruction"] or "je" in code_block[i]["instruction"] ):
 					new_relations.append(relation(start, code_block[i + 1]["address"], "followed"))
@@ -95,7 +111,7 @@ class cfg:
 					target = node_relation.to_node
  
 					if not str(node_relation) in self.node_relation.keys():
-						self.node_relation[str(node_relation)] = [source, target, node_relation.type]
+						self.node_relation[str(node_relation)] = [hex(source), hex(target), node_relation.type]
 					 
 					if target in self.visited_node.keys():
 						continue
@@ -126,7 +142,7 @@ class cfg:
 					pop_instructions = []
 					for i in range(len(biggest_block.instructions)):
 						instruction = biggest_block.instructions[i]
-						if(int(instruction["address"].replace("0x", ""), 16) >= small.start):
+						if(int(instruction["address"], 16) >= small.start):
 							pop_instructions.append(i)
 	#               
 					pop_count = 0
@@ -140,7 +156,7 @@ class cfg:
 					relations_to_remove = []
 					for key, val in self.node_relation.items():
 						if(val[0] == hex(biggest_block.start)):
-							new_relation = relation(hex(biggest_block.start), (val[1]))
+							new_relation = relation(biggest_block.start, int(val[1], 16))
 							self.node_relation[str(new_relation)] = [hex(biggest_block.start), (val[1])]
  
 							relations_to_remove.append(key)             
@@ -148,40 +164,38 @@ class cfg:
 					for node_relation in relations_to_remove:
 						self.node_relation.pop(node_relation)
 				
-					new_relation = relation(hex(biggest_block.start), hex(small.start))
+					new_relation = relation(biggest_block.start, small.start)
 					self.node_relation[str(new_relation)] = [hex(biggest_block.start), hex(small.start)]
 				else:
 					continue
  
  
-	def store_blocks(self, target=None):
+	def store_blocks(self, target=None, count=0):
 		for blocks in self.parse_code_block(target):
-			self.blocks.append(blocks)
+			self.blocks.add(blocks)
 		
 		found_all = False
 		highest_address = None
 		for j in self.blocks:
-			if(j.end == int(self.end_address, 16)):
+			if(j.end == self.end_address):#, 16)):
 				found_all = True
 				break
 			if(highest_address == None or highest_address < j.end):
 				highest_address = j.end
 
+		'''
+			hm... strange
+		'''
 		if not found_all:
 			real_highest = self.get_block(hex(highest_address))[1]["address"]
-			return self.store_blocks(real_highest)
-
+			return self.store_blocks(real_highest, count=count + 1)
  
 	def return_edge_map(self):
-		dfs_edges = {
- 
-		}
-		
-		edge_type = {
+		dfs_edges = OrderedDict()
+		edge_type = OrderedDict()
 
-		}
-		for j in self.node_relation:
-			from_node = j.split("->")[0]
+		for relations_from in self.node_relation:
+			from_node = relations_from.split("->")[0]
 			 
 			if(from_node in dfs_edges.keys()):
 				continue
@@ -189,21 +203,69 @@ class cfg:
 			dfs_edges[from_node] = []
 			edge_type[from_node] = []
 
-			for i in self.node_relation:
-				if(from_node in i.split("->")[0]):
-					to_node = i.split("->")[1]
+			for relations_to in self.node_relation:
+				if(from_node in relations_to.split("->")[0]):
+					to_node = relations_to.split("->")[1]
 					dfs_edges[from_node].append(to_node)
-					edge_type[from_node].append(self.node_relation[i][- 1])
+					edge_type[from_node].append(self.node_relation[relations_to][- 1])
 
 		return dfs_edges, edge_type
  
 	def return_node_code(self):
-		code_nodes = {
- 
-		}
+		code_nodes = OrderedDict()
 		for block in self.blocks:
 			code_nodes[hex(block.start)] = block.instructions
 		return code_nodes
+
+
+	def dfs_path(self, grapth, start, end):
+		stack = [(start, [start])]
+		while len(stack) > 0:
+			(vertex, current_path) = stack.pop()
+			if(vertex in grapth.keys()):
+				for edges in (set(grapth[vertex]) - set(current_path)):
+					if(edges == end):
+						yield current_path + [edges]
+					else:
+						stack.append((edges, current_path + [edges]))
+
+	def hirachy(self):
+		dfs_edges, dfs_edges_type = self.return_edge_map()
+		grapth = {
+			"edges":dfs_edges,
+			"type":dfs_edges_type,
+			"code":self.return_node_code(),
+			"flow":sorted(list(dfs_edges.keys())),
+			"start":hex(self.start_address), 
+			"end":hex(self.end_address)
+		}
+
+		head = grapth["start"]
+		grapth["hirachy"] = OrderedDict()
+		grapth["hirachy"][head] = 1
+		zero_nodes = []
+
+		highest_level = 0
+		for code_block in grapth["code"].keys():
+			if(code_block == head):
+				continue
+
+			length = 0
+			for valid_paths in self.dfs_path(grapth["edges"], head, code_block):
+				if(len(valid_paths) > length):
+					length = len(valid_paths)
+			
+			grapth["hirachy"][code_block] = length
+			if(length == 0):
+				zero_nodes.append(code_block)
+
+			if(length > highest_level):
+				highest_level = length
+
+		grapth["max_level"] = highest_level
+		assert (len(zero_nodes) == 0), "Found a zero node, implement a handler"
+		return grapth
+
 
 #	helps for debugging :=)
 def test_graphviz(input_cfg):
@@ -223,78 +285,17 @@ def test_graphviz(input_cfg):
 	grapth.view()
 	exit(0)
 
-
 def make_cfg(code):
 	#   based on some code from 
 	 
 	#   https://www.cs.rice.edu/~keith/pubs/TR02-399.pdf
 	#   https://www.diericx.net/post/generating-avr-assembly-control-flow-graphs/
-	 
+
+
+	#print(code)
 	code_cfg = cfg(code)
 	code_cfg.store_blocks()
-	code_cfg.clean_blocks()
- 
-	dfs_edges, dfs_edges_type = code_cfg.return_edge_map()
-	codebase = code_cfg.return_node_code()
+	code_cfg.clean_blocks() 
+	return code_cfg.hirachy()
 
-	return test_hirachy({"edges":dfs_edges, "type":dfs_edges_type, "code":codebase, "flow":sorted(list(dfs_edges.keys())), 
-		"start":code_cfg.start_address, "end":code_cfg.end_address})
-
-
-def dfs_path(grapth, start, end):
-	stack = [(start, [start])]
-
-	while len(stack) > 0:
-		(vertex, current_path) = stack.pop()
-		if(vertex in grapth.keys()):
-			for edges in (set(grapth[vertex]) - set(current_path)):
-				if(edges == end):
-					yield current_path + [edges]
-				else:
-					stack.append((edges, current_path + [edges]))
-
-def test_hirachy(code):
-	'''
-		this will be merged into the cfg class,
-		want to write some test first.
-	'''
-	head = code["start"]
-	code["hirachy"] = {
-
-	}
-	code["hirachy"][head] = 1
-	zero_nodes = []
-
-	highest_level = 0
-	for j in code["code"].keys():
-		if(j == head):
-			continue
-		size = 0
-		for q in (dfs_path(code["edges"], head, j)):
-			if(len(q) > size):
-				size = len(q)
-		code["hirachy"][j] = size
-		if(size == 0):
-			zero_nodes.append(j)
-		if(size > highest_level):
-			highest_level = size
-
-	code["max_level"] = highest_level
-	if(len(zero_nodes) > 0):
-		head = zero_nodes[0]
-		found_non_zero = False
-		for j in zero_nodes:
-			if(j == head):
-				continue
-			size = 0
-			for path in dfs_path(code["edges"], head, j):
-				if(len(path) > size):
-					size = len(path)
-			code["hirachy"][j] = size
-			if(size > 0):
-				found_non_zero = True
-	return code
-
-if __name__ == "__main__":
-	test_graphviz({"edges":{"0x4004b6":["0x4004a0"],"0x4004c6":["0x4004a0"],"0x4004d6":["0x4004a0"]},"type":{"0x4004b6":["jumpted"],"0x4004c6":["jumpted"],"0x4004d6":["jumpted"]},"code":{"0x4004a0":[{"address":"0x4004a0","instruction":"push","argument":"qword ptr [rip + 0x200b62]"},{"address":"0x4004a6","instruction":"jmp","argument":"qword ptr [rip + 0x200b64]"}],"0x4004ac":[{"address":"0x4004ac","instruction":"nop","argument":"dword ptr [rax]"},{"address":"0x4004b0","instruction":"jmp","argument":"qword ptr [rip + 0x200b62]"}],"0x4004b6":[{"address":"0x4004b6","instruction":"push","argument":"0"},{"address":"0x4004bb","instruction":"jmp","argument":"0x4004a0"}],"0x4004c0":[{"address":"0x4004c0","instruction":"jmp","argument":"qword ptr [rip + 0x200b5a]"}],"0x4004c6":[{"address":"0x4004c6","instruction":"push","argument":"1"},{"address":"0x4004cb","instruction":"jmp","argument":"0x4004a0"}],"0x4004d0":[{"address":"0x4004d0","instruction":"jmp","argument":"qword ptr [rip + 0x200b52]"}],"0x4004d6":[{"address":"0x4004d6","instruction":"push","argument":"2"},{"address":"0x4004db","instruction":"jmp","argument":"0x4004a0"}]},"flow":["0x4004b6","0x4004c6","0x4004d6"],"start":"0x4004a0","end":"0x4004db","hirachy":{"0x4004a0":1,"0x4004ac":0,"0x4004b6":0,"0x4004c0":0,"0x4004c6":0,"0x4004d0":0,"0x4004d6":0}})
 

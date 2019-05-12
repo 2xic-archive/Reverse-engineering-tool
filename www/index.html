@@ -5,10 +5,12 @@
 		<meta charset="utf-8"/>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.3/socket.io.min.js"></script>
 
+		<script src="interface/backward_forward.js"></script>
 		<script src="interface/highlighter.js"></script>
 		<script src="interface/actions.js"></script>
-		<script src="interface/build_register_table.js"></script>
 		<script src="interface/search.js"></script>
+
+		<script src="dynamic-view/dynamic-view.js"></script>
 		<script src="flat-view/flat-view.js"></script>
 		<script src="grapth-view/grapth.js"></script>
 		<script src="grapth-view/grapth-view.js"></script>
@@ -22,7 +24,6 @@
 	</head>
 
 	<body>
-
 		<!--
 			menu
 		!-->
@@ -30,23 +31,15 @@
 			<div id="menu">
 				<div>
 					<ul>
-						<li><button disabled="">&larr;</button></li>
-						<li><button disabled>&rarr;</button></li>
-						<li><button onclick="open_close_search()" onfocusout="check_focus()">Search</button></li>
-						<li><button onclick="save_project()">Save</button></li>
-						<li><button onclick="hide_hex()">Hide hex view</button></li>
-						<li><button onclick="hide_grapth()">Hide grapth view</button></li>
+						<li><button id="backward" disabled="">&larr;</button></li>
+						<li><button id="forward" disabled>&rarr;</button></li>
+						<li><button onclick="open_close_search()">Sections</button></li>
+						<li><button disabled onclick="save_project()">Save</button></li>
+						<li><button id="hex_hide" onclick="hide_hex()">#</button></li>
+						<li><button id="grapth_hide" onclick="hide_grapth()">&#8258;</button></li>
 					</ul>
 					<div id="search_content" class="search_box" tabindex="2">
 						<input type="text" autocomplete="off" placeholder="Search.." id="search" onkeyup="filter_search()">
-<!--						<a href="#about">About</a>
-						<a href="#base">Base</a>
-						<a href="#blog">Blog</a>
-						<a href="#contact">Contact</a>
-						<a href="#custom">Custom</a>
-						<a href="#support">Support</a>
-						<a href="#tools">Tools</a>
-!-->
 					</div>
 				</div>
 			</div>
@@ -59,7 +52,7 @@
 
 			<div id="container">
 				<div id="container_row">
-					<div id="container_item_70">
+					<div id="container_item_70" name="flat-view-div">
 						<!--    flat-view   !-->
 						<table id="flat_view_table">
 							<tr id="table_header">
@@ -94,64 +87,50 @@
 							</canvas>
 						</div>
 					</div>
-					<!--
-					<div id="container_item_30">
-						<h1>Unicorn data here, soon</h1>
+					<div id="container_item_30" name="dynamic-div">
+						<center>
+							<h1>Unicorn data here</h1>						
+						</center>
 					</div>
-					!-->
 				</div>
 			</div>
 		</div>
 
 
 		<script type="text/javascript">
-
 			var socket = io.connect('http://' + document.domain + ':' + location.port);
 			
-			socket.on( 'connect', function() {
-				socket.emit( 'online', {
-				data: 'User Connected'
-				})
+			socket.on('connect', function() {
+				socket.emit('online')
 			});
 
-			socket.emit('get control', {data:""});
-		
-			/*
 			socket.on('error', function(msg){
 				if(msg.indexOf("xhr") == -1){
 					alert(msg);
 				}
-			});*/
+			});
 
-			socket.emit( 'hex', {
-				data: 'User Connected'
+			socket.on('dynamic_data', function(msg){
+				create_dynamic_view(msg);
+			});
+
+			socket.on('block', function(msg){
+				code_sections = msg["sections"];
+
+				create_flat_view(msg["code"]);
+				create_blocks(msg["grapth"]);
+				if(last_message == undefined){
+					create_grapth(msg["grapth"], 0, false);
+				}else{
+					create_grapth(msg["grapth"], 0, true);
+				}
 			});
 
 			socket.on('hex_response', function(msg){
-				create_hex_view(msg["data"]);
-
-		//      create_hex_view(msg["data"]);
-			});
-
-			socket.on('control', function(msg){
-				create_blocks(msg);
-				create_grapth(msg, 0);
-			});
-
-			socket.on('code_with_comments', function( msg ) {
-				code_comments = msg["comments"];
-				code_sections = msg["sections"];
-
-				for (var key in msg["code"]) {
-					var location = Object.keys(msg["code"][key][1])[0];
-					block_list[location] = msg["code"][key][0];
+				if(msg != null && msg["data"] != null){
+					create_hex_view(msg["data"]);
 				}
-				create_flat_view(msg["code"]);
 			});
-
-
 		</script>
 	</body>
-	
-
 </html>

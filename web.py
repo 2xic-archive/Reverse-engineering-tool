@@ -28,15 +28,15 @@ def folder_path(path):
 	return send_from_directory(static_file_dir, path)
 
 @socketio.on("online")
-def event_code(json, methods=["GET", "POST"]):
+def event_code(methods=["GET", "POST"]):
 	global target
-	#target = model(elf(sys.argv[1]))
-	json = target.decompile_text()
-#	print(json)
-	socketio.emit("code", json)
-	socketio.emit("code_with_comments", {"code":json, "comments":target.comments, "sections":target.static.section_sizes})
-
-
+	socketio.emit("block", 
+		{"code":target.decompiled_sections,
+		 "sections":target.static.section_sizes,
+		 "grapth":target.cfg
+		}
+	)
+	socketio.emit("hex_response", {"data":target.hex})
 
 
 @socketio.on("assemble instruction")
@@ -59,24 +59,24 @@ def event_code(json_data, methods=["GET", "POST"]):
 def event_code(json_data, methods=["GET", "POST"]):
 	socketio.emit("size response", {"size":len(assemble(json_data["data"][0])), "target":json_data["data"][1]})
 
-@socketio.on("hex")
-def event_code(json_data, methods=["GET", "POST"]):
-	socketio.emit("hex_response", {"data":target.hex})
-
 @socketio.on("get control")
 def event_code(json_data, methods=["GET", "POST"]):
 	socketio.emit("control", target.get_cfg())
 
 
+@socketio.on("dynamic_info")
+def event_code(json_data, methods=["GET", "POST"]):
+#	socketio.emit("control", target.get_cfg())
+#	print("we out here ... ")
+#	print(json_data["data"]["address"])
+	socketio.emit("dynamic_data", target.dynamic.get_register_data(json_data["data"]["address"]))
+
+
 @socketio.on("comments")
 def event_code(json_data, methods=["GET", "POST"]):
-#	print(json_data)
 	content = json_data["data"]
-	print(content)
 	target.add_comment(content[0], content[1])
 	target.save_comment()
-	#print(target.custom_comments)
-	#socketio.emit("control", target.get_cfg())
 
 @socketio.on("save")
 def event_code(json_data, methods=["GET", "POST"]):
@@ -89,6 +89,16 @@ def event_code(json_data, methods=["GET", "POST"]):
 	#print(target.custom_comments)
 	#socketio.emit("control", target.get_cfg())
 
+@socketio.on("give_me_dynamic_data")
+def event_code(methods=["GET", "POST"]):
+#	print("im happy")
+	socketio.emit('dynamic_view', {"data":target.dynamic.address_register})
+
+#	print(json_data)
+#	print(json_data)
+#	target.save_model(json_data["data"]["file_name"])
+
+
 
 @app.after_request
 def add_header(request):
@@ -99,10 +109,9 @@ def add_header(request):
 	return request
 
 
-
-
 def exit_handler():
-	print('My application is ending!')
+	# auto save ? 
+	pass
 
 
 if __name__ == "__main__":
@@ -118,9 +127,8 @@ if __name__ == "__main__":
 		#	exit(0)
 
 		else:
-			target = model(elf(sys.argv[1]))
-		socketio.run(app, debug=True)
-
+			target = model(elf(sys.argv[1]), socketio)
+		socketio.run(app, debug=True, host= '0.0.0.0')
 	else:
 		print("scripy.py elf-binary")
 

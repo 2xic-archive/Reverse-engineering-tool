@@ -39,8 +39,7 @@ for index in range(len(file)):
 		"else":(114, 113, 107)
 	}
 	val = file[index]
-   # val = xy2d(val, index_x, index_y)
-	#val = d2xy(25 )
+
 	if(val == 0xFF):
 		image[index_y, index_x, :] =  color_map["black"]
 	elif(val == 0x00):
@@ -49,8 +48,7 @@ for index in range(len(file)):
 		image[index_y, index_x, :] =  color_map["print"]
 	else:
 		image[index_y, index_x, :] =  color_map["else"]
-
-
+		
 	index_x += 1
 
 plt.imshow(image)

@@ -3,30 +3,47 @@
 #include <stdlib.h> 
 #include <assert.h>
 
-#define VECTOR_SIZE 12
-
-typedef struct vector_stucture {
-	void **items;
-	int max_capacity;
-	int size;
-} vector_stucture;
-
-void init_vector(vector_stucture *vector){
+struct vector_stucture *init_vector(void *key){
+	struct vector_stucture *vector = malloc(sizeof(struct vector_stucture));
 	vector->max_capacity = VECTOR_SIZE;
-	vector->items = malloc(sizeof(void *) * vector->max_capacity);
+	vector->items = malloc(sizeof(int) * vector->max_capacity);
 	vector->size = 0;
+	vector->keyword = key;
+	return vector;
 }
 
-int vector_add(vector_stucture *vector, void *item){
-	assert(vector->items != NULL);
+struct vector_stucture_pointer *init_vector_pointer(void *key){
+	struct vector_stucture_pointer *vector = malloc(sizeof(struct vector_stucture_pointer));
+	vector->max_capacity = VECTOR_SIZE;
+	vector->items = malloc(sizeof(void*) * vector->max_capacity);
+	vector->size = 0;
+	vector->keyword = key;
+	return vector;	
+}
+
+int vector_add(struct vector_stucture *vector, int item){
 	if (vector->max_capacity == vector->size){
-		return -1;
+		vector->max_capacity *= 2;
+		vector->items  = realloc(vector->items, (vector->max_capacity * sizeof(int)));
+		vector->items[vector->size] = item;
+		vector->size++;
+	}else{
+		vector->items[vector->size] = item;
+		vector->size++;
 	}
-	vector->items[vector->size++] = item;
 	return vector->size - 1;
 }
 
-void *vector_get(vector_stucture *vector, int index){
+void *vector_add_pointer(struct vector_stucture_pointer *vector, void*item){
+	if (vector->max_capacity == vector->size){
+		vector->max_capacity *= 2;
+		vector->items  = realloc(vector->items, (vector->max_capacity * sizeof(void *)));
+	}
+	vector->items[vector->size++] = item;
+	return vector->items[vector->size - 1];
+}
+
+void *vector_get_pointer(struct vector_stucture_pointer *vector, int index){
 	assert(vector->items != NULL);
 	if ((0 <= index) && (index < vector->size)){
 		return vector->items[index];
@@ -34,19 +51,28 @@ void *vector_get(vector_stucture *vector, int index){
 	return NULL;
 }
 
-void free_vector(vector_stucture *vector){
+
+int vector_get(struct vector_stucture *vector, int index){
+	assert(vector->items != NULL);
+	if ((0 <= index) && (index < vector->size)){
+		return vector->items[index];
+	}
+	//	registers only store posetive numbers!
+	return -1;
+}
+
+void free_vector(struct vector_stucture *vector){
 	assert(vector->items != NULL);
     free(vector->items);
     vector->items = NULL;
+    free(vector);
+    vector = NULL;
 }
 
-int main() { 
-	vector_stucture test_vector;
-	init_vector(&test_vector);
-
-	int index = vector_add(&test_vector, "Test");
-	printf("Hello\n");
-	printf("%s\n", vector_get(&test_vector, index));
-	free_vector(&test_vector);
+void free_vector_pointer(struct vector_stucture_pointer *vector){
+	assert(vector->items != NULL);
+    free(vector->items);
+    vector->items = NULL;
+    free(vector);
+    vector = NULL;
 }
-

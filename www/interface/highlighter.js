@@ -6,7 +6,7 @@ class highlighter {
 		this.last_highighlight = undefined;
 	}
 
-	highligth(target){
+	highlight(target){
 		if(this.last_highighlight != undefined){
 			for(var i = 0; i < this.last_highighlight.length; i++){
 				this.last_highighlight[i].style.background = "";
@@ -19,13 +19,19 @@ class highlighter {
 	}
 }
 
-
 String.prototype.insert = function (index, string) {
 	if (index > 0){
 		return this.substring(0, index) + string + this.substring(index, this.length);
 	}
 	return string + this;
 };
+
+function stop_char(char){
+	if(char == "\t" || char == " " || char == "[" || char == "]" || char == ","){
+		return true;
+	}
+	return false;
+}
 
 function code_highlighter(current, registers){
 	var current_text = current;
@@ -41,44 +47,50 @@ function code_highlighter(current, registers){
 		var refrence_count = 0;
 		var searching = true;
 
-		var j = 0;
+		var index = 0;
 		var size = current_text.length;
 
 		var hex_mode = false;
 		var hex_start = 0;
+		var space_since_stop = 0;
 
 		if(word != "none"){
 			all_registers.add(word);
 		}
 		
-		while(j < size){
-			if(current_text[j] == "<"){
+		while(index < size){
+			if(current_text[index] == "<"){
 				refrence_count += 1;
 			}
-			if(current_text[j] == ">"){
+			if(current_text[index] == ">"){
 				refrence_count -= 1;
 			}
 
-			if(current_text[j] == "0"){
-				if((j + 1) < size){
-					if(current_text[j + 1] == "x"){
+			if(current_text[index] == "0"){
+				if((index + 1) < size){
+					if(current_text[index + 1] == "x"){
 						hex_mode = true;
-						hex_start = j;
+						hex_start = index;
 					}
 				}
 			}
 
-			if(word[key_word_index] == current_text[j] && searching && refrence_count == 0){
+			if(space_since_stop == 0 && !hex_mode && !isNaN(current_text[index]) && !stop_char(current_text[index]) && refrence_count == 0){
+				hex_mode = true;
+				hex_start = index;
+			}
+
+			if(word[key_word_index] == current_text[index] && searching && refrence_count == 0){
 				key_word_index += 1;
 				if(key_word_index == word_length){
 					if(refrence_count == 0){
 						var span_end = "</span>";
-						var span_start = "<span style='color:red;' contenteditable='true' key='" + word +"'>";
-						current_text = current_text.insert(j + 1, span_end);
-						current_text = current_text.insert(j - word_length + 1, span_start);
+						var span_start = "<span style='color:red;' contenteditable='false' key='" + word +"'>";
+						current_text = current_text.insert(index + 1, span_end);
+						current_text = current_text.insert(index - word_length + 1, span_start);
 
 						size += span_start.length + span_end.length;
-						j += (span_start.length + span_end.length);// + 1;
+						index += (span_start.length + span_end.length);// + 1;
 					}else{
 						console.log("hm");
 					}
@@ -88,31 +100,39 @@ function code_highlighter(current, registers){
 				searching = false;
 			}
 
-			if(current_text[j] == " " || current_text[j] == "[" || current_text[j] == "]" || current_text[j] == ","){
+			if(stop_char(current_text[index])){
 				searching = true;
 				if(hex_mode){
 					var span_end = "</span>";
 					var span_start = "<span style='color:blue;' key='" + "hex" +"'>";
-					current_text = current_text.insert(j, span_end);
+					current_text = current_text.insert(index, span_end);
 					current_text = current_text.insert(hex_start, span_start);
 
 					size += span_start.length + span_end.length;
-					j += (span_start.length + span_end.length);// 		
+					index += (span_start.length + span_end.length);// 		
 					hex_mode = false;
 				}
+				space_since_stop = 0;
+			}else{
+				space_since_stop += 1;
 			}
-			j++;
+			index++;
 		}
 		if(hex_mode){
 			var span_end = "</span>";
 			var span_start = "<span style='color:blue;' key='" + "hex" +"'>";
-			current_text = current_text.insert(j, span_end);
+			current_text = current_text.insert(index, span_end);
 			current_text = current_text.insert(hex_start, span_start);
 
 			size += span_start.length + span_end.length;
-			j += (span_start.length + span_end.length);// 		
+			index += (span_start.length + span_end.length);// 		
 			hex_mode = false;
 		}
 	}
 	return current_text;
 }
+
+//console.log(code_highlighter("add	rsp, 8", []));
+
+
+

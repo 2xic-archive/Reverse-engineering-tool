@@ -1,5 +1,6 @@
 from capstone import *
 from .assembler import *
+from collections import OrderedDict
 
 def get_capstone_mode(architecture, is_64, extra=None):
 	lookup_architecture_capstone =	{
@@ -29,9 +30,7 @@ def get_all_registers(CsInsn):
 	return registers
 
 def decompile(input_bytes, start_address, mode, qword):
-	decompiled = {
-		#	address : [instruction , args]
-	}
+	decompiled = OrderedDict()
 	target_registers_ids = set()
 	target_registers_names = []
 	mode.detail = True
@@ -54,26 +53,35 @@ def decompile(input_bytes, start_address, mode, qword):
 			for r in regs_write:
 				registers.append(dissably.reg_name(r))
 
-		decompiled["0x%x" % (dissably.address)] = [dissably.mnemonic, dissably.op_str, list(set(registers))]
+		decompiled["0x%x" % (dissably.address)] = {	
+					"instruction":dissably.mnemonic, 
+					"argument":dissably.op_str, 
+					"registers":list(set(registers)),
+					"address_int":dissably.address,
+					"comment":""
+				}
 
 		if not next_pointer_address == None:			
 			if(hex(dissably.address + next_pointer) in qword.keys()):
-				new_comments[next_pointer_address] = qword[hex(dissably.address + next_pointer)]
+				if(next_pointer_address in decompiled.keys()):
+					decompiled[next_pointer_address]["comment"] = qword[hex(dissably.address + next_pointer)]
 			else:
-				new_comments[next_pointer_address] = hex(dissably.address + next_pointer)
-			
+				if(next_pointer_address in decompiled.keys()):
+					decompiled[next_pointer_address]["comment"] = hex(dissably.address + next_pointer)
 			next_pointer_address = None
 
-		elif("0x%x" % (dissably.address) in qword.keys()):
-			decompiled["0x%x" % (dissably.address)].append( qword["0x%x" % (dissably.address)] )
+		#	can actually be pre calculated by instruction size
+		if("rip + " in dissably.op_str and "qword ptr" in dissably.op_str):
+			next_pointer_address = "0x%x" % (dissably.address)
+			next_pointer =  int(dissably.op_str[dissably.op_str.index("0x"):-1], 16)
+
+		if("0x%x" % (dissably.address) in qword.keys()):
+			decompiled["0x%x" % (dissably.address)]["comment"] = qword["0x%x" % (dissably.address)]
 		
-		'''
-			if("rip + " in dissably.op_str and "qword ptr" in dissably.op_str):
-				next_pointer_address = "0x%x" % (dissably.address)
-				next_pointer =  int(dissably.op_str[dissably.op_str.index("0x"):-1], 16)
-		'''
+
 	for register_id in target_registers_ids:
 		target_registers_names.append(dissably.reg_name(register_id))
+
 
 	return decompiled, target_registers_names, new_comments
 

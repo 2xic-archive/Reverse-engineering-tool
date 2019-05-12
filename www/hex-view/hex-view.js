@@ -6,7 +6,7 @@ var hex_ligther = new highlighter();
 function resolve(e){
 	var name = e.getAttribute("name");
 	var targets = document.getElementsByName(name);
-	hex_ligther.highligth(targets);	
+	hex_ligther.highlight(targets);	
 }
 //	basic hex view
 function create_hex_view(hex){

@@ -2,6 +2,7 @@ import sys
 from static.disassemble import *
 from .elf_parser_key_value import *
 from dynamic.dynamic_linker import *
+from collections import OrderedDict
 
 def reverse_bytearray(wokring_bytearray):
 	new_byte_array = list(wokring_bytearray)
@@ -65,6 +66,7 @@ class elf:
 			"type":int_from_bytearray(section_type),
 			"type_name":type_name,
 			"flags":get_readable_flags(int_from_bytearray(section_flags)),
+			"flags_int":int_from_bytearray(section_flags),
 			"section_link":section_link,
 			"entries_size":entries_size,
 			"virtual_address":section_virtual_address,
@@ -124,12 +126,11 @@ class elf:
 
 	def get_section_names(self):
 		string_table_offset = self.section_headers[self.section_headers_names]["file_offset"]
-		self.sections_with_name = {
+		self.sections_with_name = OrderedDict()
 
-		}
-		self.section_sizes = {
+		self.sections_with_name_index = OrderedDict()
 
-		}
+		self.section_sizes = OrderedDict()
 		un_named_count = 0
 		for i in self.section_headers:
 			name = self.read_zero_terminated_string(string_table_offset + self.section_headers[i]["name_index"])
@@ -137,6 +138,7 @@ class elf:
 				name = "unnamed_%i" % (un_named_count)
 				un_named_count += 1
 			self.sections_with_name[name] = self.section_headers[i]
+			self.sections_with_name_index[i] = name
 			self.section_sizes[name] = [self.section_headers[i]["file_offset"], self.section_headers[i]["size"]] 
 
 
@@ -149,22 +151,18 @@ class elf:
 		location = int(section["virtual_address"].replace("0x", ""), 16)
 		fake_index = 0
 
-		range_bytes = {
-
-		}
+		range_bytes = OrderedDict()
 		for j in range(section["file_offset"], section["file_offset"] + section["size"]):
 			range_bytes[hex(location + fake_index)] = [hex(self.file[j]), chr(self.file[j]), []]
 			fake_index += 1
 		return range_bytes
 
 	def get_sections_parsed(self):
-		code_sections = {
-
-		}
-		for index, key in enumerate(self.sections_with_name.keys()):
+		code_sections = OrderedDict()
+		for index, key in self.sections_with_name_index.items(): #enumerate(self.sections_with_name.keys()):
 			text_seciton = self.sections_with_name[key]
 			
-			if(text_seciton["type"] == 0x1 and text_seciton["flags"] == 0x6):
+			if(text_seciton["type"] == 0x1 and text_seciton["flags_int"] == 0x6):
 				code_sections[index] = key
 			else:
 				pass
@@ -215,21 +213,10 @@ class elf:
 		self.is_64_bit = self.file[0x04] == 2
 		self.extra_offset = 0 if not self.is_64_bit else 4
 
-		self.section_headers = {
-
-		}
-
-		self.program_headers = {
-
-		}
-
-		self.symbol_table = {
-	
-		}
-
-		self.qword_helper = {
-
-		}
+		self.section_headers = OrderedDict()
+		self.program_headers = OrderedDict()
+		self.symbol_table = OrderedDict()
+		self.qword_helper = OrderedDict()
 
 		self.target_architecture_int = int_from_bytearray(self.read_with_offset(0x12, 2))
 		self.target_architecture = target_architecture_lookup[self.target_architecture_int]

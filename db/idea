@@ -12,7 +12,10 @@ What do we want to store?
 			- 	A dynamic array can point to each run, and each run can be stored as a hashtable.
 				(want that o(1) lookup when checking for a specific addresses)
 
+			-	this is basically what the current db has to offer.
+
 	-	Memory layout ? 
 		-	Maybe you want to see the difference between the memory layout between two runs
 			-	This migth add a lot of overhead, need to be cleaver! (dumping 4 gb of memory seems a bit much, especially since a lot will be unallocated)
 				-	Unicorn can report changes !
+
