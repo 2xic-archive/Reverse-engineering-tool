@@ -23,7 +23,7 @@ What do you expect from a reverse engineering tool? You want quick insight into 
 Currently I am running gdb and unicorn side by side on some static binaries, trying to get unicorn to run through the entire program flawlessly. Seems like special instructions like cpuid and xgetbv ~~and instructions that affect the eflags~~ give different results from gdb ... Also as far as I know, implementing system specific system calls also has to be done. The debugger I wrote for unicorn does help (a lot) with root cause analysis, so I hope to see some meaningful progress soon. 
 
 #  Do I think I can make a better tool than IDA? 
-It's not about that. I started this project to hopefully see some changes in reverse engineering landscape. Things have been still there for a while and completion is needed to bring on changes with impact.
+It's not about that. I started this project to hopefully see some changes in reverse engineering landscape. Things have been still there for a while and competition is needed to bring on changes with impact.
 
 #	Work in progress / ideas
 -	unicorn support
@@ -32,8 +32,8 @@ It's not about that. I started this project to hopefully see some changes in rev
 	-	rewind, go to the previous state just by moving the arrow keys(like QIRA)...
 	-	dynamic code grapths?
 -	**integrate dwarf data**
--	make it easy to store comments and patches made to the binary. 
 	-	you don't need a decompiler when you have dwarf!
+-	make it easy to store comments and patches made to the binary. 
 -	binary patching
 	-	I have coded parts of this already, however it needs a better interface
 -	visualizing a binary
