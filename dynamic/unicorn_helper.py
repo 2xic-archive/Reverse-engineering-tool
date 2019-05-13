@@ -13,9 +13,11 @@ def bold_text(text):
 
 
 def pretty_print_bytes(results):
-	print(''.join('{:02x}'.format(x) for x in results ))
+	print("")
+	print(''.join('0x{:02x} '.format(x) for x in results ))
+	print(''.join((chr(x) if( 0 < x < 128) else " ") for x in results ))
+	print("")
 	return ''.join('{:02x}'.format(x) for x in results )
-
 
 
 class unicorn_debug():
@@ -58,6 +60,7 @@ class unicorn_debug():
 		self.next_break = False
 
 	def add_breakpoint(self, address, identity="none"):
+		assert(type(address) == int)
 		self.breakpoints[address] = identity
 
 	def add_hook(self, name, register_edits, spesification):
@@ -87,7 +90,7 @@ class unicorn_debug():
 
 	def log_2_file(self):
 		if(self.instruction_count > 0):
-			self.log_file.write(hex(self.unicorn.reg_read(UC_X86_REG_RIP) - 0x400000) + "\n")
+			self.log_file.write(hex(self.unicorn.reg_read(UC_X86_REG_RIP)) + "\n")
 			self.log_file.write(hex(self.unicorn.reg_read(UC_X86_REG_ESI)) + "\n")
 
 
@@ -286,9 +289,9 @@ class unicorn_debug():
 					spesification["count"] = current_count + 1
 				else:
 					if(hook_instruction == False):
-						raise Exception("hit max for %s" % (hex(address)))
+						raise Exception("hit max for %s, increase max_count for no Exception" % (hex(address)))
 					else:
-						raise Exception("hit max for %s" % (hook_name))
+						raise Exception("hit max for %s, increase max_count for no Exception" % (hook_name))
 
 				change_list = self.hook_points[hook_name][0].get(current_count, None)
 				if(change_list == None):
@@ -382,6 +385,7 @@ class unicorn_debug():
 			exc_type, exc_obj, exc_tb = sys.exc_info()
 			fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
 			print(exc_type, fname, exc_tb.tb_lineno)
+			self.log_file.close()
 			raise Exception("error in debugger")
 
 	def print_registers(self):

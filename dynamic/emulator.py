@@ -10,6 +10,7 @@ from .unicorn_helper import *
 import time
 import sys
 import os
+from .syscall_handler import *
 
 
 import threading
@@ -20,9 +21,29 @@ def threaded(function):
 		return thread
 	return wrapper
 
-class emulator:
+class emulator(syscalls):
 	def __init__(self, target):
+		super().__init__()
+
 		self.emulator = Uc(UC_ARCH_X86, UC_MODE_64)
+
+
+		'''
+			I think my stack layout is wrong.
+
+			https://elixir.bootlin.com/linux/v3.18/source/fs/binfmt_elf.c#L603
+
+			I have should  have read some kernel code before. Here is some of the things i'm
+			missing 
+
+			https://elixir.bootlin.com/linux/v3.18/source/fs/binfmt_elf.c#L149
+
+	
+			https://github.com/torvalds/linux/blob/master/arch/x86/include/asm/elf.h
+			
+
+		'''
+
 
 		'''
 			special instruction 
@@ -69,7 +90,7 @@ class emulator:
 		}
 
 		for name, content in (self.target.sections_with_name).items():
-			section_map[name] = [self.BASE +  int(content["virtual_address"],16), self.BASE +  int(content["virtual_address"],16) + content["size"]]
+			section_map[name] = [ int(content["virtual_address"],16),  int(content["virtual_address"],16) + content["size"]]
 
 			if(content["type_name"] == "SHT_NOBITS" or not "SHF_ALLOC" in content["flags"]):
 				print("Skipped section %s" % (name))
@@ -81,7 +102,30 @@ class emulator:
 
 			start = int(content["virtual_address"],16)
 			end = int(content["virtual_address"],16) + int(content["size"])
-			self.emulator.mem_write(self.BASE + int(content["virtual_address"],16), section_bytes)
+			self.emulator.mem_write(int(content["virtual_address"],16), section_bytes)
+
+
+			print("Loaded section %s at 0x%x -> 0x%x" % (name, start, end))
+
+			if(name == ".rodata"):
+				#print(section_bytes)
+				print(hex(file_offset))
+				pretty_print_bytes(self.target.file[0x8cac0:0x8cae0])
+				pretty_print_bytes(self.emulator.mem_read(0x48cad8, 0x60))
+#				assert(section_bytes == self.emulator.mem_read(self.BASE + int(content["virtual_address"],16), len(section_bytes)))
+#				print(hex(self.BASE + int(content["virtual_address"],16)))
+#				content = self.emulator.mem_read(self.BASE + int(content["virtual_address"],16), len(section_bytes))
+#				print("dafak ? ")
+#				pretty_print_bytes(content[:0x60])
+#				pretty_print_bytes(self.emulator.mem_read(0x4894e0, 0x60))
+#				pretty_print_bytes(section_bytes[:0x60])
+				#	0x894e0-0x8cac0
+
+				#print(hex(file_offset), hex(file_end))
+#				exit(0)
+
+
+	#			pretty_print_bytes(section_bytes)
 
 			if(content["size"] > 0):
 				section_virtual_map[name] = [start, end]
@@ -109,7 +153,7 @@ class emulator:
 
 		address_space = {
 			"stack":[stack_adr, stack_adr + stack_size],
-			"program":[self.BASE, self.BASE + self.program_size]
+			"program":[self.BASE, self.program_size]
 		}
 
 
@@ -157,12 +201,13 @@ class emulator:
 		)
 
 		#	will actually hook xgetbv (since ecx will be zero and trying to hook on xgetbv will be to late....)
-		self.unicorn_debugger.add_hook("0x800e01", {
+
+		self.unicorn_debugger.add_hook("0x400e01", {
 			0:{
 				"RAX":0x7,
 				"RCX":0x0,
 				"RDX":0x0,
-				"RIP":0x400e06 + self.BASE
+				"RIP":0x400e06 #+ self.BASE
 			}
 		},
 			{
@@ -170,16 +215,32 @@ class emulator:
 			}
 		)
 
-		self.unicorn_debugger.add_hook("0x834db0", {
+		'''
+		self.unicorn_debugger.add_hook("0x434db0", {
 			0:{
 				"RAX":0x21,
-				"RIP":0x434db3 + self.BASE
+				"RIP":0x434db3 #+ self.BASE
 			}
 		},
 			{
 				"max_hit_count":0
 			}
 		)
+		'''
+
+		'''
+
+
+
+#		self.unicorn_debugger.add_breakpoint(0x834e8a)
+
+
+
+	#	print(self.emulator.mem_read(0x48cad8, 8))
+	#	exit(0)
+
+		self.emulator.mem_write(0x48cad0, bytes(reversed(bytes(bytearray.fromhex("0xdeadbeef".replace("0x", ""))))))
+		'''
 
 
 
@@ -187,39 +248,22 @@ class emulator:
 			just hardcoded
 		'''
 		'''
-		self.unicorn_debugger.add_hook("0x834e8a", {
+		self.unicorn_debugger.add_hook("0x434e8a", {
 			0:{
-				"RIP":0x434e98 + self.BASE
+				"RIP":0x434e98 
+			},
+			1:{
+				"RIP":0x435030
 			}
 		},
 			{
-				"max_hit_count":0
+				"max_hit_count":1
 			}
 		)
 
-		self.unicorn_debugger.add_hook("0x834ebf", {
+		self.unicorn_debugger.add_hook("0x434eba", {
 			0:{
-				"RIP":0x4350dd + self.BASE
-			}
-		},
-			{
-				"max_hit_count":0
-			}
-		)
-
-		self.unicorn_debugger.add_hook("0x834ec8", {
-			0:{
-				"RIP":0x434eca + self.BASE
-			}
-		},
-			{
-				"max_hit_count":0
-			}
-		)
-
-		self.unicorn_debugger.add_hook("0x834ed4", {
-			0:{
-				"RIP":0x434ed6 + self.BASE
+				"RIP":0x434e80 
 			}
 		},
 			{
@@ -228,9 +272,58 @@ class emulator:
 		)
 
 
-		self.unicorn_debugger.add_hook("0x834ee0", {
+		self.unicorn_debugger.add_hook("0x434e88", {
 			0:{
-				"RIP":0x434ee2 + self.BASE
+				"RIP":0x434e8a 
+			},
+			1:{
+				"RIP":0x434e8a
+			}
+		},
+			{
+				"max_hit_count":1
+			}
+		)
+		'''
+
+
+
+
+		'''
+		self.unicorn_debugger.add_hook("0x434ebf", {
+			0:{
+				"RIP":0x4350dd 
+			}
+		},
+			{
+				"max_hit_count":0
+			}
+		)
+
+		self.unicorn_debugger.add_hook("0x434ec8", {
+			0:{
+				"RIP":0x434eca 
+			}
+		},
+			{
+				"max_hit_count":0
+			}
+		)
+
+		self.unicorn_debugger.add_hook("0x434ed4", {
+			0:{
+				"RIP":0x434ed6 
+			}
+		},
+			{
+				"max_hit_count":0
+			}
+		)
+
+
+		self.unicorn_debugger.add_hook("0x434ee0", {
+			0:{
+				"RIP":0x434ee2 
 			}
 		},
 			{
@@ -238,7 +331,6 @@ class emulator:
 			}
 		)
 		'''
-
 
 		#self.unicorn_debugger.add_breakpoint(0x834e88)
 		#self.unicorn_debugger.add_breakpoint(0x834dba)
@@ -267,7 +359,7 @@ class emulator:
 		}
 
 	
-	@threaded
+#	@threaded
 	def run(self):
 		# callback for tracing basic blocks
 		def hook_block(uc, address, size, user_data):
@@ -286,6 +378,8 @@ class emulator:
 				if(self.address_register.get(address_hex, None) == None):
 					self.address_register[address_hex] = []
 
+				if(address == 0x400e01):
+					mu.emu_stop()
 
 				'''
 					baisc yeah, the database will take over here...
@@ -320,18 +414,45 @@ class emulator:
 				if(size > 32):
 					bold_print(">>> Memory is being READ at 0x%x (%s), data size = %u" %(address, self.unicorn_debugger.determine_location(address),  size))
 				else:
-					bold_print(">>> Memory is being READ at 0x%x (%s), data size = %u , data value = %s" %(address, self.unicorn_debugger.determine_location(address),  size , pretty_print_bytes(uc.mem_read(address, size))))	
+					try:
+						bold_print(">>> Memory is being READ at 0x%x (%s), data size = %u , data value = %s" %(address, self.unicorn_debugger.determine_location(address),  size , pretty_print_bytes(uc.mem_read(address, size))))	
+					except Exception as e:
+						bold_print(">>> Memory is being READ at 0x%x " %(address))
+
+							
 			self.unicorn_debugger.memory_hook_check(address, access == UC_MEM_WRITE)
 			self.unicorn_debugger.check_memory_value(value)
 
+
+		def hook_intr(uc, intno, user_data):
+			if intno == 0x80:
+				self.handle_linux_syscall()
+
+		def hook_syscall(mu, user_data):
+			eax = mu.reg_read(UC_X86_REG_EAX)
+			print(">>> got SYSCALL with EAX = 0x%x" %(eax))
+			mu.emu_stop()
+
+
+		def init_stack(mu):
+			mu.reg_write(UC_X86_REG_RSP, mu.reg_read(UC_X86_REG_RSP) - 1)
+			#	argv is zero and envp also
+			#	https://www.gnu.org/software/libc/manual/html_node/Program-Arguments.html
+#			mu.reg_write(UC_X86_REG_RSP, mu.reg_read(UC_X86_REG_RSP) - 1)
+#			mu.reg_write(UC_X86_REG_RSP, mu.reg_read(UC_X86_REG_RSP) - 1)
+						
+
+
 		#	writing fake args 
-		stack_space = 992 # Is this static?
+		stack_space = 64 
+#		init_stack(self.emulator)
 		self.emulator.mem_write(self.emulator.reg_read(UC_X86_REG_RSP) - stack_space, bytes(reversed(bytes(bytearray.fromhex("0x01".replace("0x", ""))))))
 		self.emulator.reg_write(UC_X86_REG_RSP, self.emulator.reg_read(UC_X86_REG_RSP) - stack_space)
 
-
 		self.emulator.reg_write(UC_X86_REG_EFLAGS, 0x202)
 
+		self.emulator.hook_add(UC_HOOK_INTR, hook_intr)
+#		self.emulator.hook_add(UC_HOOK_INSN, hook_syscall, None, 1, 0, UC_X86_INS_SYSCALL)
 
 		self.emulator.hook_add(UC_ERR_WRITE_UNMAPPED, hook_mem_invalid)
 		self.emulator.hook_add(UC_HOOK_MEM_INVALID, hook_mem_invalid)
@@ -349,9 +470,10 @@ class emulator:
 
 		self.unicorn_debugger.setup()
 		try:
-			self.emulator.emu_start(self.BASE + self.target.program_entry_point, self.BASE + self.target.program_entry_point + 0x50)
+			self.emulator.emu_start(self.target.program_entry_point, self.target.program_entry_point + 0x50)
 		except Exception as e:
 			print(e)
+			self.unicorn_debugger.log_file.close()
 
 	def get_register_data(self, address):
 		#	basic api, easy to integrate with the database.
