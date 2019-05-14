@@ -12,10 +12,11 @@ def bold_text(text):
 	return '\033[1m' + text + '\033[0m'
 
 
-def pretty_print_bytes(results):
+def pretty_print_bytes(results, aschii=True):
 	print("")
 	print(''.join('0x{:02x} '.format(x) for x in results ))
-	print(''.join((chr(x) if( 0 < x < 128) else " ") for x in results ))
+	if(aschii):
+		print(''.join((chr(x) if( 0 < x < 128) else " ") for x in results ))
 	print("")
 	return ''.join('{:02x}'.format(x) for x in results )
 

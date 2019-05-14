@@ -22,6 +22,8 @@ What do you expect from a reverse engineering tool? You want quick insight into 
 #  Status with unicorn (dynamic side)
 Currently I am running gdb and unicorn side by side on some static binaries, trying to get unicorn to run through the entire program flawlessly. Seems like special instructions like cpuid and xgetbv ~~and instructions that affect the eflags~~ give different results from gdb ... ~~Also as far as I know, implementing system specific system calls also has to be done~~ (written support for two syscalls, you can now run hello world). The debugger I wrote for unicorn does help (a lot) with root cause analysis, so I hope to see some meaningful progress soon. 
 
+**Update: Even though I looked at the disassembly for \_dl_aux_init for way to long, it didn't occur to me that I forgot to implement a way to push the aux_vector onto the stack**
+
 #  Do I think I can make a better tool than IDA? 
 It's not about that. I started this project to hopefully see some changes in reverse engineering landscape. Things have been still there for a while and competition is needed to bring on changes with impact.
 
