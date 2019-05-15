@@ -34,12 +34,19 @@ while i < len(unicorn) and j < len(gdb):
 		if("=>" in gdb[j]):
 			if(unicorn[i].strip() == "0x400e06" and "0x400e03" in gdb[j]):
 				j += 2
+				print("stuck in loop?")
 				continue
 			if(unicorn[i].strip() == "0x400b3b" and "0x400b30" in gdb[j]):
 				j += 3 * 2
+				print("stuck in loop?")
 				continue
 			print(((unicorn[i].strip(), gdb[j].strip().split(" ")[1] )))
 			exit(0)
+		else:
+			print("mismatch reg value....")
+			print(unicorn[i])
+			print(gdb[j])
+	#		exit(0)
 	i += 1
 	j += 1
 

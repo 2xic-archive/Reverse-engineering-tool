@@ -92,7 +92,7 @@ class unicorn_debug():
 	def log_2_file(self):
 		if(self.instruction_count > 0):
 			self.log_file.write(hex(self.unicorn.reg_read(UC_X86_REG_RIP)) + "\n")
-			self.log_file.write(hex(self.unicorn.reg_read(UC_X86_REG_ESI)) + "\n")
+			self.log_file.write(hex(self.unicorn.reg_read(UC_X86_REG_RAX)) + "\n")
 
 
 	def readable_eflags(self, current_state):

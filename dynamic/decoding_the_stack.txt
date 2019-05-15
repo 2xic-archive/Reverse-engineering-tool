@@ -1,0 +1,220 @@
+
+So I have read that the memory style should be id and then key for the auxiliary vector and that the size should be 4 bytes.
+However this does not seem to be correct(or there are something I am missing) based on the stack dump. I found this http://refspecs.linuxbase.org/LSB_1.3.0/IA64/spec/auxiliaryvector.html and there it is 8 byte for the type, 8 byte for the value, 8 byte for the pointer and 8 byte for the function pointer value. Looking at the stack dump from gdb this seems more correct....
+
+0x7fffffffece0:	6	0	4096	0
+
+
+So here we have a_type = 6 (AT_PAGESZ), however it says that the integer value is zero...  And that the pointer is 4096, that does not seem correct. However the funciton pointer value is zero and that seems reasonable. 
+
+NEVER MIND!
+https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.7-4.6/+/refs/heads/jb-dev/sysroot/usr/include/elf.h#1599
+
+The problem is because of the diffrence in pointer size between 32 and 64 bit computers.... (uint32_t vs uint64_t). So key, value is correct ;)
+0x7fffffffece0:	[6	0](key)	[4096	0](value)
+
+But what about the bytes below? Based on my understaing they should be random bytes(seeding the PRNG).... 
+
+Also I expected that the platform string should be seen on the stack with the program name. I don't see that .... (they should be at the TOP)
+
+							
+0x7fffffffec10:	0x00000001[argc]	0x00000000	0xffffee1d	0x00007fff
+
+0x7fffffffec20:	0x00000000	0x00000000	
+
+0xffffee43	0x00007fff
+0x7fffffffec30:	0xffffee77	0x00007fff	0xffffee86	0x00007fff
+0x7fffffffec40:	0xffffee98	0x00007fff	0xffffeeac	0x00007fff
+0x7fffffffec50:	0xffffeeb6	0x00007fff	0xffffeed3	0x00007fff
+0x7fffffffec60:	0xffffeedc	0x00007fff	0xffffeee7	0x00007fff
+0x7fffffffec70:	0xffffef09	0x00007fff	0xffffef1c	0x00007fff
+0x7fffffffec80:	0xffffef27	0x00007fff	0xffffef3b	0x00007fff
+0x7fffffffec90:	0xffffef4b	0x00007fff	0xffffef5f	0x00007fff
+0x7fffffffeca0:	0xffffef67	0x00007fff	0xffffef74	0x00007fff
+0x7fffffffecb0:	0xffffef90	0x00007fff	(0x00000000	0x00000000) 	[padding to align the stack?]
+
+[above should there be some random bytes + names?]
+								
+0x7fffffffecc0:	0x00000021[AT_SYSINFO_EHDR]	0x00000000	0xf7ffd000	0x00007fff			<-	at here at 0x434e80 first hit(gdb)
+0x7fffffffecd0:	0x00000010[AT_HWCAP]		0x00000000	0x078bfbff	0x00000000			<-	at here at 0x434e80 first hit (unicorn)
+																							I did some futher research.. I think the problem was because of envp. 
+0x7fffffffece0:	0x00000006[AT_PAGESZ]		0x00000000	0x00001000	0x00000000
+0x7fffffffecf0:	0x00000011[AT_CLKTCK]		0x00000000	0x00000064	0x00000000
+0x7fffffffed00:	0x00000003[AT_PHDR]			0x00000000	0x00400040	0x00000000
+0x7fffffffed10:	0x00000004[AT_PHENT]		0x00000000	0x00000038	0x00000000
+0x7fffffffed20:	0x00000005[AT_PHNUM]		0x00000000	0x00000006	0x00000000
+0x7fffffffed30:	0x00000007[AT_BASE]			0x00000000	0x00000000	0x00000000
+0x7fffffffed40:	0x00000008[AT_FLAGS]		0x00000000	0x00000000	0x00000000
+0x7fffffffed50:	0x00000009[AT_ENTRY]		0x00000000	0x00400990	0x00000000
+0x7fffffffed60:	0x0000000b[AT_UID]			0x00000000	0x00000000	0x00000000
+0x7fffffffed70:	0x0000000c[AT_EUID]			0x00000000	0x00000000	0x00000000
+0x7fffffffed80:	0x0000000d[AT_GID]			0x00000000	0x00000000	0x00000000
+0x7fffffffed90:	0x0000000e[AT_EGID]			0x00000000	0x00000000	0x00000000
+
+
+
+[UNICORN]
+	0x19ffe28		01000000	00000000	(00000000	00000000)[NULL ARGV]
+	0x19ffe38		(00000000	00000000)(zero envp)	(00000000	00000000)[NULL ENVP]
+
+	0x19ffe48		21000000[AT_SYSINFO_EHDR]	00000000	00000000	00000000
+	0x19ffe58		10000000[AT_HWCAP]	00000000	00100000	00000000
+	0x19ffe68		06000000[AT_PAGESZ]	00000000	64000000	00000000
+	0x19ffe78		11000000[AT_CLKTCK]	00000000	40004000	00000000
+
+	0x19ffe88		03000000[AT_PHDR]	00000000	38000000	00000000
+	0x19ffe98		04000000[AT_PHENT]	00000000	06000000	00000000
+	0x19ffea8		05000000[AT_PHNUM]	00000000	00000040	00000000
+	0x19ffeb8		07000000[AT_BASE]	00000000	00000000	00000000
+	0x19ffec8		08000000[AT_FLAGS]	00000000	90094000	00000000
+	0x19ffed8		09000000[AT_ENTRY]	00000000	00000000	00000000
+	0x19ffee8		0b000000[AT_UID]	00000000	00000000	00000000
+	0x19ffef8		0c000000[AT_EUID]	00000000	00000000	00000000
+	0x19fff08		0d000000[AT_GID]	00000000	00000000	00000000
+	0x19fff18		0e000000[AT_EGID]	00000000	00000000	00000000
+	0x19fff28		17000000[AT_SECURE]	00000000	00000000	00000000
+
+
+[GDB]
+	0x7fffffffec10:	1	0	-4589	32767
+	0x7fffffffec20:	0	0	-4546	32767
+	0x7fffffffec30:	-4494	32767	-4479	32767
+	0x7fffffffec40:	-4461	32767	-4441	32767
+	0x7fffffffec50:	-4431	32767	-4402	32767
+	0x7fffffffec60:	-4393	32767	-4382	32767
+	0x7fffffffec70:	-4348	32767	-4329	32767
+	0x7fffffffec80:	-4318	32767	-4298	32767
+	0x7fffffffec90:	-4282	32767	-4262	32767
+	0x7fffffffeca0:	-4254	32767	-4241	32767
+	0x7fffffffecb0:	-4213	32767	0	0
+	0x7fffffffecc0:	33	0	-134230016	32767
+	0x7fffffffecd0:	16	0	126614527	0
+	0x7fffffffece0:	6	0	4096	0
+	0x7fffffffecf0:	17	0	100	0
+	0x7fffffffed00:	3	0	4194368	0
+	0x7fffffffed10:	4	0	56	0
+	0x7fffffffed20:	5	0	6	0
+	0x7fffffffed30:	7	0	0	0
+	0x7fffffffed40:	8	0	0	0
+	0x7fffffffed50:	9	0	4196752	0
+	0x7fffffffed60:	11	0	0	0
+	0x7fffffffed70:	12	0	0	0
+	0x7fffffffed80:	13	0	0	0
+	0x7fffffffed90:	14	0	0	0
+
+Renaming binary ONLY
+	0x7fffffffec10:	0x00000001	0x00000000	0xffffee13	0x00007fff
+	0x7fffffffec20:	0x00000000	0x00000000	0xffffee3e	0x00007fff
+	0x7fffffffec30:	0xffffee72	0x00007fff	0xffffee81	0x00007fff
+	0x7fffffffec40:	0xffffee93	0x00007fff	0xffffeea7	0x00007fff
+	0x7fffffffec50:	0xffffeeb1	0x00007fff	0xffffeece	0x00007fff
+	0x7fffffffec60:	0xffffeed7	0x00007fff	0xffffeee2	0x00007fff
+	0x7fffffffec70:	0xffffef04	0x00007fff	0xffffef17	0x00007fff
+	0x7fffffffec80:	0xffffef22	0x00007fff	0xffffef36	0x00007fff
+	0x7fffffffec90:	0xffffef46	0x00007fff	0xffffef5a	0x00007fff
+	0x7fffffffeca0:	0xffffef62	0x00007fff	0xffffef6f	0x00007fff
+	0x7fffffffecb0:	0xffffef8b	0x00007fff	0x00000000	0x00000000
+
+
+
+0000000000434eb0         add        rdi, 0x10 				at rdi ->	gdb reports 0x00000021, jumps to  0x00000010,
+																		from AT_SYSINFO_EHDR->AT_HWCAP
+															unicorn rdi ->	unicorn reports 0x00000021, but adding 16 bytes moves it to 
+																			AT_HWCAP. Okay so all good.
+																		->	after a while it goes wrong... (see the jump)
+0000000000434eb4         mov        rax, qword [rdi]
+0000000000434eb7         test       rax, rax				
+0000000000434eba         jne        loc_434e80
+
+
+
+I wounder why I didn't see the strings. oh maybe because I forgot to dump the entire stack :=) (grr!)
+Dumping the entire stack
+	0x7fffffffec30:	0x00000001	0x00000000	0xffffee34	0x00007fff
+	0x7fffffffec40:	0x00000000	0x00000000	0xffffee4f	0x00007fff
+	0x7fffffffec50:	0xffffee83	0x00007fff	0xffffee92	0x00007fff
+	0x7fffffffec60:	0xffffeea4	0x00007fff	0xffffeeb6	0x00007fff 			<-	all of that is envp !
+	0x7fffffffec70:	0xffffeec0	0x00007fff	0xffffeedd	0x00007fff
+	0x7fffffffec80:	0xffffeee6	0x00007fff	0xffffeef1	0x00007fff
+	0x7fffffffec90:	0xffffef13	0x00007fff	0xffffef26	0x00007fff
+	0x7fffffffeca0:	0xffffef32	0x00007fff	0xffffef46	0x00007fff
+	0x7fffffffecb0:	0xffffef56	0x00007fff	0xffffef6a	0x00007fff
+	0x7fffffffecc0:	0xffffef72	0x00007fff	0xffffef7f	0x00007fff
+	0x7fffffffecd0:	0xffffef9b	0x00007fff	0x00000000	0x00000000		   <- envp end!
+
+	0x7fffffffece0:	0x00000021[AT_SYSINFO_EHDR]	0x00000000	0xf7ffd000	0x00007fff
+	0x7fffffffecf0:	0x00000010	0x00000000	0x078bfbff	0x00000000
+	0x7fffffffed00:	0x00000006	0x00000000	0x00001000	0x00000000
+	0x7fffffffed10:	0x00000011	0x00000000	0x00000064	0x00000000
+	0x7fffffffed20:	0x00000003	0x00000000	0x00400040	0x00000000
+	0x7fffffffed30:	0x00000004	0x00000000	0x00000038	0x00000000
+	0x7fffffffed40:	0x00000005	0x00000000	0x00000006	0x00000000
+	0x7fffffffed50:	0x00000007	0x00000000	0x00000000	0x00000000
+	0x7fffffffed60:	0x00000008	0x00000000	0x00000000	0x00000000
+	0x7fffffffed70:	0x00000009	0x00000000	0x00400990	0x00000000
+	0x7fffffffed80:	0x0000000b	0x00000000	0x00000000	0x00000000
+	0x7fffffffed90:	0x0000000c	0x00000000	0x00000000	0x00000000
+	0x7fffffffeda0:	0x0000000d	0x00000000	0x00000000	0x00000000
+	0x7fffffffedb0:	0x0000000e[AT_EGID]	0x00000000	0x00000000	0x00000000
+
+	0x7fffffffedc0:	0x00000017	0x00000000	0x00000000	0x00000000
+	0x7fffffffedd0:	0x00000019	0x00000000	0xffffee19	0x00007fff
+	0x7fffffffede0:	0x0000001f[AT_EXECFN]	0x00000000	0xffffefdd	0x00007fff
+	0x7fffffffedf0:	0x0000000f[AT_PLATFORM]	0x00000000	0xffffee29	0x00007fff
+	0x7fffffffee00:	0x00000000[AT_NULL]		0x00000000	0x00000000	0x00000000
+	0x7fffffffee10:	0x00000000	0x00000000	(stack aligment ? )
+	
+[	0xc2fbc100	0x68c0f579
+	0x7fffffffee20:	0xd53ac5b0	0x17c1f949	](I think this is the random data )
+
+
+	0x36387880	0x0034365f 					(this sohuld be where the program data is stored
+											checking the aux pointer (0xffffee29 << 8) | (0x00007fff & 0xFF) you get 0xffffee29ff
+
+											yes ! past me, you are correct. Check it with the nice stack string functioN!
+	)
+
+	0x7fffffffee30:	0x00000000	0x6f6f722f	0x65742f74	0x742f7473
+	0x7fffffffee40:	0x5f747365	0x616e6962	0x73656972	0x5300732f
+	
+	*	removed 3 entries, you know your ip is on the stack?	*
+
+	0x7fffffffee80:	0x5f003232	0x73752f3d	0x69622f72	0x64672f6e
+	0x7fffffffee90:	0x4c4f0062	0x44575044	0x6f722f3d	0x742f746f
+	0x7fffffffeea0:	0x00747365	0x5f474458	0x53534553	0x5f4e4f49
+	0x7fffffffeeb0:	0x313d4449	0x53550037	0x723d5245	0x00746f6f
+	0x7fffffffeec0:	0x3d445750	0x6f6f722f	0x65742f74	0x742f7473
+	0x7fffffffeed0:	0x5f747365	0x616e6962	0x73656972	0x4e494c00
+	0x7fffffffeee0:	0x333d5345	0x4f480032	0x2f3d454d	0x746f6f72
+
+	*	removed 2 entries, you know your ip is on the stack?	*
+	
+	0x7fffffffef10:	0x53003232	0x545f4853	0x2f3d5954	0x2f766564
+	0x7fffffffef20:	0x2f737470	0x4f430033	0x4e4d554c	0x31313d53
+	0x7fffffffef30:	0x414d0034	0x2f3d4c49	0x2f726176	0x6c69616d
+	0x7fffffffef40:	0x6f6f722f	0x48530074	0x3d4c4c45	0x6e69622f
+	0x7fffffffef50:	0x7361622f	0x45540068	0x783d4d52	0x6d726574
+	0x7fffffffef60:	0x3635322d	0x6f6c6f63	0x48530072	0x3d4c564c
+	0x7fffffffef70:	0x4f4c0031	0x4d414e47	0x6f723d45	0x5800746f
+	0x7fffffffef80:	0x525f4744	0x49544e55	0x445f454d	0x2f3d5249
+	0x7fffffffef90:	0x2f6e7572	0x72657375	0x5000302f	0x3d485441
+	0x7fffffffefa0:	0x7273752f	0x636f6c2f	0x732f6c61	0x3a6e6962
+	0x7fffffffefb0:	0x7273752f	0x636f6c2f	0x622f6c61	0x2f3a6e69
+	0x7fffffffefc0:	0x2f727375	0x6e696273	0x73752f3a	0x69622f72
+	0x7fffffffefd0:	0x732f3a6e	0x3a6e6962	0x6e69622f	0x6f722f00
+	0x7fffffffefe0:	0x742f746f	0x2f747365	0x74736574	0x6e69625f
+	0x7fffffffeff0:	0x65697261	0x00732f73	0x00000000	0x00000000
+
+
+Okay, so I wrote a basic script to check the hex data to verify that the strigns are on the stack. So yeah, they are. So now I need to push thosse strings onto the stack again!
+
+
+
+
+
+
+
+
+
+
+

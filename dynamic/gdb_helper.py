@@ -17,7 +17,7 @@ for i in range(10000):
 		break
 	debug_file.write(output.split("\n")[1].split(":")[0] + "\n")
 #	debug_file.write(gdb.execute('info registers eflags', to_string=True))
-	debug_file.write(gdb.execute('info registers esi', to_string=True))
+	debug_file.write(gdb.execute('info registers rax', to_string=True))
 
 debug_file.write("finish")
 debug_file.close()

@@ -11,20 +11,15 @@ import time
 import sys
 import os
 from .syscall_handler import *
-
 import random
-
 import threading
+
 def threaded(function):
 	def wrapper(*args, **kwargs):
 		thread = threading.Thread(target=function, args=args, kwargs=kwargs)
 		thread.start()
 		return thread
 	return wrapper
-
-
-
-
 
 class stack_handler():
 	def __init__(self):
@@ -49,54 +44,97 @@ class stack_handler():
 	def hex_bytes(hex_string):
 		return bytes(reversed(bytes(bytearray.fromhex(hex_string.replace("0x", "")))))
 	
-	'''
-	def init_stack(self):
-		# https://elixir.bootlin.com/linux/v3.18/source/fs/binfmt_elf.c#L298
-		self.add_zero_byte() # argc
-		#	push argv and envp
-		self.push_string([])
-
-		self.add_zero_byte()
-
-		self.push_string([]) # envp
-
-		self.add_zero_byte()
-		self.add_zero_byte()
-	'''
-
 	def push_string(self, string):
 		assert(type(string) == str)
 		return self.push_bytes((string + "\0").encode())
 
-
 	def random_prng_bytes(self, size=16):
 		return bytes(bytearray(random.getrandbits(8) for _ in range(size)))
+
+	def arch_align_stack(self):
+		#	https://elixir.bootlin.com/linux/v3.18/source/arch/x86/kernel/process.c#L459
+		import ctypes
+		sp = self.emulator.reg_read(UC_X86_REG_RSP)
+		sp -= random.randint(0, 256) % 8192;
+		sp &= ~0xf
+		self.emulator.reg_write(UC_X86_REG_RSP, sp)
+		return sp
+
+	def stack_round(self, item):
+		return ((15 + (self.stack_pointer)) + item) &~ 15
+
+	def stack_set(self, value):
+		self.emulator.reg_write(UC_X86_REG_RSP, value)
+
+	def align_stack(self):
+		#	https://elixir.bootlin.com/linux/v3.18/source/arch/x86/kernel/process.c#L459
+		rsp = self.emulator.reg_read(UC_X86_REG_RSP)
+		rsp &= ~0xf
+		self.emulator.reg_write(UC_X86_REG_RSP, rsp)
+
 
 	def init_stack(self):
 		start = self.stack_pointer
 		print("Stack starts here {}".format(hex(start)))
 
-		self.push_bytes(bytes(12))
-
+#		self.push_bytes(bytes(12))
 #		self.actual_location_exec = self.push_string("./simple")
 #		self.actual_platform_location = self.push_string("x86_64")
-		self.actual_location_prng = self.push_bytes(self.random_prng_bytes())
+#		self.actual_location_prng = self.push_bytes(self.random_prng_bytes())
 
-		self.align_stack()
+#		self.align_stack()
+		self.ei_index = 0
 
+		self.arch_align_stack()
+
+		'''
+			*	should push platform string
+			*	should push random bytes
+
+		'''
 
 		self.setup_aux_vector()
 
-		self.push_bytes(struct.pack("<I", 0xdeadbeef)) # program name ;)
 
-		self.push_bytes(struct.pack("<I", 0)) # no ergv
-		self.push_bytes(struct.pack("<I", 0)) # no argv
+		argc = 0
+		envp = 0
+		items = (argc + 1) + (envp + 1) + 1
+		new_point = self.stack_round(items)
 
-		self.push_bytes(struct.pack("<I", 1)) # psuh argc
+		self.stack_set(new_point)
+
+		self.push_bytes(struct.pack("<Q", 0)) # argv
+		self.push_bytes(struct.pack("<Q", 0)) # envp
+
+		self.push_bytes(struct.pack("<Q", 1)) # argc
+
+
+#		argv = new_point
+#		envp = argv 
+#		while argc > 0:
+#			argc -= 1
+
+
+
+#		new_sp = new_point - items  - self.ei_index
+
+
+#		self.push_bytes(struct.pack("<Q", 0xdeadbeef)) # program name ;)
+
+
+
+#		self.push_bytes(struct.pack("<Q", 0)) # no ergv
+#		self.push_bytes(struct.pack("<Q", 0)) # no argv
+
+#		self.push_bytes(struct.pack("<Q", 1)) # psuh argc
 
 #		self.align_stack()
 
 		end = self.stack_pointer
+
+
+
+
 		print("Stack ends here {}".format(hex(end)))
 		delta = (start - end)
 
@@ -106,21 +144,14 @@ class stack_handler():
 			
 		return start, end, delta
 
-	def align_stack(self):
-		#	https://elixir.bootlin.com/linux/v3.18/source/arch/x86/kernel/process.c#L459
-		rsp = self.emulator.reg_read(UC_X86_REG_RSP)
-		rsp &= ~0xf
-		self.emulator.reg_write(UC_X86_REG_RSP, rsp)
-
 	@property
 	def stack_pointer(self):
 		return self.emulator.reg_read(UC_X86_REG_RSP)
 
 
-	def stack_round(self, item):
-		return ((15 + (self.stack_pointer)) + item) &~ 15
-
 	def aux_entry(self, key_id, val):
+		self.ei_index += 1
+		self.ei_index += 1
 		self.aux_vector.append([key_id, val])
 
 	def setup_aux_vector(self):
@@ -181,14 +212,14 @@ class stack_handler():
 
 		'''
 			
-		self.aux_entry(self.AT_RANDOM, self.actual_location_prng)
+#		self.aux_entry(self.AT_RANDOM, self.actual_location_prng)
 #		self.aux_entry(self.AT_EXECFN, self.actual_location_exec)
 #		self.aux_entry(self.AT_PLATFORM, self.actual_platform_location)
 		self.aux_entry(self.AT_NULL, 0)
 
 		for key_val in reversed(self.aux_vector):
-			self.push_bytes(bytes(bytearray(struct.pack("<I", key_val[0]))))
-			new_rsp = self.push_bytes(bytes(bytearray(struct.pack("<I", key_val[1]))))
+			self.push_bytes(bytes(bytearray(struct.pack("<Q", key_val[0]))))
+			new_rsp = self.push_bytes(bytes(bytearray(struct.pack("<Q", key_val[1]))))
 			self.elf_info.append([hex(new_rsp), key_val[0], key_val[1]])
 
 		self.align_stack()
@@ -209,8 +240,8 @@ class stack_handler():
 		self.emulator.mem_write(location_help_platform, struct.pack('>Q',actual_platform_location))
 		'''
 
-		for index, key_value in enumerate(self.elf_info):
-			print("{}	{}	->	{}({})".format(key_value[0], hex(key_value[1]), key_value[2], hex(key_value[2])))
+#		for index, key_value in enumerate(self.elf_info):
+#			print("{}	{}	->	{}({})".format(key_value[0], hex(key_value[1]), key_value[2], hex(key_value[2])))
 
 		#	http://articles.manugarg.com/aboutelfauxiliaryvectors.html
 		#	this was nice also
@@ -266,25 +297,9 @@ class emulator(stack_handler, syscalls):
 			xgetbv
 				https://www.felixcloutier.com/x86/xgetbv
 
-
-
 			# https://wiki.cdot.senecacollege.ca/wiki/X86_64_Register_and_Instruction_Quick_Start
 				nice table
 		'''
-
-
-		'''
-			ideas to resolve problems
-				-	check memory layout
-					-	 info proc mappings
-				-	check if the stack is mapped at end when gdb starts
-
-
-				rsp : 0x7fffffffec20
-				max-rsp : 0x7ffffffff000
-				992 seems to be reserved.... intresting...
-		'''
-
 
 
 		'''
@@ -321,18 +336,6 @@ class emulator(stack_handler, syscalls):
 
 
 			print("Loaded section %s at 0x%x -> 0x%x" % (name, start, end))
-
-			if(name == ".rodata"):
-				#print(section_bytes)
-				print(hex(file_offset))
-				pretty_print_bytes(self.target.file[0x8cac0:0x8cae0])
-				pretty_print_bytes(self.emulator.mem_read(0x48cad8, 0x60))
-#				assert(section_bytes == self.emulator.mem_read(self.BASE + int(content["virtual_address"],16), len(section_bytes)))
-#				print(hex(self.BASE + int(content["virtual_address"],16)))
-#				content = self.emulator.mem_read(self.BASE + int(content["virtual_address"],16), len(section_bytes))
-
-
-	#			pretty_print_bytes(section_bytes)
 
 			if(content["size"] > 0):
 				section_virtual_map[name] = [start, end]
@@ -435,45 +438,8 @@ class emulator(stack_handler, syscalls):
 		)
 		'''
 
-		'''
-
-
-
-#		self.unicorn_debugger.add_breakpoint(0x834e8a)
-
-
-
-	#	print(self.emulator.mem_read(0x48cad8, 8))
-	#	exit(0)
-
-		self.emulator.mem_write(0x48cad0, bytes(reversed(bytes(bytearray.fromhex("0xdeadbeef".replace("0x", ""))))))
-		'''
-
-
-		#self.unicorn_debugger.add_breakpoint(0x834e88)
-		#self.unicorn_debugger.add_breakpoint(0x834dba)
-
-
-
-		self.unicorn_debugger.add_breakpoint(0x400b30)
-
+		self.unicorn_debugger.add_breakpoint(0x434eb0)
 		self.unicorn_debugger.add_breakpoint(0x800e01, "exit")
-		#self.unicorn_debugger.trace_registers("RDI", pause=True)
-
-		#self.unicorn_debugger.add_hook_memory(0x19ffed8, write_only=True)
-		#self.unicorn_debugger.add_hook_memory(0x19ffecc, write_only=True)
-		#self.unicorn_debugger.add_hook_memory(0x19ffed0, write_only=True) # seems to be this bad boy that makes evreything go out of bounds
-		#self.unicorn_debugger.trace_registers("RDX", pause=True)
-
-		#self.unicorn_debugger.add_value_search(0x19fffff)
-
-		'''
-			happens at the start of the program...
-			rdx stores the rsp....
-			mov rdx, r13 ?
-		'''
-		#	0x19fffff
-
 
 		self.address_register = {
 
@@ -555,24 +521,7 @@ class emulator(stack_handler, syscalls):
 			mu.emu_stop()
 
 
-	#	def init_stack(mu):
-	#		mu.reg_write(UC_X86_REG_RSP, mu.reg_read(UC_X86_REG_RSP) - 1)
-			#	argv is zero and envp also
-			#	https://www.gnu.org/software/libc/manual/html_node/Program-Arguments.html
-#			mu.reg_write(UC_X86_REG_RSP, mu.reg_read(UC_X86_REG_RSP) - 1)
-#			mu.reg_write(UC_X86_REG_RSP, mu.reg_read(UC_X86_REG_RSP) - 1)
-						
-
-
-		#	writing fake args 
-#		stack_space = 64 
-#		self.add_zero_byte()
-#		exit(0)
-#		init_stack(self.emulator)
-#		self.emulator.mem_write(self.emulator.reg_read(UC_X86_REG_RSP) - stack_space, bytes(reversed(bytes(bytearray.fromhex("0x01".replace("0x", ""))))))
-#		self.emulator.reg_write(UC_X86_REG_RSP, self.emulator.reg_read(UC_X86_REG_RSP) - stack_space)
 		start, end, delta = self.init_stack()
-
 
 		print("hedaer count ;(")
 		print(self.target.program_header_count)
@@ -596,24 +545,14 @@ class emulator(stack_handler, syscalls):
 					if(jump_count % 4 == 0 and jump_count > 0):
 						end += 16
 						print("\n{}".format(hex(end)), end="	")
+			print(current_string)
 			print("")
 
 		space_stack(end, pretty_print_bytes(self.emulator.mem_read(end, delta), aschii=False))
 		print("Size {}".format(delta))
+		print("RSP == 0x%x" % (self.emulator.reg_read(UC_X86_REG_RSP)))
 
 
-
-
-#		exit(0)
-#		exit(0)
-#		print(self.emulator.mem_read(end, delta))
-#		exit(0)
-
-
-
-
-	
-#		print(hex(self.emulator.reg_read(UC_X86_REG_RSP)))
 #		exit(0)
 
 		self.emulator.reg_write(UC_X86_REG_EFLAGS, 0x202)
