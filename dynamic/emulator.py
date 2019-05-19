@@ -30,6 +30,15 @@ class stack_handler():
 		for string in string_list:
 			self.push_bytes(string + "\x00")
 
+	def byte_string_with_length(self, input_string, length=0):
+		start = bytearray(input_string.encode())
+		for i in range(len(input_string), length):
+			start.append(0)
+		if(start[length - 1] != 0):
+			raise Exception("not null terminated string")
+#		self.push_bytes(bytes(start))
+		return bytes(start)
+
 	def push_bytes(self, bytes_array):
 		rsp = self.emulator.reg_read(UC_X86_REG_RSP)
 		rsp -= len(bytes_array)
@@ -37,6 +46,11 @@ class stack_handler():
 		self.emulator.reg_write(UC_X86_REG_RSP, rsp)
 		assert(type(rsp) != None)
 		return rsp
+
+	def stack_insert_at_reverse_index(self, index, bytes_data):
+		self.emulator.mem_write(self.stack_pointer + index, bytes_data)
+		return (index + len(bytes_data))
+
 
 	def add_zero_byte(self):
 		return self.push_bytes(bytes(bytearray(1)))
@@ -53,7 +67,6 @@ class stack_handler():
 
 	def arch_align_stack(self):
 		#	https://elixir.bootlin.com/linux/v3.18/source/arch/x86/kernel/process.c#L459
-		import ctypes
 		sp = self.emulator.reg_read(UC_X86_REG_RSP)
 		sp -= random.randint(0, 256) % 8192;
 		sp &= ~0xf
@@ -62,6 +75,7 @@ class stack_handler():
 
 	def stack_round(self, item):
 		return ((15 + (self.stack_pointer)) + item) &~ 15
+#		return ((15 + (self.stack_pointer)) - item) &~ 15
 
 	def stack_set(self, value):
 		self.emulator.reg_write(UC_X86_REG_RSP, value)
@@ -72,20 +86,44 @@ class stack_handler():
 		rsp &= ~0xf
 		self.emulator.reg_write(UC_X86_REG_RSP, rsp)
 
+	def peek_stack(self, size=100):
+		stack_peek = self.emulator.mem_read(self.stack_pointer, size * 8)
+		pretty_print_bytes(stack_peek)
 
 	def init_stack(self):
 		start = self.stack_pointer
 		print("Stack starts here {}".format(hex(start)))
 
-#		self.push_bytes(bytes(12))
-#		self.actual_location_exec = self.push_string("./simple")
-#		self.actual_platform_location = self.push_string("x86_64")
-#		self.actual_location_prng = self.push_bytes(self.random_prng_bytes())
-
+		#	start the stack with zeros
+#		self.push_bytes(bytes(16))
+		#	add the binary name
 #		self.align_stack()
+
+		self.actual_location_exec = 0xdeadbeef # self.push_string("/root/test/test_binaries/s")
+
+		'''
+			now it wants the names of the enovriment varaibles...
+		'''
+#		self.actual_envp =	self.push_string("PWD=/root/test/test_binaries")
+
+
+	#	self.arch_align_stack()
+
+
+#		self.push_string("PWD=/root/test/test_binaries")
+
+		self.actual_platform_location = self.push_string("x86_64")
+		self.actual_location_prng = self.push_bytes(self.random_prng_bytes())
+
+
+#		self.push_string("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+
+
 		self.ei_index = 0
 
-		self.arch_align_stack()
+		#self.arch_align_stack()
+
+
 
 		'''
 			*	should push platform string
@@ -94,19 +132,26 @@ class stack_handler():
 		'''
 
 		self.setup_aux_vector()
-
-
+		
 		argc = 0
-		envp = 0
+		envp = 1
 		items = (argc + 1) + (envp + 1) + 1
-		new_point = self.stack_round(items)
 
-		self.stack_set(new_point)
+		print("what ? {}".format(hex(items)))
 
-		self.push_bytes(struct.pack("<Q", 0)) # argv
-		self.push_bytes(struct.pack("<Q", 0)) # envp
+#		new_point = self.stack_round(items)
+#		self.stack_set(new_point)
+		
 
+	#	self.push_bytes(struct.pack("<Q", 0)) # argv
+#		self.push_bytes(struct.pack("<Q", self.actual_envp)) # argv
+
+		self.push_bytes(struct.pack("<Q", 0)) # null envp
+
+		self.push_bytes(struct.pack("<Q", 0)) # null arg
+		self.push_bytes(struct.pack("<Q", self.actual_location_exec)) # argc
 		self.push_bytes(struct.pack("<Q", 1)) # argc
+
 
 
 #		argv = new_point
@@ -133,10 +178,12 @@ class stack_handler():
 		end = self.stack_pointer
 
 
-
+#		self.stack_set(end - 8)
 
 		print("Stack ends here {}".format(hex(end)))
 		delta = (start - end)
+
+		self.align_stack()
 
 #		pretty_print_bytes(self.emulator.mem_read(end, delta))
 
@@ -189,6 +236,44 @@ class stack_handler():
 
 		self.ELF_EXEC_PAGESIZE = 4096
 
+		self.aux_entry(self.AT_NULL, 0x0)
+
+		self.aux_entry(self.AT_PLATFORM, self.actual_platform_location) 	#	memory string refrence
+		self.aux_entry(self.AT_EXECFN, self.actual_location_exec) 	#	memory stirng refrence
+		self.aux_entry(self.AT_RANDOM, self.actual_location_prng)		#	memory string refrence
+
+		self.aux_entry(self.AT_SECURE, 0x0)		#	super secure m8
+		self.aux_entry(self.AT_EGID, 0x500)
+		self.aux_entry(self.AT_GID, 0x500)
+		self.aux_entry(self.AT_EUID, 0x500)
+		self.aux_entry(self.AT_UID, 0x500)
+
+		self.aux_entry(self.AT_ENTRY, self.BASE + self.target.program_entry_point) 		#	memory string refrence
+		self.aux_entry(self.AT_FLAGS, 0x0)		#	what are falgs?
+		self.aux_entry(self.AT_BASE, 0x0)
+
+		self.aux_entry(self.AT_PHNUM, self.target.program_header_count)
+		self.aux_entry(self.AT_PHENT, self.target.program_header_size)
+		self.aux_entry(self.AT_PHDR, self.BASE + self.target.program_header_start)
+
+		self.aux_entry(self.AT_CLKTCK, 100)
+		self.aux_entry(self.AT_PAGESZ, self.ELF_EXEC_PAGESIZE)
+		self.aux_entry(self.AT_HWCAP, 0x42424242)
+		self.aux_entry(self.AT_SYSINFO_EHDR, 0x41414141)
+
+
+
+
+
+		'''
+		self.aux_entry(self.AT_NULL, 0x0)
+		self.aux_entry(self.AT_NULL, 0x0)
+		self.aux_entry(self.AT_NULL, 0x0)
+		self.aux_entry(self.AT_NULL, 0x0)
+		self.aux_entry(self.AT_NULL, 0x0)
+		
+
+
 		self.aux_entry(self.AT_SYSINFO, 0x0) # hardware capabilites ? 
 		self.aux_entry(self.AT_SYSINFO_EHDR, 0x0) # hardware capabilites ? 
 
@@ -206,23 +291,15 @@ class stack_handler():
 		self.aux_entry(self.AT_GID, 0)
 		self.aux_entry(self.AT_EGID, 0)
 		self.aux_entry(self.AT_SECURE, 0)
-
-		'''
-
-
-		'''
-			
-#		self.aux_entry(self.AT_RANDOM, self.actual_location_prng)
-#		self.aux_entry(self.AT_EXECFN, self.actual_location_exec)
-#		self.aux_entry(self.AT_PLATFORM, self.actual_platform_location)
 		self.aux_entry(self.AT_NULL, 0)
+		'''
 
-		for key_val in reversed(self.aux_vector):
-			self.push_bytes(bytes(bytearray(struct.pack("<Q", key_val[0]))))
-			new_rsp = self.push_bytes(bytes(bytearray(struct.pack("<Q", key_val[1]))))
+		for key_val in self.aux_vector:
+			self.push_bytes(bytes(bytearray(struct.pack("<Q", key_val[1]))))
+			new_rsp = self.push_bytes(bytes(bytearray(struct.pack("<Q", key_val[0]))))
 			self.elf_info.append([hex(new_rsp), key_val[0], key_val[1]])
 
-		self.align_stack()
+#		self.align_stack()
 
 
 	#	print(self.random_prng_bytes())
@@ -309,6 +386,11 @@ class emulator(stack_handler, syscalls):
 		self.BASE = 0x400000
 		self.program_size =  1024 * 1024 * 8
 
+
+		#	PAGE_ZERO
+		self.emulator.mem_map(0, 0x100000)
+
+
 		self.emulator.mem_map(self.BASE, self.program_size)
 
 		section_virtual_map = {
@@ -319,12 +401,27 @@ class emulator(stack_handler, syscalls):
 			
 		}
 
+#		print(len(self.target.file_header))
+#		print(self.target.file_header[0xe8])
+#		exit(0)
+
+		self.emulator.mem_write(0x400000, self.target.file[:0x18f])
+
+		self.brk = 0x6b6000
+
 		for name, content in (self.target.sections_with_name).items():
 			section_map[name] = [ int(content["virtual_address"],16),  int(content["virtual_address"],16) + content["size"]]
 
+
 			if(content["type_name"] == "SHT_NOBITS" or not "SHF_ALLOC" in content["flags"]):
-				print("Skipped section %s" % (name))
+				print("Skipped section %s (%s)" % (name, content["flags"]))
 				continue
+
+			if("SHF_WRITE" in content["flags"]):
+				new_address = int(content["virtual_address"],16) + int(content["size"])
+		#		if(self.brk < new_address):
+		#			self.brk = new_address
+
 
 			file_offset = content["file_offset"]
 			file_end = file_offset + int(content["size"])
@@ -335,11 +432,14 @@ class emulator(stack_handler, syscalls):
 			self.emulator.mem_write(int(content["virtual_address"],16), section_bytes)
 
 
-			print("Loaded section %s at 0x%x -> 0x%x" % (name, start, end))
+			print("Loaded section %s at 0x%x -> 0x%x (%s)" % (name, start, end, content["flags"]))
 
 			if(content["size"] > 0):
 				section_virtual_map[name] = [start, end]
 
+
+
+	#	exit(0)
 
 		'''
 			stack memory
@@ -360,6 +460,9 @@ class emulator(stack_handler, syscalls):
 				-	already coded part of the linker
 				-	will have a static binary running before more work on dynamic
 		'''
+
+
+
 
 		address_space = {
 			"stack":[stack_adr, stack_adr + stack_size],
@@ -438,7 +541,100 @@ class emulator(stack_handler, syscalls):
 		)
 		'''
 
-		self.unicorn_debugger.add_breakpoint(0x434eb0)
+#		self.unicorn_debugger.add_breakpoint(0x458a80)
+
+
+#		self.unicorn_debugger.add_breakpoint(0x458805)
+	
+
+#		self.unicorn_debugger.add_breakpoint(0x458807)
+		
+
+
+#		self.unicorn_debugger.add_breakpoint(0x435d25)
+#		self.unicorn_debugger.add_breakpoint(0x435d7e)
+
+		self.unicorn_debugger.add_breakpoint(0x414253, "jump")
+		#	need to write back the value that should have been written at
+		#	0x414253
+		self.unicorn_debugger.add_hook("0x4131e0", {
+			0:{
+				"RBX":0x6b2800
+#				,
+#				"RIP":0x4131e4
+			}
+		},
+			{
+				"max_hit_count":0
+			}
+		)
+
+		self.unicorn_debugger.add_hook("0x413bef", {
+			0:{
+				"RBX":0x6b2800	
+			}
+		},
+			{
+				"max_hit_count":0
+			}
+		)
+
+		#	https://en.wikipedia.org/wiki/Advanced_Vector_Extensions
+
+		self.unicorn_debugger.add_hook("0x431750", {
+			0:{
+				"xmm0":"esi",
+				"RIP":0x431754 # unicorn reports wrong size!
+			}
+		},
+			{
+				"max_hit_count":0
+			}
+		)
+
+		self.unicorn_debugger.add_hook("0x431757", {
+			0:{
+				"ymm0":"xmm0",
+				"RIP":0x43175c # unicorn reports wrong size!
+			}
+		},
+			{
+				"max_hit_count":0
+			}
+		)
+
+
+		self.unicorn_debugger.add_hook("0x4317b7", {
+			0:{
+				"RIP":0x4317b0 # unicorn reports wrong size!
+			}
+		},
+			{
+				"max_hit_count":0
+			}
+		)
+
+
+		self.unicorn_debugger.add_hook("0x4317ac", {
+			0:{
+				"RIP":0x4317b4 # unicorn reports wrong size!
+			}
+		},
+			{
+				"max_hit_count":0
+			}
+		)
+
+
+#		self.unicorn_debugger.add_breakpoint(0x4317ac)
+
+#		self.unicorn_debugger.add_breakpoint(0x414274)
+
+
+#		self.unicorn_debugger.add_breakpoint(0x434eb0)
+
+#		self.unicorn_debugger.trace_registers("dl")#, pause=True)
+
 		self.unicorn_debugger.add_breakpoint(0x800e01, "exit")
 
 		self.address_register = {
@@ -453,21 +649,37 @@ class emulator(stack_handler, syscalls):
 		    bold_print(">>> Tracing call block at 0x%x(%s), block size = 0x%x" % (address, self.unicorn_debugger.determine_location(address)  , size))
 		    print(uc.reg_read(UC_X86_REG_RBP))
 
+
+
+
 		def hook_mem_invalid(uc, access, address, size, value, user_data):
 			bold_print(">>> Address hit {}({}), size {}".format(hex(address), self.unicorn_debugger.determine_location(address), size))
+
+			if access == UC_MEM_WRITE_UNMAPPED:
+				return True
+
+			if(address == 0xffffffffffffffd8):
+				return True
 
 		def hook_code(mu, address, size, user_data):  
 			#global self.unicorn_debugger
 			try:
+
+				if(address == 0x431750):
+					size = 0x4
+					
 				print('>>> (%x) Tracing instruction at 0x%x  [0x%x] (%s), instruction size = 0x%x' % (self.unicorn_debugger.instruction_count, address, address-self.BASE, self.unicorn_debugger.determine_location(address), size))
 
 				address_hex = hex(address-self.BASE)
 				if(self.address_register.get(address_hex, None) == None):
 					self.address_register[address_hex] = []
 
-				if(address == 0x400e01):
-					mu.emu_stop()
+		#		if(address == 0x400e01):
+		#			mu.emu_stop()
 
+		#		if(address == 0x458805):
+		#			mu.emu_stop()
+						
 				'''
 					baisc yeah, the database will take over here...
 				'''
@@ -484,7 +696,9 @@ class emulator(stack_handler, syscalls):
 
 
 				self.unicorn_debugger.tick(address, size)
+			
 			except  Exception as e:
+				print(e)
 				bold_print("exception stop ....")
 				print(e)
 				exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -495,6 +709,11 @@ class emulator(stack_handler, syscalls):
 
 		def hook_mem_access(uc, access, address, size, value, user_data):
 			#global self.unicorn_debugger
+
+			if(address < 0):
+				address = abs(address)
+				return True
+
 			if access == UC_MEM_WRITE:
 				bold_print(">>> Memory is being WRITE at 0x%x(%s), data size = %u, data value = 0x%x" %(address, self.unicorn_debugger.determine_location(address) , size, value))
 			else:
@@ -548,19 +767,34 @@ class emulator(stack_handler, syscalls):
 			print(current_string)
 			print("")
 
+
+
 		space_stack(end, pretty_print_bytes(self.emulator.mem_read(end, delta), aschii=False))
 		print("Size {}".format(delta))
 		print("RSP == 0x%x" % (self.emulator.reg_read(UC_X86_REG_RSP)))
+		print("RSP + 8 bits")
 
+		#mu.hook_add(UC_HOOK_INSN, hook_syscall32, None, 1, 0, UC_X86_INS_SYSCALL)
+		self.emulator.hook_add(UC_HOOK_INSN, hook_syscall64, self, 1, 0, UC_X86_INS_SYSCALL)
 
+#		print(self.brk)
 #		exit(0)
+
+		self.emulator.reg_write(UC_X86_REG_RSP, 0x19ffe98)
+
+		pretty_print_bytes(self.emulator.mem_read(self.emulator.reg_read(UC_X86_REG_RSP), 8))
+		pretty_print_bytes(self.emulator.mem_read(0x19ffe98, 8))
+#		input("press enter")
+
+	#	exit(0)
+
 
 		self.emulator.reg_write(UC_X86_REG_EFLAGS, 0x202)
 
 		self.emulator.hook_add(UC_HOOK_INTR, hook_intr)
 #		self.emulator.hook_add(UC_HOOK_INSN, hook_syscall, None, 1, 0, UC_X86_INS_SYSCALL)
 
-		self.emulator.hook_add(UC_ERR_WRITE_UNMAPPED, hook_mem_invalid)
+#		self.emulator.hook_add(UC_ERR_WRITE_UNMAPPED, hook_mem_invalid)
 		self.emulator.hook_add(UC_HOOK_MEM_INVALID, hook_mem_invalid)
 
 

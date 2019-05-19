@@ -22,17 +22,21 @@ What do you expect from a reverse engineering tool? You want quick insight into 
 #  Status with unicorn (dynamic side)
 Currently I am running gdb and unicorn side by side on some static binaries, trying to get unicorn to run through the entire program flawlessly. Seems like special instructions like cpuid and xgetbv ~~and instructions that affect the eflags~~ give different results from gdb ... ~~Also as far as I know, implementing system specific system calls also has to be done~~ (written support for two syscalls, you can now run hello world). The debugger I wrote for unicorn does help (a lot) with root cause analysis, so I hope to see some meaningful progress soon. 
 
-**Update: Even though I looked at the disassembly for \_dl_aux_init for way to long, it didn't occur to me that I forgot to implement a way to push the aux_vector onto the stack**
+**Update** : Even though I looked at the disassembly for \_dl_aux_init for way to long, it didn't occur to me that I forgot to implement a way to push the aux_vector onto the stack. I created decoding_the_stack.txt where I do some rubber duck debugging, not all progress is realated to actual code!
+
+**Update 2 : Made a lot of progress recently. Implemented more syscalls and fixed the aux vector (so I passed through \_dl_aux_init). Special instructions slows me down again. Unicorn reports wrong size/does something weird with these instructions vmovdqu/vpbroadcastb/vmovd so I have opened a Unicorn issue and currently reading Qemu source code. https://github.com/unicorn-engine/unicorn/issues/1088 given that keystone and unicorn disagrees, I hope I did nothing wrong...**
 
 #  Do I think I can make a better tool than IDA? 
-It's not about that. I started this project to hopefully see some changes in reverse engineering landscape. Things have been still there for a while and competition is needed to bring on changes with impact.
+It's not about that. I started this project to hopefully see some changes in reverse engineering landscape. Things have been still there for a while and competition is needed to bring on changes with impact. I think this is competing against QIRA though.
 
 #	Work in progress / ideas
 -	unicorn support
 	-	see what each instruction has done to the memory and other registers
 		-	basically like gdb break on every instruction
 	-	rewind, go to the previous state just by moving the arrow keys(like QIRA)...
-	-	dynamic code grapths?
+	-	only see where you have been in a binary with dynamic code grapths!
+	-	custom strace! Since I have to code all the syscalls, I can eaisly monitor them! Monitoring syscalls could(should?) make finding bugs like use after free easier!
+	
 -	**integrate dwarf data**
 	-	you don't need a decompiler when you have dwarf!
 -	make it easy to store comments and patches made to the binary. 

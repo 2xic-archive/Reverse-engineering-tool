@@ -20,6 +20,43 @@ def pretty_print_bytes(results, aschii=True):
 	print("")
 	return ''.join('{:02x}'.format(x) for x in results )
 
+def space_stack(end, string, length=8, count=4):
+	current_string = ""
+	current_string_aschii = ""
+	hex_stirng = ""
+	jump_count = 0
+	for index, char in enumerate(string):
+		#print(char, end="")
+		current_string += char
+		hex_stirng += char
+
+		if(len(hex_stirng) == 2):
+			if(0 < int(hex_stirng, 16) < 128):
+				current_string_aschii += chr(int(hex_stirng, 16))
+			else:
+				current_string_aschii += ""
+			hex_stirng = ""
+
+		if(len(current_string) == length):
+			if(jump_count == 0):
+				print("{}".format(hex(end)), end="	")
+
+			print(current_string, end=" ")
+
+			#	+ "\t" + current_string_aschii
+
+			current_string = ""
+			jump_count += 1
+					
+			if(jump_count % 4 == 0 and jump_count > 0):
+				end += 16
+				print("\t|\t{} \n{}".format( current_string_aschii, hex(end)), end="	")
+				current_string_aschii = ""
+		
+	print(current_string)
+	print("")
+
+
 
 class unicorn_debug():
 	def __init__(self, unicorn, section_virtual_map, section_map, address_space):
@@ -229,6 +266,28 @@ class unicorn_debug():
 		else:
 			print("Add a address with size")
 
+	def peek_stack(self, tokens):
+		stack_peek = self.unicorn.mem_read(self.unicorn.reg_read(UC_X86_REG_RSP) - 8, 100 * 8)
+#		pretty_print_bytes(stack_peek)
+		space_stack(self.unicorn.reg_read(UC_X86_REG_RSP) + 100 * 8, pretty_print_bytes(stack_peek, aschii=False))
+	
+
+	def read_2_null(self, start):
+		results = []
+		string = []
+		while True:
+			byte_location = self.unicorn.mem_read(start, 1)
+			results.append(byte_location[0])
+			string.append(chr(byte_location[0]))
+			if(byte_location[0] == 0):
+				break
+			start += 1
+		return bytes(bytearray(results)), "".join(string)
+
+	def read_null_terminated(self, tokens):
+		results, string = read_2_null(tokens[0])
+		pretty_print_bytes(bytes(bytearray(results)))
+
 	def handle_commands(self, memory_access=False):
 		if(memory_access):
 			command = input("Memory access hit, write a command or press enter to continue\n")
@@ -237,7 +296,9 @@ class unicorn_debug():
 		commands = {
 			"view":self.get_register,
 			"stepi":self.step,
-			"memory":self.memory_handle
+			"memory":self.memory_handle,
+			"read_2_null":self.read_null_terminated,
+			"stack_peek":self.peek_stack
 		}
 		if(len(command) > 0):
 			command_tokens = command.split(" ")
@@ -303,7 +364,11 @@ class unicorn_debug():
 					if("RIP" in register.upper()):
 						hooked_IP = True
 					register = eval("UC_X86_REG_{}".format(register.upper()))
-					self.unicorn.reg_write(register, value)
+					if(type(value) == str):
+						register_value = self.unicorn.reg_read(eval("UC_X86_REG_{}".format(value.upper())))
+						self.unicorn.reg_write(register, register_value)
+					else:
+						self.unicorn.reg_write(register, value)
 			else:
 				print("instruction got hooked")
 				for register, value in self.hook_points[hook_name][0].items():				
@@ -350,6 +415,8 @@ class unicorn_debug():
 					print("will exit after commands")
 					if not self.handle_commands() == "stepi":
 						exit(0)
+				elif(self.current_breakpoint == "jump"):
+					self.unicorn.reg_write(UC_X86_REG_RIP, self.current_address + self.current_size)
 				else:
 					self.handle_commands()
 			else:
@@ -388,14 +455,6 @@ class unicorn_debug():
 			print(exc_type, fname, exc_tb.tb_lineno)
 			self.log_file.close()
 			raise Exception("error in debugger")
-
-	def print_registers(self):
-		bold_print("\tRDI = 0x%x, RAX = 0x%x, RSP = 0x%x, RCX = 0x%x" % (self.unicorn.reg_read(UC_X86_REG_RDI),
-													self.unicorn.reg_read(UC_X86_REG_RAX),
-													self.unicorn.reg_read(UC_X86_REG_RSP),
-													self.unicorn.reg_read(UC_X86_REG_RCX)
-													)
-		)
 
 	def check_section_map(self, start, end, real_name):
 		for name, value in self.section_virtual_map.items():

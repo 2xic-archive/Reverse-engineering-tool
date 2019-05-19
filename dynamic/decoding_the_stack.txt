@@ -1,4 +1,5 @@
 
+
 So I have read that the memory style should be id and then key for the auxiliary vector and that the size should be 4 bytes.
 However this does not seem to be correct(or there are something I am missing) based on the stack dump. I found this http://refspecs.linuxbase.org/LSB_1.3.0/IA64/spec/auxiliaryvector.html and there it is 8 byte for the type, 8 byte for the value, 8 byte for the pointer and 8 byte for the function pointer value. Looking at the stack dump from gdb this seems more correct....
 
@@ -130,8 +131,8 @@ Renaming binary ONLY
 
 I wounder why I didn't see the strings. oh maybe because I forgot to dump the entire stack :=) (grr!)
 Dumping the entire stack
-	0x7fffffffec30:	0x00000001	0x00000000	0xffffee34	0x00007fff
-	0x7fffffffec40:	0x00000000	0x00000000	0xffffee4f	0x00007fff
+	0x7fffffffec30:	0x00000001	0x00000000	[0xffffee34	0x00007fff](program name)
+	0x7fffffffec40:	0x00000000	0x00000000[NULL]	0xffffee4f	0x00007fff
 	0x7fffffffec50:	0xffffee83	0x00007fff	0xffffee92	0x00007fff
 	0x7fffffffec60:	0xffffeea4	0x00007fff	0xffffeeb6	0x00007fff 			<-	all of that is envp !
 	0x7fffffffec70:	0xffffeec0	0x00007fff	0xffffeedd	0x00007fff
@@ -140,25 +141,26 @@ Dumping the entire stack
 	0x7fffffffeca0:	0xffffef32	0x00007fff	0xffffef46	0x00007fff
 	0x7fffffffecb0:	0xffffef56	0x00007fff	0xffffef6a	0x00007fff
 	0x7fffffffecc0:	0xffffef72	0x00007fff	0xffffef7f	0x00007fff
-	0x7fffffffecd0:	0xffffef9b	0x00007fff	0x00000000	0x00000000		   <- envp end!
+	0x7fffffffecd0:	0xffffef9b	0x00007fff	0x00000000	0x00000000[NULL]		   <- envp end!
 
 	0x7fffffffece0:	0x00000021[AT_SYSINFO_EHDR]	0x00000000	0xf7ffd000	0x00007fff
-	0x7fffffffecf0:	0x00000010	0x00000000	0x078bfbff	0x00000000
-	0x7fffffffed00:	0x00000006	0x00000000	0x00001000	0x00000000
-	0x7fffffffed10:	0x00000011	0x00000000	0x00000064	0x00000000
-	0x7fffffffed20:	0x00000003	0x00000000	0x00400040	0x00000000
-	0x7fffffffed30:	0x00000004	0x00000000	0x00000038	0x00000000
-	0x7fffffffed40:	0x00000005	0x00000000	0x00000006	0x00000000
-	0x7fffffffed50:	0x00000007	0x00000000	0x00000000	0x00000000
-	0x7fffffffed60:	0x00000008	0x00000000	0x00000000	0x00000000
-	0x7fffffffed70:	0x00000009	0x00000000	0x00400990	0x00000000
-	0x7fffffffed80:	0x0000000b	0x00000000	0x00000000	0x00000000
-	0x7fffffffed90:	0x0000000c	0x00000000	0x00000000	0x00000000
-	0x7fffffffeda0:	0x0000000d	0x00000000	0x00000000	0x00000000
+	0x7fffffffecf0:	0x00000010[AT_HWCAP]	0x00000000	0x078bfbff	0x00000000
+	0x7fffffffed00:	0x00000006[AT_PAGESZ]	0x00000000	0x00001000	0x00000000
+	0x7fffffffed10:	0x00000011[AT_CLKTCK]	0x00000000	0x00000064	0x00000000
+	0x7fffffffed20:	0x00000003[AT_PHDR]	0x00000000	0x00400040	0x00000000
+	0x7fffffffed30:	0x00000004[AT_PHENT]	0x00000000	0x00000038	0x00000000
+	0x7fffffffed40:	0x00000005[AT_PHNUM]	0x00000000	0x00000006	0x00000000
+	0x7fffffffed50:	0x00000007[AT_BASE]	0x00000000	0x00000000	0x00000000
+	0x7fffffffed60:	0x00000008[AT_FLAGS]	0x00000000	0x00000000	0x00000000
+	0x7fffffffed70:	0x00000009[AT_ENTRY]	0x00000000	0x00400990	0x00000000
+	0x7fffffffed80:	0x0000000b[AT_UID]	0x00000000	0x00000000	0x00000000
+	0x7fffffffed90:	0x0000000c[AT_EUID]	0x00000000	0x00000000	0x00000000
+	0x7fffffffeda0:	0x0000000d[AT_GID]	0x00000000	0x00000000	0x00000000
 	0x7fffffffedb0:	0x0000000e[AT_EGID]	0x00000000	0x00000000	0x00000000
 
-	0x7fffffffedc0:	0x00000017	0x00000000	0x00000000	0x00000000
-	0x7fffffffedd0:	0x00000019	0x00000000	0xffffee19	0x00007fff
+
+	0x7fffffffedc0:	0x00000017[AT_SECURE]	0x00000000	0x00000000	0x00000000
+	0x7fffffffedd0:	0x00000019[AT_RANDOM]	0x00000000	0xffffee19	0x00007fff
 	0x7fffffffede0:	0x0000001f[AT_EXECFN]	0x00000000	0xffffefdd	0x00007fff
 	0x7fffffffedf0:	0x0000000f[AT_PLATFORM]	0x00000000	0xffffee29	0x00007fff
 	0x7fffffffee00:	0x00000000[AT_NULL]		0x00000000	0x00000000	0x00000000
@@ -169,23 +171,28 @@ Dumping the entire stack
 
 
 	0x36387880	0x0034365f 					(this sohuld be where the program data is stored
-											checking the aux pointer (0xffffee29 << 8) | (0x00007fff & 0xFF) you get 0xffffee29ff
-
 											yes ! past me, you are correct. Check it with the nice stack string functioN!
+
+											x86_64
 	)
 
-	0x7fffffffee30:	0x00000000	0x6f6f722f	0x65742f74	0x742f7473
-	0x7fffffffee40:	0x5f747365	0x616e6962	0x73656972	0x5300732f
+	0x7fffffffee30:	0x00000000	0x6f6f722f	0x65742f74	0x742f7473  /root/test/test_binaries/s
+	0x7fffffffee40:	0x5f747365	0x616e6962	0x73656972	0x5300732f  S
 	
 	*	removed 3 entries, you know your ip is on the stack?	*
 
-	0x7fffffffee80:	0x5f003232	0x73752f3d	0x69622f72	0x64672f6e
-	0x7fffffffee90:	0x4c4f0062	0x44575044	0x6f722f3d	0x742f746f
-	0x7fffffffeea0:	0x00747365	0x5f474458	0x53534553	0x5f4e4f49
-	0x7fffffffeeb0:	0x313d4449	0x53550037	0x723d5245	0x00746f6f
+	0x7fffffffee80:	0x5f003232	0x73752f3d	0x69622f72	0x64672f6e 	22
+	0x7fffffffee90:	0x4c4f0062	0x44575044	0x6f722f3d	0x742f746f 	_=/usr/bin/gdb
+	0x7fffffffeea0:	0x00747365	0x5f474458	0x53534553	0x5f4e4f49  est
+	0x7fffffffeeb0:	0x313d4449	0x53550037	0x723d5245	0x00746f6f  XDG_SESSION_ID=17
+																	USER=root
+
 	0x7fffffffeec0:	0x3d445750	0x6f6f722f	0x65742f74	0x742f7473
 	0x7fffffffeed0:	0x5f747365	0x616e6962	0x73656972	0x4e494c00
 	0x7fffffffeee0:	0x333d5345	0x4f480032	0x2f3d454d	0x746f6f72
+																	PWD=/root/test/test_binaries
+																	LINES=32
+																	HOME=/root
 
 	*	removed 2 entries, you know your ip is on the stack?	*
 	
@@ -204,9 +211,353 @@ Dumping the entire stack
 	0x7fffffffefd0:	0x732f3a6e	0x3a6e6962	0x6e69622f	0x6f722f00
 	0x7fffffffefe0:	0x742f746f	0x2f747365	0x74736574	0x6e69625f
 	0x7fffffffeff0:	0x65697261	0x00732f73	0x00000000	0x00000000
+																	22
+																	SSH_TTY=/dev/pts/3
+																	COLUMNS=114
+																	MAIL=/var/mail/root
+																	SHELL=/bin/bash
+																	TERM=xterm-256color
+																	SHLVL=1
+																	LOGNAME=root
+																	XDG_RUNTIME_DIR=/run/user/0
+																	PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+																	/root/test/test_binaries/s
 
 
-Okay, so I wrote a basic script to check the hex data to verify that the strigns are on the stack. So yeah, they are. So now I need to push thosse strings onto the stack again!
+
+Okay, so I wrote a basic script to check the hex data to verify that the strigns are on the stack. So yeah, they are. So now I need to push thosse strings onto the stack again(me talking to unicorn)!
+
+
+
+	UNICORN DUMP!!!
+			0x19ffe61	01000000[argc] 00000000 b8ff9f01[ENVP] 00000000
+
+							#	0x19ffe49
+
+			0x19ffe71	21000000[AT_SYSINFO_EHDR] 00000000 41414141 00000000
+			0x19ffe81	10000000[AT_HWCAP] 00000000 42424242 00000000
+			0x19ffe91	06000000[AT_PAGESZ] 00000000 00100000 00000000
+			0x19ffea1	11000000[AT_CLKTCK] 00000000 64000000 00000000
+			0x19ffeb1	03000000[AT_PHDR] 00000000 40004000 00000000
+			0x19ffec1	04000000[AT_PHENT] 00000000 38000000 00000000
+			0x19ffed1	05000000[AT_PHNUM] 00000000 06000000 00000000
+			0x19ffee1	07000000[AT_BASE] 00000000 00000000 00000000
+			0x19ffef1	08000000[AT_FLAGS] 00000000 00000000 00000000
+			0x19fff01	09000000[AT_ENTRY] 00000000 90098000 00000000
+			0x19fff11	0b000000[AT_UID] 00000000 00000000 00000000
+			0x19fff21	0c000000[AT_EUID] 00000000 00000000 00000000
+			0x19fff31	0d000000[AT_GID] 00000000 00000000 00000000
+			0x19fff41	0e000000[AT_EGID] 00000000 00000000 00000000
+			0x19fff51	17000000[AT_SECURE] 00000000 00000000 00000000
+			0x19fff61	19000000[AT_RANDOM] 00000000 a1ff9f01 00000000
+			0x19fff71	1f000000[AT_EXECFN] 00000000 d5ff9f01 00000000
+			0x19fff81	0f000000[AT_PLATFORM] 00000000 b1ff9f01 00000000
+			0x19fff91	00000000[AT_NULL] 00000000 00000000 00000000
+
+				(	am I missing some aligning ? )
+
+			0x19fffa1	8a36d43c 34eafdcd a7e0d644 b38e2b0a 			(this is random data!)
+
+
+			0x19fffb1	7838365f 36340050([x86_64]) 57443d2f 726f6f74 
+			0x19fffc1	2f746573 742f7465 73745f62 696e6172
+			0x19fffd1	69657300 2f726f6f 742f7465 73742f74
+			0x19fffe1	6573745f 62696e61 72696573 2f730000
+			0x19ffff1	00000000 00000000 00000000 0000
+
+
+
+
+
+
+
+0x19ffe49	01000000 00000000 00000000 00000000
+0x19ffe59	21000000 00000000 41414141 00000000
+0x19ffe69	10000000 00000000 42424242 00000000
+0x19ffe79	06000000 00000000 00100000 00000000
+0x19ffe89	11000000 00000000 64000000 00000000
+0x19ffe99	03000000 00000000 40004000 00000000
+0x19ffea9	04000000 00000000 38000000 00000000
+0x19ffeb9	05000000 00000000 06000000 00000000
+0x19ffec9	07000000 00000000 00000000 00000000
+0x19ffed9	08000000[RSP 		ends here] 00000000 00000000 00000000
+0x19ffee9	09000000[RSP 		walks here....] 00000000 90098000 00000000
+0x19ffef9	0b000000 00000000 00000000 00000000
+0x19fff09	0c000000 00000000 00000000 00000000
+0x19fff19	0d000000 00000000 00000000 00000000
+0x19fff29	0e000000 00000000 00000000 00000000
+0x19fff39	17000000 00000000 00000000 00000000
+0x19fff49	19000000 00000000 89ff9f01 00000000
+0x19fff59	1f000000 00000000 e4ff9f01 00000000
+0x19fff69	0f000000 00000000 99ff9f01 00000000
+0x19fff79	00000000 00000000 00000000 00000000
+0x19fff89	a70f59be fac517df 82e74914 43cf8ed5
+0x19fff99	7838365f 36340000 00000000 00000000
+0x19fffa9	00000000 00000000 00000000 00000000
+0x19fffb9	00000000 00000000 00000000 00000000
+0x19fffc9	00000000 00000000 00000000 00000000
+0x19fffd9	00000000 00000000 0000002f 726f6f74
+0x19fffe9	2f746573 742f7465 73745f62 696e6172
+0x19ffff9	6965732f 7300
+
+
+
+
+
+
+
+
+
+
+
+
+
+Okay so wer are now in _dl_discover_osversion, teh stack is nicely used to store some data. A lot of data actually. 
+
+
+0x7fffffffeac8:	0x756e6547	0x00000000	0x00400aae	0x00000000
+0x7fffffffead8:	0x00400bf4	0x00000000	0x00000000	0x00000000
+0x7fffffffeae8:	0x00000000	0x00000001	0xffffec18	0x00007fff
+0x7fffffffeaf8:	0x00400aae	0x00000000	0x00000000	0x00000000
+0x7fffffffeb08:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffeb18:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffeb28:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffeb38:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffeb48:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffeb58:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffeb68:	0x00000000	0x00000000	0x756e6547	0x00000000
+0x7fffffffeb78:	0x00400aae	0x00000000	0x00000001	0x00000000
+0x7fffffffeb88:	0xffffec18	0x00007fff	0x00401690	0x00000000
+0x7fffffffeb98:	0x004010c2	0x00000000	0xffffec08	0x00007fff
+0x7fffffffeba8:	0x0040111f	0x00000000	0x00401720	0x00000000
+0x7fffffffebb8:	0x00000000	0x00000000	0x00000006	0x0000003c
+0x7fffffffebc8:	0x00000001	0x00000030	0x00000000	0x00000000
+0x7fffffffebd8:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffebe8:	0x00000000	0x00000000	0x00000000	0x00000000
+---Type <return> to continue, or q <return> to quit---
+0x7fffffffebf8:	0x004009ba	0x00000000	0xffffec08	0x00007fff
+0x7fffffffec08:	0x00000000	0x00000000	0x00000001	0x00000000
+0x7fffffffec18:	0xffffee1c	0x00007fff	0x00000000	0x00000000
+0x7fffffffec28:	0xffffee42	0x00007fff	0xffffee77	0x00007fff
+0x7fffffffec38:	0xffffee86	0x00007fff	0xffffee98	0x00007fff
+0x7fffffffec48:	0xffffeeab	0x00007fff	0xffffeeb5	0x00007fff
+
+
+	after the syscall.....
+	arguments are pushed to the stack
+		-	note to self : check if the size is static.	It should be given the structure ?
+
+		-	I checked
+				   The length of the arrays in a struct utsname is unspecified (see
+					NOTES); the fields are terminated by a null byte ('\0').
+
+			However...
+
+					 The length of the fields in the struct varies.  Some operating
+		       systems or libraries use a hardcoded 9 or 33 or 65 or 257.  Other
+		       systems use SYS_NMLN or _SYS_NMLN or UTSLEN or _UTSNAME_LENGTH.
+		       Clearly, it is a bad idea to use any of these constants; just use
+		       sizeof(...).  Often 257 is chosen in order to have room for an
+		       internet hostname.
+
+		   Looking at the stack with my eyes it looks like it has a hardcoded size.
+		   it seems to be 64 bytes. (4 * 4) * 4
+
+		   future me, past me you had a off by one ! its size is 65!
+
+0x7fffffffe8f0:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffe900:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffe910:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffe920:	0x00000000	0x00000000	0x00000000	0x00000000
+
+0x7fffffffe930:	0x756e694c	0x00000078	0x00000000	0x00000000			sys_anme
+0x7fffffffe940:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffe950:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffe960:	0x00000000	0x00000000	0x00000000	0x00000000
+
+0x7fffffffe970:	0x6c757600	0x672e7274	0x74736575	0x00000000			node_name
+0x7fffffffe980:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffe990:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffe9a0:	0x00000000	0x00000000	0x00000000	0x00000000
+
+0x7fffffffe9b0:	0x2e340000	0x2d302e39	0x6d612d38	0x00343664			release
+0x7fffffffe9c0:	0x00000000	0x00000000	0x00000000	0x00000000				->	at 0x435d38
+0x7fffffffe9d0:	0x00000000	0x00000000	0x00000000	0x00000000				->	should point here 		(this is actually the something....)
+0x7fffffffe9e0:	0x00000000	0x00000000	0x00000000	0x00000000
+
+0x7fffffffe9f0:	0x23000000	0x4d532031	0x65442050	0x6e616962			version
+0x7fffffffea00:	0x392e3420	0x3031312e	0x642b332d	0x75396265
+0x7fffffffea10:	0x32282036	0x2d383130	0x302d3031	0x00002938
+0x7fffffffea20:	0x00000000	0x00000000	0x00000000	0x00000000
+
+0x7fffffffea30:	0x00000000	0x5f363878	0x00003436	0x00000000			machine
+0x7fffffffea40:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffea50:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffea60:	0x00000000	0x00000000	0x00000000	0x00000000
+
+0x7fffffffea70:	0x00000000	0x6f6e2800	0x0029656e	0x00000000			domainname
+0x7fffffffea80:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffea90:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffeaa0:	0x00000000	0x00000000	0x00000000	0x00000000
+
+0x7fffffffeab0:	0x00000000	0x00000000	0x00401690	0x00000000			done
+
+(where it was before the syscall)
+0x7fffffffeac0:	0x00401720	0x00000000	0x756e6547	0x00000000
+0x7fffffffead0:	0x00400aae	0x00000000	0x00400bf4	0x00000000
+0x7fffffffeae0:	0x00000000	0x00000000	0x00000000	0x00000001
+0x7fffffffeaf0:	0xffffec18	0x00007fff	0x00400aae	0x00000000
+0x7fffffffeb00:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffeb10:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffeb20:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffeb30:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffeb40:	0x00000000	0x00000000	0x00000000	0x00000000
+---Type <return> to continue, or q <return> to quit---
+0x7fffffffeb50:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffeb60:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffeb70:	0x756e6547	0x00000000	0x00400aae	0x00000000
+0x7fffffffeb80:	0x00000001	0x00000000	0xffffec18	0x00007fff
+0x7fffffffeb90:	0x00401690	0x00000000	0x004010c2	0x00000000
+0x7fffffffeba0:	0xffffec08	0x00007fff	0x0040111f	0x00000000
+0x7fffffffebb0:	0x00401720	0x00000000	0x00000000	0x00000000
+0x7fffffffebc0:	0x00000006	0x0000003c	0x00000001	0x00000030
+0x7fffffffebd0:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffebe0:	0x00000000	0x00000000	0x00000000	0x00000000
+0x7fffffffebf0:	0x00000000	0x00000000	0x004009ba	0x00000000
+0x7fffffffec00:	0xffffec08	0x00007fff	0x00000000	0x00000000
+
+
+
+
+
+
+Now I hit __libc_setup_tls, what is tls? It can't be related to tls certificates???
+	-	no
+
+	-	found this 	https://stackoverflow.com/questions/30377020/on-linux-is-tls-set-up-by-the-kernel-or-by-libc-or-other-language-runtime
+
+		seems to be thread-local storage?
+
+
+	-	https://stuff.mit.edu/afs/sipb/project/gcc-3.2/OldFiles/share/glibc-2.3.1//sysdeps/generic/libc-tls.c
+
+
+	-	note to future self, __libc_setup_tls was looking at the start of the binary,
+		I thougth it was part of the program header, but It wasn't will look more at it later. Hardcoded for now.
+
+
+Congrats! You cheated your way to brk!
+	-	new syscall manpage!
+		http://man7.org/linux/man-pages/man2/brk.2.html
+
+
+		(seems like I have miscalculated the BRK from segments, so using static fro now.)
+		Looking at the brk syscall....
+			(gdb) info registers
+			rax            0xc	12
+			rcx            0xc	12
+
+			r11            0x206	518
+
+
+
+				(gdb) info registers
+				rax            0x6b6000	7036928
+				rcx            0x400994	4196756
+
+				r11            0x346	838
+
+
+
+			rax            0xc	12
+			rbx            0x6b6000	7036928
+			rcx            0xc	12
+			rdx            0x6b6000	7036928
+
+
+				rax            0x6b71c0	7041472
+				rbx            0x6b6000	7036928
+				rcx            0x400994	4196756
+				rdx            0x6b6000	7036928
+
+		also brk seems to be sbrk? Only size adjustment...
+
+Found this https://filippo.io/linux-syscall-table/ , nice table.
+	-	I hit the arch_prctl, it is kinda weired. Should I assign the program a PID? Maybe, however the load and restore regsiter functions are usign ptrace? need to check it deeper. 
+
+
+	-	Hardcoded it for now since it is only used once!
+
+
+NEW SYScall  0x59!
+	-	readlink
+		-	not sure how I will fix this in the futrue.
+			-	should the user be forced to provide full path?
+			-	I can find it with the cwd tho, so it can eaisly be found if not provided full path.
+
+
+Now I got to ptmalloc_init, it tries to read from 0xffffffffffffffd8 (-40), but that is unallocated... 
+	-	is this because I did something bad at arch_prctl?
+
+	-	nope !  mov        rax, 0xffffffffffffffd8
+
+		-	am I supposed to handle this ? 
+		-	like fs is zero
+		-	fs should read from 0 to -40 ?
+		-	strange...
+		
+ ptmalloc_init
+ 	-	0000000000414274         mov        rbx, qword [rbp] 
+ 	-	rbp should be pointing to 0xffffee42 ? (gdb)
+ 	-	that is a envp variable...
+ 	-	hm...
+ 		-	that points to 0x00000008
+
+ 		-	NO! You looked at 0x7fffffffed40....
+ 		-	0x7fffffffee40 points to the start of the envp....
+ 		-	the one regarding SSH!
+
+ 		-	maybe this is like the aux, looking for dicts?
+ 		-	it tries to find the end....
+
+	 		-	yes!
+	 		-	seems like it looks for AIL=/var
+
+	 			-	actuall looking at all the cmp instructions, it seems to look 
+	 				0x4d414c4c4f435f
+	 				(MALLOC_)
+	 			-	past me, look at the static data, not the gdb breakpoint data....
+
+	 		-	okay so it check if we have defined some malloc ? 
+	 			- I think you can apply some malloc rules as envp, so I guess this is where it checks for that ?
+ getenv	
+ 	-	name->action should be obvious...
+
+
+ 	-	gdb and unicorn split at 0x406cc3
+ 		-	because unicorn has zero envp added (currently)
+ 		and gdb has many...
+ 	-	so I guess this is just to patch?
+ 	-	yes, given what I see this seems to be the case. However it seems to pop a lot from the stack.... I wounder why... It would be logical to just pop of one value? I think each envp string was zero terminated?
+
+
+now at __memset_avx2_unaligned_erms
+	-	did I actually find a unicorn bug this time?
+		-	I need to patch the instruction....
+
+	-	me reading qemu
+		-	disas_insn
+			-	this function seems to do some calcs of size
+				tb->size = pc_ptr - pc_start;
+				
+		-	why is there no nice way to have qemu as a library...			
+			-	maybe why unicron is so nice...
+
+
+
+
+
+
 
 
 

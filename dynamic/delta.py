@@ -40,6 +40,23 @@ while i < len(unicorn) and j < len(gdb):
 				j += 3 * 2
 				print("stuck in loop?")
 				continue
+
+			if(unicorn[i].strip() == "0x4142e0" and "0x41427d" in gdb[j]):
+				#j += 3 * 2
+				while not "0x4142e0" in gdb[j]:
+					j += 1
+
+				print("stuck in loop?")
+				continue
+			
+			if(unicorn[i].strip() == "0x406cc5" and "0x406cdd" in gdb[j]):
+				while not "0x406c96" in gdb[j]:
+					j += 1
+				i += 2
+				print("stuck in loop?")
+				continue
+			
+			print("error on line")
 			print(((unicorn[i].strip(), gdb[j].strip().split(" ")[1] )))
 			exit(0)
 		else:

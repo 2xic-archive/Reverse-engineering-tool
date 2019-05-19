@@ -232,6 +232,9 @@ class elf:
 			self.section_headers_size = int_from_bytearray(self.read_with_offset(0x3A, 2))
 			self.section_headers_count = int_from_bytearray(self.read_with_offset(0x3C, 2))
 			self.section_headers_names = int_from_bytearray(self.read_with_offset(0x3E, 2))		
+
+			self.file_header_size = int_from_bytearray(self.read_with_offset(0x34, 2))
+
 		else:
 			self.program_entry_point = int_from_bytearray(self.read_with_offset(0x18, 4))
 
@@ -243,7 +246,11 @@ class elf:
 			self.section_headers_size = int_from_bytearray(self.read_with_offset(0x2E, 2))
 			self.section_headers_count = int_from_bytearray(self.read_with_offset(0x30, 2))
 			self.section_headers_names = int_from_bytearray(self.read_with_offset(0x32, 2))
-		
+
+			self.file_header_size = int_from_bytearray(self.read_with_offset(0x28, 2))
+
+
+		self.file_header = self.file[:self.file_header_size]		
 
 		for i in range(self.section_headers_count):
 			self.section_headers[i] = self.parse_section_header(self.section_headers_start + self.section_headers_size * i)
