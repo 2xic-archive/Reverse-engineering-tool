@@ -51,7 +51,6 @@ class stack_handler():
 		self.emulator.mem_write(self.stack_pointer + index, bytes_data)
 		return (index + len(bytes_data))
 
-
 	def add_zero_byte(self):
 		return self.push_bytes(bytes(bytearray(1)))
 
@@ -94,36 +93,9 @@ class stack_handler():
 		start = self.stack_pointer
 		print("Stack starts here {}".format(hex(start)))
 
-		#	start the stack with zeros
-#		self.push_bytes(bytes(16))
-		#	add the binary name
-#		self.align_stack()
-
 		self.actual_location_exec = 0xdeadbeef # self.push_string("/root/test/test_binaries/s")
-
-		'''
-			now it wants the names of the enovriment varaibles...
-		'''
-#		self.actual_envp =	self.push_string("PWD=/root/test/test_binaries")
-
-
-	#	self.arch_align_stack()
-
-
-#		self.push_string("PWD=/root/test/test_binaries")
-
 		self.actual_platform_location = self.push_string("x86_64")
 		self.actual_location_prng = self.push_bytes(self.random_prng_bytes())
-
-
-#		self.push_string("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
-
-
-		self.ei_index = 0
-
-		#self.arch_align_stack()
-
-
 
 		'''
 			*	should push platform string
@@ -137,55 +109,19 @@ class stack_handler():
 		envp = 1
 		items = (argc + 1) + (envp + 1) + 1
 
-		print("what ? {}".format(hex(items)))
-
-#		new_point = self.stack_round(items)
-#		self.stack_set(new_point)
-		
-
-	#	self.push_bytes(struct.pack("<Q", 0)) # argv
-#		self.push_bytes(struct.pack("<Q", self.actual_envp)) # argv
-
 		self.push_bytes(struct.pack("<Q", 0)) # null envp
-
 		self.push_bytes(struct.pack("<Q", 0)) # null arg
 		self.push_bytes(struct.pack("<Q", self.actual_location_exec)) # argc
 		self.push_bytes(struct.pack("<Q", 1)) # argc
 
 
-
-#		argv = new_point
-#		envp = argv 
-#		while argc > 0:
-#			argc -= 1
-
-
-
-#		new_sp = new_point - items  - self.ei_index
-
-
-#		self.push_bytes(struct.pack("<Q", 0xdeadbeef)) # program name ;)
-
-
-
-#		self.push_bytes(struct.pack("<Q", 0)) # no ergv
-#		self.push_bytes(struct.pack("<Q", 0)) # no argv
-
-#		self.push_bytes(struct.pack("<Q", 1)) # psuh argc
-
-#		self.align_stack()
-
 		end = self.stack_pointer
 
-
-#		self.stack_set(end - 8)
 
 		print("Stack ends here {}".format(hex(end)))
 		delta = (start - end)
 
 		self.align_stack()
-
-#		pretty_print_bytes(self.emulator.mem_read(end, delta))
 
 		print(delta)
 			
@@ -197,8 +133,6 @@ class stack_handler():
 
 
 	def aux_entry(self, key_id, val):
-		self.ei_index += 1
-		self.ei_index += 1
 		self.aux_vector.append([key_id, val])
 
 	def setup_aux_vector(self):
@@ -238,18 +172,18 @@ class stack_handler():
 
 		self.aux_entry(self.AT_NULL, 0x0)
 
-		self.aux_entry(self.AT_PLATFORM, self.actual_platform_location) 	#	memory string refrence
-		self.aux_entry(self.AT_EXECFN, self.actual_location_exec) 	#	memory stirng refrence
-		self.aux_entry(self.AT_RANDOM, self.actual_location_prng)		#	memory string refrence
+		self.aux_entry(self.AT_PLATFORM, self.actual_platform_location) 
+		self.aux_entry(self.AT_EXECFN, self.actual_location_exec) 
+		self.aux_entry(self.AT_RANDOM, self.actual_location_prng)	
 
-		self.aux_entry(self.AT_SECURE, 0x0)		#	super secure m8
+		self.aux_entry(self.AT_SECURE, 0x0)		#	super secure
 		self.aux_entry(self.AT_EGID, 0x500)
 		self.aux_entry(self.AT_GID, 0x500)
 		self.aux_entry(self.AT_EUID, 0x500)
 		self.aux_entry(self.AT_UID, 0x500)
 
-		self.aux_entry(self.AT_ENTRY, self.BASE + self.target.program_entry_point) 		#	memory string refrence
-		self.aux_entry(self.AT_FLAGS, 0x0)		#	what are falgs?
+		self.aux_entry(self.AT_ENTRY, self.BASE + self.target.program_entry_point) 	
+		self.aux_entry(self.AT_FLAGS, 0x0)		#	what are flags?
 		self.aux_entry(self.AT_BASE, 0x0)
 
 		self.aux_entry(self.AT_PHNUM, self.target.program_header_count)
@@ -262,85 +196,10 @@ class stack_handler():
 		self.aux_entry(self.AT_SYSINFO_EHDR, 0x41414141)
 
 
-
-
-
-		'''
-		self.aux_entry(self.AT_NULL, 0x0)
-		self.aux_entry(self.AT_NULL, 0x0)
-		self.aux_entry(self.AT_NULL, 0x0)
-		self.aux_entry(self.AT_NULL, 0x0)
-		self.aux_entry(self.AT_NULL, 0x0)
-		
-
-
-		self.aux_entry(self.AT_SYSINFO, 0x0) # hardware capabilites ? 
-		self.aux_entry(self.AT_SYSINFO_EHDR, 0x0) # hardware capabilites ? 
-
-		self.aux_entry(self.AT_HWCAP, 0x0) # hardware capabilites ? 
-		self.aux_entry(self.AT_PAGESZ, self.ELF_EXEC_PAGESIZE)
-		self.aux_entry(self.AT_CLKTCK, 100)
-		self.aux_entry(self.AT_PHDR, self.BASE + self.target.program_header_start)
-		self.aux_entry(self.AT_PHENT, self.target.program_header_size)
-		self.aux_entry(self.AT_PHNUM, self.target.program_header_count)
-		self.aux_entry(self.AT_BASE, 0x40000000)
-		self.aux_entry(self.AT_FLAGS, 0)
-		self.aux_entry(self.AT_ENTRY, self.target.program_entry_point)
-		self.aux_entry(self.AT_UID, 0)
-		self.aux_entry(self.AT_EUID, 0)
-		self.aux_entry(self.AT_GID, 0)
-		self.aux_entry(self.AT_EGID, 0)
-		self.aux_entry(self.AT_SECURE, 0)
-		self.aux_entry(self.AT_NULL, 0)
-		'''
-
 		for key_val in self.aux_vector:
 			self.push_bytes(bytes(bytearray(struct.pack("<Q", key_val[1]))))
 			new_rsp = self.push_bytes(bytes(bytearray(struct.pack("<Q", key_val[0]))))
 			self.elf_info.append([hex(new_rsp), key_val[0], key_val[1]])
-
-#		self.align_stack()
-
-
-	#	print(self.random_prng_bytes())
-	#	exit(0)
-		'''
-		actual_location_prng = self.push_bytes(self.random_prng_bytes())
-
-		self.emulator.mem_write(location_help_prng, struct.pack('>Q', actual_location_prng))
-
-		actual_location_exec = self.push_string("./simple")
-		self.emulator.mem_write(location_help_exec, struct.pack('>Q',actual_location_exec))
-
-
-		actual_platform_location = self.push_string("x86_64")
-		self.emulator.mem_write(location_help_platform, struct.pack('>Q',actual_platform_location))
-		'''
-
-#		for index, key_value in enumerate(self.elf_info):
-#			print("{}	{}	->	{}({})".format(key_value[0], hex(key_value[1]), key_value[2], hex(key_value[2])))
-
-		#	http://articles.manugarg.com/aboutelfauxiliaryvectors.html
-		#	this was nice also
-
-		'''
-		aux_entry(AT_HWCAP, ELF_HWCAP);
-		aux_entry(AT_PAGESZ, ELF_EXEC_PAGESIZE);
-		aux_entry(AT_CLKTCK, CLOCKS_PER_SEC);
-		aux_entry(AT_PHDR, load_addr + exec->e_phoff);
-		aux_entry(AT_PHENT, sizeof(struct elf_phdr));
-		aux_entry(AT_PHNUM, exec->e_phnum);
-		aux_entry(AT_BASE, interp_load_addr);
-		aux_entry(AT_FLAGS, 0);
-		aux_entry(AT_ENTRY, exec->e_entry);
-		aux_entry(AT_UID, from_kuid_munged(cred->user_ns, cred->uid));
-		aux_entry(AT_EUID, from_kuid_munged(cred->user_ns, cred->euid));
-		aux_entry(AT_GID, from_kgid_munged(cred->user_ns, cred->gid));
-		aux_entry(AT_EGID, from_kgid_munged(cred->user_ns, cred->egid));
-	 	aux_entry(AT_SECURE, security_bprm_secureexec(bprm));
-		aux_entry(AT_RANDOM, (elf_addr_t)(unsigned long)u_rand_bytes);
-		'''
-
 
 class emulator(stack_handler, syscalls):
 	def __init__(self, target):
@@ -401,9 +260,6 @@ class emulator(stack_handler, syscalls):
 			
 		}
 
-#		print(len(self.target.file_header))
-#		print(self.target.file_header[0xe8])
-#		exit(0)
 
 		self.emulator.mem_write(0x400000, self.target.file[:0x18f])
 
@@ -438,21 +294,14 @@ class emulator(stack_handler, syscalls):
 				section_virtual_map[name] = [start, end]
 
 
-
-	#	exit(0)
-
 		'''
 			stack memory
 		'''
 		stack_adr = 0x1200000
 		stack_size =  (1024 * 1024 * 8) # 8 mb stack
 
-
 		self.emulator.mem_map(stack_adr, stack_size)
 		self.emulator.reg_write(UC_X86_REG_RSP, stack_adr + stack_size - 1)
-
-
-		#self.emulator.mem_map(0x1a00000, 1024 * 1024)
 
 
 		'''
@@ -460,9 +309,6 @@ class emulator(stack_handler, syscalls):
 				-	already coded part of the linker
 				-	will have a static binary running before more work on dynamic
 		'''
-
-
-
 
 		address_space = {
 			"stack":[stack_adr, stack_adr + stack_size],
@@ -528,40 +374,14 @@ class emulator(stack_handler, syscalls):
 			}
 		)
 
-		'''
-		self.unicorn_debugger.add_hook("0x434db0", {
-			0:{
-				"RAX":0x21,
-				"RIP":0x434db3 #+ self.BASE
-			}
-		},
-			{
-				"max_hit_count":0
-			}
-		)
-		'''
-
-#		self.unicorn_debugger.add_breakpoint(0x458a80)
-
-
-#		self.unicorn_debugger.add_breakpoint(0x458805)
-	
-
-#		self.unicorn_debugger.add_breakpoint(0x458807)
-		
-
-
-#		self.unicorn_debugger.add_breakpoint(0x435d25)
-#		self.unicorn_debugger.add_breakpoint(0x435d7e)
-
 		self.unicorn_debugger.add_breakpoint(0x414253, "jump")
+
+
 		#	need to write back the value that should have been written at
 		#	0x414253
 		self.unicorn_debugger.add_hook("0x4131e0", {
 			0:{
 				"RBX":0x6b2800
-#				,
-#				"RIP":0x4131e4
 			}
 		},
 			{
@@ -617,7 +437,7 @@ class emulator(stack_handler, syscalls):
 
 		self.unicorn_debugger.add_hook("0x4317ac", {
 			0:{
-				"RIP":0x4317b4 # unicorn reports wrong size!
+				"RIP":0x4317b0 # unicorn reports wrong size!
 			}
 		},
 			{
@@ -625,17 +445,6 @@ class emulator(stack_handler, syscalls):
 			}
 		)
 
-
-#		self.unicorn_debugger.add_breakpoint(0x4317ac)
-
-#		self.unicorn_debugger.add_breakpoint(0x414274)
-
-
-#		self.unicorn_debugger.add_breakpoint(0x434eb0)
-
-#		self.unicorn_debugger.trace_registers("dl")#, pause=True)
-
-		self.unicorn_debugger.add_breakpoint(0x800e01, "exit")
 
 		self.address_register = {
 

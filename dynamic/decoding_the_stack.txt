@@ -545,22 +545,207 @@ now at __memset_avx2_unaligned_erms
 	-	did I actually find a unicorn bug this time?
 		-	I need to patch the instruction....
 
-	-	me reading qemu
+	-	me reading unicorn/qemu
 		-	disas_insn
 			-	this function seems to do some calcs of size
 				tb->size = pc_ptr - pc_start;
+
+				-	well I compiled unicorn to dbeug that size, and well it said 38. GR!
+
+				-	make clean && UNICORN_ARCHS="x86" ./make.sh && ./make.sh install
 				
 		-	why is there no nice way to have qemu as a library...			
-			-	maybe why unicron is so nice...
+			-	maybe why unicorn is so nice...
+
+
+		-	okay so all the magic happens inside translate.c
+			-	however....
+
+		-	https://github.com/golang/go/issues/14068
+
+		-	https://www-user.tu-chemnitz.de/~heha/viewchm.php/hs/x86.chm/x86.htm
+
+		-	https://wiki.osdev.org/X86-64_Instruction_Encoding
+		-	http://xxeo.com/single-byte-or-small-x86-opcodes
 
 
 
 
+			-	instruction to hex
+				['0xc5', '0xf9', '0x6e', '0xc6']
+
+					vmovd xmm0, esi;
 
 
 
+				Qemu reports
+					/* 2-byte VEX */
+				-	then breaks...
+
+				then goes to 
+
+					case 0xc5: /* lds Gv */
+						/* In CODE64 this is VEX2; see above.  */
+						op = R_DS;
+						goto do_lxx;
+
+				that then runs some opertaions on the data.
+				    do_lxx:
+				        ot = dflag != MO_16 ? MO_32 : MO_16;
+				        modrm = cpu_ldub_code(env, s->pc++);
+				        reg = ((modrm >> 3) & 7) | rex_r;
+				        mod = (modrm >> 6) & 3;
+				        if (mod == 3)
+				            goto illegal_op;
+				        gen_lea_modrm(env, s, modrm);
+				        gen_op_ld_v(s, ot, *cpu_T[1], cpu_A0);
+				        gen_add_A0_im(s, 1 << ot);
+				        /* load the segment first to handle exceptions properly */
+				        gen_op_ld_v(s, MO_16, *cpu_T[0], cpu_A0);
+				        gen_movl_seg_T0(s, op, pc_start - s->cs_base);
+				        /* then put the data */
+				        gen_op_mov_reg_v(tcg_ctx, ot, reg, *cpu_T[1]);
+				        if (s->is_jmp) {
+				            gen_jmp_im(s, s->pc - s->cs_base);
+				            gen_eob(s);
+				        }
+				        break;
+				it will then break out..... what.
+				is this to keep it cycle correct? or maybe I need more info about opcode handling in x86
+
+			-	found this
+				-	https://stackoverflow.com/questions/23788236/get-size-of-assembly-instructions/23843450#23843450
+
+				-	also this	http://www.ref.x86asm.net/coder32.html
+				
+			-	ooo this is cool https://cmpsb.net/asm/x86/instr/view/211/MOVDQA
+
+			also this one
+				https://github.com/asmjit/asmdb
+				it has some good info!
+
+				{
+				  "name": "vmovdqa",
+				  "arch": "ANY",
+				  "encoding": "RM",
+				  "implicit": 0,
+				  "commutative": 0,
+				  "privilege": "L3",
+				  "opcodeString": "VEX.128.66.0F.WIG 6F /r",
+				  "opcodeValue": 111, // 0x6f 
+				  "fields": {},
+				  "operations": {},
+				  "extensions": {
+				    "AVX": true
+				  },
+				  "attributes": {},
+				  "specialRegs": {},
+				  "operands": [
+				    {
+				      "type": "reg",
+				      "data": "xmm",
+				      "optional": false,
+				      "implicit": false,
+				      "restrict": "",
+				      "zext": true,
+				      "read": false,
+				      "write": true,
+				      "commutative": false,
+				      "reg": "xmm",
+				      "regType": "xmm",
+				      "mem": "",
+				      "memSize": -1,
+				      "memOff": false,
+				      "memSeg": "",
+				      "memFar": false,
+				      "vsibReg": "",
+				      "vsibSize": -1,
+				      "bcstSize": -1,
+				      "imm": 0,
+				      "immSign": "",
+				      "immValue": null,
+				      "rel": 0,
+				      "rwxIndex": -1,
+				      "rwxWidth": -1
+				    },
+				    {
+				      "type": "reg/mem",
+				      "data": "xmm/m128",
+				      "optional": false,
+				      "implicit": false,
+				      "restrict": "",
+				      "zext": false,
+				      "read": true,
+				      "write": false,
+				      "commutative": false,
+				      "reg": "xmm",
+				      "regType": "xmm",
+				      "mem": "m128",
+				      "memSize": 128,
+				      "memOff": false,
+				      "memSeg": "",
+				      "memFar": false,
+				      "vsibReg": "",
+				      "vsibSize": -1,
+				      "bcstSize": -1,
+				      "imm": 0,
+				      "immSign": "",
+				      "immValue": null,
+				      "rel": 0,
+				      "rwxIndex": -1,
+				      "rwxWidth": -1
+				    }
+				  ],
+				  "prefix": "VEX",
+				  "opcodeHex": "6F",
+				  "l": "128",
+				  "w": "WIG",
+				  "pp": "66",
+				  "mm": "0F",
+				  "vvvv": "",
+				  "_67h": false,
+				  "rm": "r",
+				  "rmInt": -1,
+				  "ri": false,
+				  "rel": 0,
+				  "fpu": false,
+				  "fpuTop": 0,
+				  "vsibReg": "",
+				  "vsibSize": -1,
+				  "broadcast": false,
+				  "bcstSize": -1,
+				  "kmask": false,
+				  "zmask": false,
+				  "er": false,
+				  "sae": false,
+				  "tupleType": "",
+				  "elementSize": -1
+				}
+		searching for 6f in qemu 
+		        case 0x6f: /* movq mm, ea */
+		            if (mod != 3) {
+		                gen_lea_modrm(env, s, modrm);
+		                gen_ldq_env_A0(s, offsetof(CPUX86State, fpregs[reg].mmx));
+		            } else {
+		                rm = (modrm & 7);
+		                tcg_gen_ld_i64(tcg_ctx, cpu_tmp1_i64, cpu_env,
+		                               offsetof(CPUX86State,fpregs[rm].mmx));
+		                tcg_gen_st_i64(tcg_ctx, cpu_tmp1_i64, cpu_env,
+		                               offsetof(CPUX86State,fpregs[reg].mmx));
+		            }
+		            break;
+
+		but I patched qemu to debug the traces.... and I did not see it spit out 6f. BUT! Unicorn does report wrong size, so maybe it takes the wrong branch all together?
+
+			- my mistake...	it actually gets executed!
+				-	well, my mistake was acutally looking at wrong arguments of vmovdqa (diffrent opcodes given diffrent arguments!), I looked at 0x6f and 0x6e got excecuted :=)
 
 
+			-	I think this name changes confuses me. 
+
+			OKAY from https://www.felixcloutier.com/x86/movd:movq
+				-	"VEX.128.66.0F.W0 6E / VMOVD xmm1, r32/m32	A	V/V	AVX	Move doubleword from r/m32 to xmm1."
+				
 
 
 

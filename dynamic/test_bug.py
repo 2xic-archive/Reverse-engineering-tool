@@ -12,12 +12,17 @@ try:
 except KsError as e:
 	print("ERROR: %s" %e)
 
+hex_encoding = []
+for j in encoding:
+	hex_encoding.append(hex(j))
+print(hex_encoding)
 print(encoding)
 print(bytes(encoding))
 
 ADDRESS = 0x1000000
 def hook_code(mu, address, size, user_data):  
 	print("unicorn instruction size %i" % (size))
+	mu.emu_stop()
 
 try:
 	mu = Uc(UC_ARCH_X86, UC_MODE_64)
@@ -28,7 +33,11 @@ try:
 	# write machine code to be emulated to memory
 	mu.mem_write(ADDRESS, UNICORN_CODE)
 
+	print("real movment %s" % hex(mu.reg_read(UC_X86_REG_RIP)))
+
 	mu.emu_start(ADDRESS, ADDRESS + len(UNICORN_CODE))
+
+	print("real movment %s" % hex(mu.reg_read(UC_X86_REG_RIP)))
 except UcError as e:
 	print("ERROR: %s" % e)
 
