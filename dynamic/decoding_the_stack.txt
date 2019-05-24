@@ -747,9 +747,195 @@ now at __memset_avx2_unaligned_erms
 				-	"VEX.128.66.0F.W0 6E / VMOVD xmm1, r32/m32	A	V/V	AVX	Move doubleword from r/m32 to xmm1."
 				
 
+		looking a again at translate.c code !
+		-	['0xc5', '0xf9', '0x6e', '0xc6']
+			-	 /* Collect prefixes.  */
+				    switch (b) {
+				    	/*
+				    			a lot of checks
+				    	*/
+				  }
+				 	-	it will break out at 
+							case 0xc5: /* 2-byte VEX */
+    						case 0xc4: /* 3-byte VEX */
+
+    					-	this on correct based on https://www.felixcloutier.com/x86/movd:movq
 
 
 
+    		-	['0xc5', '0xf9', '0x6e', '0xc6']
+    			-	but then the next byte is 0xc6... is that correct?
+    			-	yes, it
+
+
+	    			-	https://wiki.osdev.org/X86-64_Instruction_Encoding#Legacy_Prefixes
+	    				-	if you look carefully in the
+	    					switch mentioned above you see
+		    					case 0xc5: /* 2-byte VEX */
+		    					case 0xc4: /* 3-byte VEX */
+		    					-	this is where we break
+		    			-	the reason it breaks and have moved the pc to 0xc6, is beacause it already stores the vex from within the switch!
+
+		    		-	int vex3, vex2 = cpu_ldub_code(env, s->pc);
+		    				-	rex_r = (~vex2 >> 4) & 8;
+		    			-	you can see it read out rex_r and assign  vex3 = vex2;
+
+		    	-	okay wait a second
+		    		-	so 0xC5 signals that this a two byte vex...
+		    			- from https://wiki.osdev.org/X86-64_Instruction_Encoding#Legacy_Prefixes
+			    			A VEX instruction whose values for certain fields are VEX.~X == 1, VEX.~B == 1, VEX.W/E == 0 and map_select == b00001 may be encoded using the two byte VEX escape prefix. The layout is as follows:
+			    			  7                           0       7                           0
+							+---+---+---+---+---+---+---+---+   +---+---+---+---+---+---+---+---+
+							| 1   1   0   0   0   1   0   1 |   |~R |     ~vvvv     | L |   pp  |
+							+---+---+---+---+---+---+---+---+   +---+---+---+---+---+---+---+---+
+						
+						-	but that means 0x6e and 0xc6 is used for what?
+							-	okay let's say 0x6e is the opcode... then what is 0xc6????
+							-	proably something obvious i'm missing...	lets look at more code!
+
+				-	okay then we get to 
+						case 0xc6:
+					    case 0xc7: /* mov Ev, Iv */
+					    	it will then read the another byte modrm = cpu_ldub_code(env, s->pc++); !
+					   
+					   	-	okay then we only have one byte left to find...
+					   		-	no.... wait!
+					   			-	the pc is already at 0xc6, when you read another byte you should go out of bounds.... let me check!
+					   				-	yes !	pc will be at 1000004
+					   				-	and we are reading the value 0!
+					   			-	okay so we leave that case statment at PC = 1000003, in other words, we have excecuted the last instruction....
+
+					   		-	after         val = insn_get(env, s, ot);
+					   		-	the pc will point 0x1000006 going more of bounds.....
+
+					   	-	let me check the disas
+					   			-	maybe pc is set at 0x1000006, because of some padding?
+					   	-	okay vmovd      xmm0, esi
+					   		-	next is 
+					   			-	mov        rax, rdi
+					   		-	boom... this is defiently a BUG!
+					   	0000000000431860         vmovd      xmm0, esi;                                   0000000000431864         mov        rax, rdi;
+					   	0000000000431867         vpbroadcastb xmm0, xmm0
+					   		-	it would excepct some align padding, but since this a classic the size of the mov instruction is 0x3 so the pc can't jump to the vpbroadcastb!
+					   			-	in other words... the instruction should not read that much !
+					   				-	or maybe the actual problem is with the compiler????
+					   	
+					   	-	okay so I comment out the code form 	
+							   	case 0xc6:
+							    case 0xc7: /* mov Ev, Iv */
+							-	makes it stop go out of bounds...
+							-	also prints out the size from unicorn without extra noise!
+
+						-	THANK YOU UNICRON FOR NICE COMMENT
+							-	 // Unicorn: patch the callback for the instruction size
+    				
+    					-	okay the real magic is here
+    						-	            *(save_opparam_ptr + 1) = s->pc - pc_start;
+
+    					-	so lets check the delta ...
+
+
+    						the delta is
+    							first...
+    							pc_now = 1000003
+								pc_late = 1000000
+									======
+									======
+								late...
+    							pc_now = 1000004
+								pc_start = 1000003
+						-	trying to add another s->pc++;	will make it go out of bounds again....
+
+
+						-	okay so in case 0xc7: /* mov Ev, Iv */
+							-	you read the modrm, and actually points PC to the next instruction... That is correct!
+
+						-	okay so I guess it calculates evreything correctly.... It runs the parsing correct, but the problem migth be at at way unicorn calculates ?
+							like unicorn does it this way
+
+							        if (changed_cc_op) {
+							            if (cc_op_dirty)
+							#if TCG_TARGET_REG_BITS == 32
+							                *(save_opparam_ptr + 16) = s->pc - pc_start;
+							            else
+							                *(save_opparam_ptr + 14) = s->pc - pc_start;
+							#else
+							                *(save_opparam_ptr + 12) = s->pc - pc_start;
+							            else
+							                *(save_opparam_ptr + 10) = s->pc - pc_start;
+							#endif
+							        } else {
+							            *(save_opparam_ptr + 1) = s->pc - pc_start; // where magic happens
+							        }
+							- I mean ... s->pc - pc_start actually makes sense...
+								-	given that the emulations of the opcode should be correct, this should 
+
+								-	helper_uc_tracecode ! 
+									-	this reports the callback function!
+
+								-	probably from gen_helper_uc_tracecode ? 
+									-	qemu have a lot of #defines to make cross platform eaiser from a code style point of view, but it's a mess to search for ....
+									-	nice gen_helper_uc_tracecode is nowhere in the code :=)
+										-	only excecuted... GREAT!
+
+									-	okay maybe this is actually some weired python thing, you know when I wrote a c python module I had to give them some weired names to make things work....
+										if you look!
+											-	   gen_helper_uc_tracecode(tcg_ctx, tsize, ttype, tuc, tpc);
+											rmeove gen_
+											- you have	helper_uc_tracecode
+												- 	this is defiend
+													-	defined as void helper_uc_tracecode(int32_t size, uc_hook_type type, void *handle, int64_t address)
+												-	hm.... remove tcg_ctx and you have 
+													gen_helper_uc_tracecode(tsize, ttype, tuc, tpc);
+													mathces to 
+													helper_uc_tracecode(int32_t size, uc_hook_type type, void *handle, int64_t address)
+												-	okay so this make ssense!
+											-	but even with casting the variable ( (int32_t)tsize ), it reports the wrong size ....
+											-	okay but 0x1000000 to 0x1000003 
+													-	0x1000000
+													-	0x1000001
+													-	0x1000002
+													-	0x1000003
+												-	you can count! IT'S FOUR! NOT 3 !!!! GR!
+												-	okay... wait. 
+													-	it should point to 0x1000004.....
+
+							-	lets try to emulate a correct instruction!
+								-	push 1 
+								-	we get to
+									    case 0x6a:
+										        ot = mo_pushpop(s, dflag);
+										        if (b == 0x68)
+										            val = insn_get(env, s, ot);		->	here we read out the value! ( 1 ) -> will push pc to the next instruction
+										        else
+										            val = (int8_t)insn_get(env, s, MO_8);
+										        tcg_gen_movi_tl(tcg_ctx, *cpu_T[0], val);
+										        gen_push_v(s, *cpu_T[0]);
+								-	okay so after running push 1, the pc will point to 1000002, the NEXT instruction!
+									-	meaning that either I have totally misunderstood the operations of the vmovd instruciton or there is a bug :=)
+									-	the delta is either way trying to check the diff between start_pc and next instruction, obviously.
+
+							-	i'm starting to think that the main problem is that it should be usign the last argument for something
+								but doesn't...
+
+									-	let's see
+									-	0xC5 		->	/* 2-byte VEX */
+										-	then it reads the vex vectro at 0xf9
+										-	
+									-	then it check the opcode that points to 0x6e
+										-	that lands at outsS....	 a string ops...
+											-	obviously WRONG!
+											
+								-	okay let's try to add some input to the issue I opened.
+
+So I have tried to debug the problem. The problem seems to be regarding parsing the vex opcode. After doing the switch check under "Collect prefixes", the switch statement for opcodes points to what I'm pretty sure is the wrong opcode. In _reswitch_ the switch(b), will have the value 0x6e, however 0x6e is a opcode for string ops. Which is interacting with I/O ports (seems wrong given that vmovd is moving qword between registers, not interacting with I/O ports). However if you look at 0xc6(last byte of the instruction), it points to _mov Ev, Iv_, I feel this is more correct. 
+
+So "vmovd xmm0, esi;" encodes to ['0xc5', '0xf9', '0x6e', '0xc6']. 0xc5 means that this is a 2-byte VEX, you can see it read in the vex data at the line with the following code 
+`int vex3, vex2 = cpu_ldub_code(env, s->pc);` (pc will here point at 0xf9). A few liens later ` s->pc++;` is executed. All of this seems okay. However then there is the` if (b == 0xc5)`,  it will read the opcode as `b = cpu_ldub_code(env, s->pc++);`. This is what I believe is wrong. Since the value it reads out is 0x6e and 0x6e is as I said a opcode for string ops. 
+
+Patching the original switch statement under "Collect prefixes" to make the switch check for opcode in _reswitch_ point to 0xc6 makes the emulation exit normally. Without this patch the pc will go out of bounds. Since after the function _disas_insn_ is done, pc will point at 0xc6.
+(I just added this line as a basic patch)
+`b = cpu_ldub_code(env, s->pc);` after `b = cpu_ldub_code(env, s->pc++);` under the check ` if (b == 0xc5)`. I'm sure this will break some other instruction support. I haven't tested the patch with other instructions, only with the test script above. I have probably done something wrong, I doubt the solution is this simple. However, I hope this analysis give more insight to people more knowledgeable about this special instruction (and x86 instruction encoding) and make creating a good patch easier.
 
 
 

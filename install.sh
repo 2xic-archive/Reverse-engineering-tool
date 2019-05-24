@@ -1,7 +1,10 @@
 pip3 install -r requirements.txt
 
-
-sudo apt-get install cmake -y
+apt-get update
+apt-get install git -y
+apt-get install build-essential -y 
+apt-get install cmake -y
+apt-get install python2.7 -y
 
 mkdir setup
 cd setup
@@ -9,15 +12,32 @@ cd setup
 git clone -b next https://github.com/aquynh/capstone
 cd capstone
 ./make.sh
-sudo ./make.sh install
+./make.sh install
+
+cd ..
 
 git clone https://github.com/keystone-engine/keystone
 cd keystone
 mkdir build
 cd build
 ../make-share.sh
-sudo make install
+make install
+cd ..
+cd bindings
+cd python
+python3 setup.py install
 cd ..
 cd ..
+cd ..
+
+git clone https://github.com/unicorn-engine/unicorn
+cd unicorn
+UNICORN_QEMU_FLAGS="--python=/usr/bin/python2.7" ./make.sh
+./make.sh install
+
+cd ..
+cd ..
+
+ldconfig
 
 echo "should be ready to go"

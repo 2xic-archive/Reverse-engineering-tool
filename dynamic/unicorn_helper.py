@@ -86,6 +86,7 @@ class unicorn_debug():
 
 		self.full_trace = False
 
+		self.logging_enabled = os.path.isfile('/root/test/test_binaries/unicorn.log')
 
 		self.log_file = open("/root/test/test_binaries/unicorn.log", "w")
 
@@ -127,7 +128,7 @@ class unicorn_debug():
 			self.register_state[name] = self.unicorn.reg_read(unicorn_refrence[0])
 
 	def log_2_file(self):
-		if(self.instruction_count > 0):
+		if(self.instruction_count > 0 and self.logging_enabled):
 			self.log_file.write(hex(self.unicorn.reg_read(UC_X86_REG_RIP)) + "\n")
 			self.log_file.write(hex(self.unicorn.reg_read(UC_X86_REG_RAX)) + "\n")
 
@@ -453,7 +454,8 @@ class unicorn_debug():
 			exc_type, exc_obj, exc_tb = sys.exc_info()
 			fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
 			print(exc_type, fname, exc_tb.tb_lineno)
-			self.log_file.close()
+			if(self.logging_enabled):
+				self.log_file.close()
 			raise Exception("error in debugger")
 
 	def check_section_map(self, start, end, real_name):

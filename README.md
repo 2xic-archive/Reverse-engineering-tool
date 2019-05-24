@@ -12,7 +12,7 @@ Mostly tested on some CTF (elf)binaries, I'm sure you can make the program do we
 -	code grapth (click in a section, view the branches of the block)
 -	hex view (click an instruction see where it is in the binary)
 -	(work in progress) dynamic view (click an instruction, see what the values have been when that instruction was executed)
--	when you click a jump instruction, it moves you to the target. The jump target was not interesting? Move back with the back arrow at the menu.
+-	when you click a jump instruction, it moves you to the target. The jump target was not interesting? Move back with the back arrow at the menu. (will add keyboard shortcut, _ctrl + b_ maybe )
 -	move around with arrow keys. Are you in graph view ? Use left and right arrow to select target block (if you are at a conditional block, if not press down). When you move between blocks a call stack will be made so you can easily move backwards.
 
 
@@ -39,6 +39,7 @@ It's not about that. I started this project to hopefully see some changes in rev
 	
 -	**integrate dwarf data**
 	-	you don't need a decompiler when you have dwarf!
+		-	I migth try to write parts of a decompiler, would be fun!
 -	make it easy to store comments and patches made to the binary. 
 -	binary patching
 	-	I have coded parts of this already, however it needs a better interface
@@ -54,12 +55,25 @@ static and dynamic reverse engineering, one package with a seamless interface.
 
 (from http://www.keystone-engine.org/docs/BHUSA2016-keystone.pdf )
 
-# setup
+# setup general
+>  pip3 install -r requirements.txt
 - install capstone from the next branch
 		https://github.com/aquynh/capstone/tree/next
 - install keystone
 		https://github.com/keystone-engine/keystone
-    >  pip3 install -r requirements.txt
+- install unicorn
+		https://github.com/unicorn-engine/unicorn
+>	python3 web.py ./test_binaries/fibonacci
 
-# run
-> python3 web.py ./test_binaries/fibonacci
+# setup linux
+>	./install.sh
+
+# setup docker
+> 	docker build --tag=triforce .
+
+# run 
+> 	python3 web.py ./test_binaries/fibonacci
+
+> 	docker run -p 4000:80 triforce ./test_binaries/fibonacci
+
+

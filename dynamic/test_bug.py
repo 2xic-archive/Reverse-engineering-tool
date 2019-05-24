@@ -3,6 +3,7 @@ from unicorn.x86_const import *
 from keystone import *
 
 CODE = b"vmovd xmm0, esi;"
+#CODE = b"push rpi;"
 UNICORN_CODE = None
 try:
 	ks = Ks(KS_ARCH_X86, KS_MODE_64)
