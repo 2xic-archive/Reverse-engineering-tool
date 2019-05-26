@@ -69,6 +69,10 @@ class unicorn_debug():
 
 		}
 
+		self.breakpoints_hits = {
+
+		}
+
 		self.hook_points = {
 
 		}
@@ -78,7 +82,7 @@ class unicorn_debug():
 		}
 
 		self.instruction_count = 0
-		self.max_instructions = 4000
+		self.max_instructions = 8000
 
 		self.address_hits = {
 
@@ -286,7 +290,7 @@ class unicorn_debug():
 		return bytes(bytearray(results)), "".join(string)
 
 	def read_null_terminated(self, tokens):
-		results, string = read_2_null(tokens[0])
+		results, string = self.read_2_null(int(tokens[0], 16))
 		pretty_print_bytes(bytes(bytearray(results)))
 
 	def handle_commands(self, memory_access=False):
@@ -420,6 +424,13 @@ class unicorn_debug():
 					self.unicorn.reg_write(UC_X86_REG_RIP, self.current_address + self.current_size)
 				else:
 					self.handle_commands()
+			elif(type(self.current_breakpoint) == int):
+				hit_score = self.breakpoints_hits.get(self.unicorn.reg_read(UC_X86_REG_RIP), 0)
+				if(hit_score == self.current_breakpoint):
+					print("hit breakpoint enougth times to activate")
+					self.handle_commands()
+				else:
+					self.breakpoints_hits[self.unicorn.reg_read(UC_X86_REG_RIP)] = hit_score + 1
 			else:
 				self.handle_commands()
 

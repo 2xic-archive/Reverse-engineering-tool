@@ -938,5 +938,43 @@ Patching the original switch statement under "Collect prefixes" to make the swit
 `b = cpu_ldub_code(env, s->pc);` after `b = cpu_ldub_code(env, s->pc++);` under the check ` if (b == 0xc5)`. I'm sure this will break some other instruction support. I haven't tested the patch with other instructions, only with the test script above. I have probably done something wrong, I doubt the solution is this simple. However, I hope this analysis give more insight to people more knowledgeable about this special instruction (and x86 instruction encoding) and make creating a good patch easier.
 
 
+		-	lesson learned, don't always trust git fetch....
+			-	from now on I will ALWAYS git clone from master to test before opening a issue....
+
+			-	WRONG!	Always check for pip conflict....
+
+
+
+		-	 _dl_non_dynamic_init
+			-	will actually check fro envp malloc,	well this makes sense...
+					kinda want to look for any other conflict...
+
+			-	 mov        rdi, qword [_dl_sysinfo_dso]          
+				-	does the stack look up!
+
+				-	tired, migth check this tomorrow....
+
+			
+			-	actually seems to do check for the AT_SYSINFO_EHDR!
+				-	and the starts of the location of AT_SYSINFO_EHDR starts with malloc.....
+					so tired me wasn't totally off.
+
+				-	never mind about malloc, it does not start with malloc...
+					I had some data left in the stack string script, the vsdo starts with elf, it seems. Because it is a shared library! DUh.
+
+				-	thank you gdb for letting me dump it so easily!
+
+			-	there seems to be some mismatch in strlen and rindex, I think this just have to do 	with the pointer location. So In the delta script I just skip some checks in thoose sections.
+
+
+			-	whooo!!! I did it !
+			
+
+
+
+
+
+
+
 
 

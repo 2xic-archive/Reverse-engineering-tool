@@ -122,10 +122,6 @@ if __name__ == "__main__":
 		if(sys.argv[1].endswith(".pickle")):
 			pikcle_data = open(sys.argv[1], "rb") 
 			target = pickle.load(pikcle_data)
-		#	print(target.static.file)
-
-		#	exit(0)
-
 		else:
 			target = model(elf(sys.argv[1]), socketio)
 		socketio.run(app, debug=True, host= '0.0.0.0')

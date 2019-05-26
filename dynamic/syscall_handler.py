@@ -3,7 +3,7 @@
 
 from unicorn import *
 from unicorn.x86_const import *
-
+import os
 
 class syscalls:
 	def print_buffer(self, memory_buffer):
@@ -109,7 +109,7 @@ def hook_syscall64(mu, user_data):
 		'''
 	elif(rax == 0x59):
 		#	http://man7.org/linux/man-pages/man2/readlink.2.html
-		bytes_, string = user_data.unicorn_debugger.read_2_null(rdi)
+		_bytes_, string = user_data.unicorn_debugger.read_2_null(rdi)
 
 		if("/proc/self/exe" in string):
 			location_string = "/root/test/test_binaries/static_small"
@@ -124,7 +124,49 @@ def hook_syscall64(mu, user_data):
 			print(hex(rdx))
 			user_data.unicorn_debugger.handle_commands(memory_access=True)
 			mu.emu_stop()
+
+	elif(rax == 0x15):
+		try:
+			_bytes_, string = user_data.unicorn_debugger.read_2_null(rdi)			
+			string = string[:-1] # remove \0
+
+			#	https://unix.superglobalmegacorp.com/Net2/newsrc/sys/unistd.h.html
+			mode = {
+				0 	: "F_OK",# test for existence of file
+				0x01: "X_OK",	# test for execute or search permission
+				0x02: "W_OK",	# test for write permission
+				0x04: "R_OK"	# test for read permission
+			}
+			mode = mode[rsi]
+						
+			results = None
+			if(mode == "F_OK"):
+				results = os.path.isfile(string)
+			else:
+				raise Exception("not implemented")
+
+			if not results:
+				mu.reg_write(UC_X86_REG_RAX, 0xfffffffffffffffe) # seems to be some bitwise operations, proably include that it does not exsist, therefore can't be excecuted or read.
+													# (i got the value from gdb)
+				mu.reg_write(UC_X86_REG_RCX, 0x400994)
+				mu.reg_write(UC_X86_REG_R11, 0x346)
+			else:
+				raise Exception("not implemented")
+#			user_data.unicorn_debugger.handle_commands(memory_access=True)
+		except Exception as e:
+			mu.emu_stop()
+			print(e)
+			pass	
+
+	elif(rax == 0xe7):
+		#	http://man7.org/linux/man-pages/man2/exit_group.2.html
+		#	exit_group
+
+		#	since we are a emulator, how much do we actually need to exit?
+		#	I think nothing
+		print("exit 0!")
+		mu.emu_stop()
 	else:
 		mu.emu_stop()
-		raise syscall_exception("unknown syscall. Fix!")
+		raise syscall_exception("unknown syscall(0x%x, %i). Fix!" % (rax, rax))
 

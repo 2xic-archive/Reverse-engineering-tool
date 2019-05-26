@@ -22,9 +22,14 @@ What do you expect from a reverse engineering tool? You want quick insight into 
 #  Status with unicorn (dynamic side)
 Currently I am running gdb and unicorn side by side on some static binaries, trying to get unicorn to run through the entire program flawlessly. Seems like special instructions like cpuid and xgetbv ~~and instructions that affect the eflags~~ give different results from gdb ... ~~Also as far as I know, implementing system specific system calls also has to be done~~ (written support for two syscalls, you can now run hello world). The debugger I wrote for unicorn does help (a lot) with root cause analysis, so I hope to see some meaningful progress soon. 
 
-**Update** : Even though I looked at the disassembly for \_dl_aux_init for way to long, it didn't occur to me that I forgot to implement a way to push the aux_vector onto the stack. I created decoding_the_stack.txt where I do some rubber duck debugging, not all progress is realated to actual code!
+Update : Even though I looked at the disassembly for \_dl_aux_init for way to long, it didn't occur to me that I forgot to implement a way to push the aux_vector onto the stack. I created decoding_the_stack.txt where I do some rubber duck debugging, not all progress is realated to actual code!
 
-**Update 2 : Made a lot of progress recently. Implemented more syscalls and fixed the aux vector (so I passed through \_dl_aux_init). Special instructions slows me down again. Unicorn reports wrong size/does something weird with these instructions vmovdqu/vpbroadcastb/vmovd so I have opened a Unicorn issue and currently reading Qemu source code. https://github.com/unicorn-engine/unicorn/issues/1088 given that keystone and unicorn disagrees, I hope I did nothing wrong...**
+Update 2 : Made a lot of progress recently. Implemented more syscalls and fixed the aux vector (so I passed through \_dl_aux_init). Special instructions slows me down again. Unicorn reports wrong size/does something weird with these instructions vmovdqu/vpbroadcastb/vmovd so I have opened a Unicorn issue and currently reading Qemu source code. https://github.com/unicorn-engine/unicorn/issues/1088 given that keystone and unicorn disagrees, I hope I did nothing wrong... 
+
+Update 2.1: I did nothing wrong, there was a bug, but I was running a outdated version that I thought was updated(because of a version conflict with pip)...
+
+**Update 3: wohoo, finally got a static binary with glibc to run from start to finish! I will continue to improve the emulator, still many syscalls and other funconality to implement, the future is bright. However, first I want to take some time to better integrate the emulator into the software before extending it's functionality. Like doing some root cause analysis on the debugging hooks to figure if and how to remove them and improve things like memory mapping and the stack handler for the emulator.**
+
 
 #  Do I think I can make a better tool than IDA? 
 It's not about that. I started this project to hopefully see some changes in reverse engineering landscape. Things have been still there for a while and competition is needed to bring on changes with impact. I think this is competing against QIRA though.
@@ -57,12 +62,13 @@ static and dynamic reverse engineering, one package with a seamless interface.
 
 # setup general
 >  pip3 install -r requirements.txt
-- install capstone from the next branch
+- install capstone from the next branch + python binding
 		https://github.com/aquynh/capstone/tree/next
-- install keystone
+- install keystone + python binding
 		https://github.com/keystone-engine/keystone
-- install unicorn
+- install unicorn + python binding
 		https://github.com/unicorn-engine/unicorn
+
 >	python3 web.py ./test_binaries/fibonacci
 
 # setup linux

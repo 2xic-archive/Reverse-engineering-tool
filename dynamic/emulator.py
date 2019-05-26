@@ -21,9 +21,11 @@ def threaded(function):
 		return thread
 	return wrapper
 
+
 class stack_handler():
 	def __init__(self):
-		super().__init__()
+#		super().__init__()
+		self.vsdo_start = 0x2000000
 		pass
 
 	def push_string(self, string_list):
@@ -93,11 +95,20 @@ class stack_handler():
 		start = self.stack_pointer
 		print("Stack starts here {}".format(hex(start)))
 
-		self.actual_location_exec = 0xdeadbeef # self.push_string("/root/test/test_binaries/s")
+
+	#	self.actual_location_malloc = self.push_string("MALLOC_")
+
+		self.actual_location_exec = self.push_string("/root/test/test_binaries/static_small")
 		self.actual_platform_location = self.push_string("x86_64")
 		self.actual_location_prng = self.push_bytes(self.random_prng_bytes())
 
+
+		#	('0x417920', '0x4178b6')
+		#	0x269c
+
+
 		'''
+
 			*	should push platform string
 			*	should push random bytes
 
@@ -110,6 +121,10 @@ class stack_handler():
 		items = (argc + 1) + (envp + 1) + 1
 
 		self.push_bytes(struct.pack("<Q", 0)) # null envp
+
+#		self.push_bytes(struct.pack("<Q", self.actual_location_malloc))
+#		self.push_bytes(struct.pack("<Q", 1))
+			
 		self.push_bytes(struct.pack("<Q", 0)) # null arg
 		self.push_bytes(struct.pack("<Q", self.actual_location_exec)) # argc
 		self.push_bytes(struct.pack("<Q", 1)) # argc
@@ -136,6 +151,9 @@ class stack_handler():
 		self.aux_vector.append([key_id, val])
 
 	def setup_aux_vector(self):
+		
+
+
 		self.aux_vector = []
 		self.elf_info = []
 
@@ -193,13 +211,17 @@ class stack_handler():
 		self.aux_entry(self.AT_CLKTCK, 100)
 		self.aux_entry(self.AT_PAGESZ, self.ELF_EXEC_PAGESIZE)
 		self.aux_entry(self.AT_HWCAP, 0x42424242)
-		self.aux_entry(self.AT_SYSINFO_EHDR, 0x41414141)
+		self.aux_entry(self.AT_SYSINFO_EHDR, self.vsdo_start)
 
 
 		for key_val in self.aux_vector:
 			self.push_bytes(bytes(bytearray(struct.pack("<Q", key_val[1]))))
 			new_rsp = self.push_bytes(bytes(bytearray(struct.pack("<Q", key_val[0]))))
 			self.elf_info.append([hex(new_rsp), key_val[0], key_val[1]])
+
+	def setup_vsdo(self):
+		self.emulator.mem_map(self.vsdo_start, 1024 * 1024)
+		self.emulator.mem_write(self.vsdo_start, open("/root/test/dynamic/vsdo.bin", "rb").read())
 
 class emulator(stack_handler, syscalls):
 	def __init__(self, target):
@@ -209,6 +231,9 @@ class emulator(stack_handler, syscalls):
 
 		self.emulator = Uc(UC_ARCH_X86, UC_MODE_64)
 
+
+
+		self.setup_vsdo()
 
 		'''
 			I think my stack layout is wrong.
@@ -247,7 +272,7 @@ class emulator(stack_handler, syscalls):
 
 
 		#	PAGE_ZERO
-		self.emulator.mem_map(0, 0x100000)
+		self.emulator.mem_map(0, 0x400000)
 
 
 		self.emulator.mem_map(self.BASE, self.program_size)
@@ -285,15 +310,17 @@ class emulator(stack_handler, syscalls):
 
 			start = int(content["virtual_address"],16)
 			end = int(content["virtual_address"],16) + int(content["size"])
-			self.emulator.mem_write(int(content["virtual_address"],16), section_bytes)
 
 
 			print("Loaded section %s at 0x%x -> 0x%x (%s)" % (name, start, end, content["flags"]))
 
+			self.emulator.mem_write(int(content["virtual_address"],16), section_bytes)
+
+
 			if(content["size"] > 0):
 				section_virtual_map[name] = [start, end]
 
-
+	
 		'''
 			stack memory
 		'''
@@ -321,7 +348,8 @@ class emulator(stack_handler, syscalls):
 
 		self.unicorn_debugger.full_trace = True
 
-
+		#	used to follow the same path as gdb
+		#	I don't think this hook actually is needed to make the binary run "correctly"
 		self.unicorn_debugger.add_hook("cpuid", {
 			0:{
 				"RAX":0xd,
@@ -352,12 +380,34 @@ class emulator(stack_handler, syscalls):
 				"RBX":0x0,
 				"RCX":0x0,
 				"RDX":0x0
+			},
+			5:{
+				"RAX":0x1,
+				"RBX":0x0,
+				"RCX":0x4d,
+				"RDX":0x2c307d
 			}
+
+			,
+			6:{
+				"RAX":0x1,
+				"RBX":0x0,
+				"RCX":0x4d,
+				"RDX":0x2c307d
+			},
+			7:{
+				"RAX":0x1,
+				"RBX":0x0,
+				"RCX":0x4d,
+				"RDX":0x2c307d
+			}
+
 		},
 			{
-				"max_hit_count":4
+				"max_hit_count":7
 			}
 		)
+
 
 		#	will actually hook xgetbv (since ecx will be zero and trying to hook on xgetbv will be to late....)
 
@@ -385,7 +435,17 @@ class emulator(stack_handler, syscalls):
 			}
 		},
 			{
-				"max_hit_count":0
+				"max_hit_count":10
+			}
+		)
+
+		self.unicorn_debugger.add_hook("0x435ec3",{
+			0:{
+				#	just want to jump the instruction....
+			}		
+		},
+			{
+				"max_hit_count":3
 			}
 		)
 
@@ -434,10 +494,40 @@ class emulator(stack_handler, syscalls):
 			}
 		)
 
-
-		self.unicorn_debugger.add_hook("0x4317ac", {
+		self.unicorn_debugger.add_hook("0x43febe", {
 			0:{
-				"RIP":0x4317b0 # unicorn reports wrong size!
+				"RAX":0x6b39c0 
+			}
+		},
+			{
+				"max_hit_count":0
+			}
+		)
+
+
+		self.unicorn_debugger.add_hook("0x43fede", {
+			0:{
+#				"RAX":0x6b39c0 
+			}
+		},
+			{
+				"max_hit_count":0
+			}
+		)
+
+		self.unicorn_debugger.add_hook("0x43fef0", {
+			0:{
+#				"RAX":0x6b39c0 
+			}
+		},
+			{
+				"max_hit_count":0
+			}
+		)
+
+		self.unicorn_debugger.add_hook("0x43fefb", {
+			0:{
+#				"RAX":0x6b39c0 
 			}
 		},
 			{
@@ -578,18 +668,17 @@ class emulator(stack_handler, syscalls):
 
 
 
-		space_stack(end, pretty_print_bytes(self.emulator.mem_read(end, delta), aschii=False))
-		print("Size {}".format(delta))
-		print("RSP == 0x%x" % (self.emulator.reg_read(UC_X86_REG_RSP)))
-		print("RSP + 8 bits")
+#		space_stack(end, pretty_print_bytes(self.emulator.mem_read(end, delta), aschii=False))
+#		print("Size {}".format(delta))
+#		print("RSP == 0x%x" % (self.emulator.reg_read(UC_X86_REG_RSP)))
+#		print("RSP + 8 bits")
 
 		#mu.hook_add(UC_HOOK_INSN, hook_syscall32, None, 1, 0, UC_X86_INS_SYSCALL)
 		self.emulator.hook_add(UC_HOOK_INSN, hook_syscall64, self, 1, 0, UC_X86_INS_SYSCALL)
 
-#		print(self.brk)
-#		exit(0)
 
-		self.emulator.reg_write(UC_X86_REG_RSP, 0x19ffe98)
+		self.emulator.reg_write(UC_X86_REG_RSP, 0x19ffe72)
+#		self.emulator.reg_write(UC_X86_REG_RSP, 0x19ffe98)
 
 		pretty_print_bytes(self.emulator.mem_read(self.emulator.reg_read(UC_X86_REG_RSP), 8))
 		pretty_print_bytes(self.emulator.mem_read(0x19ffe98, 8))
@@ -610,8 +699,8 @@ class emulator(stack_handler, syscalls):
 		self.emulator.hook_add(UC_HOOK_MEM_WRITE, hook_mem_access)
 		self.emulator.hook_add(UC_HOOK_MEM_READ, hook_mem_access)
 
-		self.emulator.hook_add(UC_MEM_READ_UNMAPPED, hook_mem_invalid)
-		self.emulator.hook_add(UC_ERR_READ_UNMAPPED, hook_mem_invalid)
+#		self.emulator.hook_add(UC_MEM_READ_UNMAPPED, hook_mem_invalid)
+#		self.emulator.hook_add(UC_ERR_READ_UNMAPPED, hook_mem_invalid)
 		self.emulator.hook_add(UC_HOOK_MEM_READ_UNMAPPED | UC_HOOK_MEM_WRITE_UNMAPPED, hook_mem_invalid)
 
 		self.emulator.hook_add(UC_HOOK_BLOCK, hook_block)

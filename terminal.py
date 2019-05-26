@@ -22,3 +22,10 @@ dynamic.run()
 static = elf("./test_binaries/static_small")
 dynamic = emulator(static)
 dynamic.run()
+'''
+
+static = elf("./test_binaries/small_c_hello")
+dynamic = emulator(static)
+dynamic.run()
+
+'''

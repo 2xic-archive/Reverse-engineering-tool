@@ -14,6 +14,12 @@ cd capstone
 ./make.sh
 ./make.sh install
 
+cd bindings
+cd python
+python3 setup.py install
+cd ..
+cd ..
+
 cd ..
 
 git clone https://github.com/keystone-engine/keystone
@@ -34,6 +40,11 @@ git clone https://github.com/unicorn-engine/unicorn
 cd unicorn
 UNICORN_QEMU_FLAGS="--python=/usr/bin/python2.7" ./make.sh
 ./make.sh install
+cd bindings
+cd python
+python3 setup.py install
+cd ..
+cd ..
 
 cd ..
 cd ..
