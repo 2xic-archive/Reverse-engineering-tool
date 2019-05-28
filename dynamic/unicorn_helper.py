@@ -6,64 +6,50 @@ import os
 from unicorn.x86_const import *
 
 def bold_print(text):
-	print('\033[1m' + text + '\033[0m')
+	print(bold_text(text))
 
 def bold_text(text):
 	return '\033[1m' + text + '\033[0m'
 
 
-def pretty_print_bytes(results, aschii=True):
-	print("")
-	print(''.join('0x{:02x} '.format(x) for x in results ))
-	if(aschii):
+def pretty_print_bytes(results, aschii=True, logging=True):
+	if(logging):
+		print("")
+		print(''.join('0x{:02x} '.format(x) for x in results ))
+	if(aschii and logging):
 		print(''.join((chr(x) if( 0 < x < 128) else " ") for x in results ))
-	print("")
+	if(logging):
+		print("")
 	return ''.join('{:02x}'.format(x) for x in results )
 
-def space_stack(end, string, length=8, count=4):
+def view_stack(end, string, length=8, count=4):
+	print("stack layout")
 	current_string = ""
-	current_string_aschii = ""
-	hex_stirng = ""
 	jump_count = 0
 	for index, char in enumerate(string):
-		#print(char, end="")
 		current_string += char
-		hex_stirng += char
-
-		if(len(hex_stirng) == 2):
-			if(0 < int(hex_stirng, 16) < 128):
-				current_string_aschii += chr(int(hex_stirng, 16))
-			else:
-				current_string_aschii += ""
-			hex_stirng = ""
-
 		if(len(current_string) == length):
 			if(jump_count == 0):
 				print("{}".format(hex(end)), end="	")
 
 			print(current_string, end=" ")
-
-			#	+ "\t" + current_string_aschii
-
 			current_string = ""
 			jump_count += 1
 					
 			if(jump_count % 4 == 0 and jump_count > 0):
 				end += 16
-				print("\t|\t{} \n{}".format( current_string_aschii, hex(end)), end="	")
-				current_string_aschii = ""
-		
+				print("\n{}".format(hex(end)), end="	")
 	print(current_string)
-	print("")
-
 
 
 class unicorn_debug():
-	def __init__(self, unicorn, section_virtual_map, section_map, address_space):
+	def __init__(self, unicorn, section_virtual_map, section_map, address_space, logging):
 		self.section_virtual_map = section_virtual_map
 		self.section_map = section_map
 		self.address_space = address_space
 		self.unicorn = unicorn
+		self.logging = logging
+
 
 		self.breakpoints = {
 
@@ -81,24 +67,27 @@ class unicorn_debug():
 		
 		}
 
-		self.instruction_count = 0
-		self.max_instructions = 8000
-
 		self.address_hits = {
 
 		}
-
-		self.full_trace = False
-
-		self.logging_enabled = os.path.isfile('/root/test/test_binaries/unicorn.log')
-
-		self.log_file = open("/root/test/test_binaries/unicorn.log", "w")
 
 		self.registers_2_trace = {
 
 		}
 
 		self.values_2_look_for = set()
+
+
+		self.instruction_count = 0
+		self.max_instructions = 8000
+
+		self.full_trace = False
+
+		self.logging_enabled = os.path.isfile('/root/test/test_binaries/unicorn.log')
+
+		if(self.logging_enabled):
+			self.log_file = open("/root/test/test_binaries/unicorn.log", "w")
+
 
 		self.next_break = False
 
@@ -136,7 +125,6 @@ class unicorn_debug():
 			self.log_file.write(hex(self.unicorn.reg_read(UC_X86_REG_RIP)) + "\n")
 			self.log_file.write(hex(self.unicorn.reg_read(UC_X86_REG_RAX)) + "\n")
 
-
 	def readable_eflags(self, current_state):
 		flags =	[
 				[2,	0x0004,	"PF"],	 
@@ -151,10 +139,11 @@ class unicorn_debug():
 		enabled_string = "0x%x	" % (current_state)
 
 		for flag in flags:
-			if( (current_state & flag[1]) >> flag[0]):
+			if((current_state & flag[1]) >> flag[0]):
 				enabled_string += flag[2] + " "
 		return enabled_string
 
+	#	basic parser, nothing fancy
 	def calculate_location(self, string="rdi, [rcx + rax*8 + 8]"):
 		#rcx + rax*8 + 8
 		strings = string.split(",")
@@ -214,19 +203,15 @@ class unicorn_debug():
 		string = ""
 		hook_mnemonic = ""
 		try:
-			#print(data)
 			for dissably in mode.disasm(data, 0x100):
 				if(self.full_trace):
 					location_argument = self.calculate_location(dissably.op_str + ";")
 					if(location_argument != None):
-						#print(location_argument)
 						locations = []
 						for locations_number in location_argument:
 							locations.append(bold_text(self.determine_location(locations_number) + "[0x%x]" % (locations_number)))
-
 							if(self.check_memory_value(locations_number, check_only=True)):
 								hook_mnemonic = "Memory value"
-
 						locations = " ,".join(locations)
 						string += "%s %s (%s);" % (dissably.mnemonic, dissably.op_str, locations)
 					else:
@@ -236,8 +221,6 @@ class unicorn_debug():
 				
 				if(self.hook_points.get(str(dissably.mnemonic), None) != None):
 					hook_mnemonic = dissably.mnemonic.strip()
-					#hook_mnemonic = str(dissably.mnemonic)
-
 		except Exception as e:
 			print(e)
 			print("get instruction bug")
@@ -251,7 +234,7 @@ class unicorn_debug():
 			print(hex(self.unicorn.reg_read(register)))
 
 	def step(self, tokens):
-		print("one step")
+		print("one instruction step")
 		self.next_break = True
 
 	def memory_handle(self, tokens):
@@ -273,10 +256,8 @@ class unicorn_debug():
 
 	def peek_stack(self, tokens):
 		stack_peek = self.unicorn.mem_read(self.unicorn.reg_read(UC_X86_REG_RSP) - 8, 100 * 8)
-#		pretty_print_bytes(stack_peek)
 		space_stack(self.unicorn.reg_read(UC_X86_REG_RSP) + 100 * 8, pretty_print_bytes(stack_peek, aschii=False))
 	
-
 	def read_2_null(self, start):
 		results = []
 		string = []
@@ -316,8 +297,6 @@ class unicorn_debug():
 					return self.handle_commands()
 				return "stepi"
 
-
-
 	def delta_registers(self):
 		for name, unicorn_refrence in self.registers_2_trace.items():
 			current_state =  self.unicorn.reg_read(unicorn_refrence[0])
@@ -334,7 +313,8 @@ class unicorn_debug():
 	def resolve_hook_instruction(self):
 		address, size = self.current_address, self.current_size
 		instruction_name, hook_instruction, hook_name = self.get_instruction(address, size)
-		print('\t\t%s' % instruction_name)
+		if(self.logging):
+			print('\t\t%s' % instruction_name)
 
 		if(hook_instruction or self.hook_points.get(hex(address), None) != None):
 			if(hook_name == "Memory value"):
@@ -347,8 +327,7 @@ class unicorn_debug():
 			spesification = self.hook_points[hook_name][1]
 			max_hit_count = spesification.get("max_hit_count", None)
 
-
-			hooked_IP = False # don't want to overwrite the hooked instruction pointer
+			hooked_RIP = False # don't want to overwrite the hooked instruction pointer
 			if(max_hit_count != None):
 				current_count = spesification.get("count", 0)
 				print("instruction got hooked (%i)" % (current_count))
@@ -367,7 +346,7 @@ class unicorn_debug():
 
 				for register, value in change_list.items():				
 					if("RIP" in register.upper()):
-						hooked_IP = True
+						hooked_RIP = True
 					register = eval("UC_X86_REG_{}".format(register.upper()))
 					if(type(value) == str):
 						register_value = self.unicorn.reg_read(eval("UC_X86_REG_{}".format(value.upper())))
@@ -378,12 +357,12 @@ class unicorn_debug():
 				print("instruction got hooked")
 				for register, value in self.hook_points[hook_name][0].items():				
 					if("RIP" in register.upper()):
-						hooked_IP = True
+						hooked_RIP = True
 					
 					register = eval("UC_X86_REG_{}".format(register.upper()))
 					self.unicorn.reg_write(register, value)
 
-			if not hooked_IP:
+			if not hooked_RIP:
 				current_rip = self.unicorn.reg_read(UC_X86_REG_RIP)
 				self.unicorn.reg_write(UC_X86_REG_RIP, current_rip + size)
 
@@ -411,12 +390,7 @@ class unicorn_debug():
 		if(self.current_breakpoint != None or self.next_break):
 			self.next_break = False
 			if(type(self.current_breakpoint) == str):
-				if(self.current_breakpoint == "check_mem"):
-#					unicorn_debugger.add_breakpoint(0x400000 + 0x400dc5, "check_mem")
-					pretty_print_bytes(self.unicorn.mem_read(0x400000 + 0x2b38b8 + 0x400dc5, 8))
-					pretty_print_bytes(self.unicorn.mem_read(0x800dc5 + 0x2b38b8, 8))
-					input("Breakpoint hit")
-				elif(self.current_breakpoint == "exit"):
+				if(self.current_breakpoint == "exit"):
 					print("will exit after commands")
 					if not self.handle_commands() == "stepi":
 						exit(0)
@@ -441,21 +415,21 @@ class unicorn_debug():
 				self.address_hits[address] = 1
 			else:
 				self.address_hits[address] += 1
-
+			
 			self.log_2_file()
 			self.delta_registers()
 
 			self.current_address = address
 			self.current_size = size
-			
+	
+			self.instruction_count += 1
+	
 			if(self.resolve_hook_instruction()):
 				#	the instruction did a patch ...
 				return None
 
 			self.resolve_break_point()
 			
-			self.instruction_count += 1
-
 			if(self.max_instructions <= self.instruction_count):
 				print("hit instruction_count limit. exited")
 				exit(0)

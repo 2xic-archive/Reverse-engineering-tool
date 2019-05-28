@@ -970,9 +970,28 @@ Patching the original switch statement under "Collect prefixes" to make the swit
 			-	whooo!!! I did it !
 			
 
+- to future generations, reading kernel source code does help a lot to bootstrap unicorn!
+	-	here are some resources that was nice.
 
+			https://elixir.bootlin.com/linux/v3.18/source/fs/binfmt_elf.c#L603
 
+			I have should  have read some kernel code before. Here is some of the things i'm
+			missing 
 
+			https://elixir.bootlin.com/linux/v3.18/source/fs/binfmt_elf.c#L149
+
+	
+			https://github.com/torvalds/linux/blob/master/arch/x86/include/asm/elf.h
+
+		'''
+			special instruction 
+				cpuid -> https://c9x.me/x86/html/file_module_x86_id_45.html
+			xgetbv
+				https://www.felixcloutier.com/x86/xgetbv
+
+			# https://wiki.cdot.senecacollege.ca/wiki/X86_64_Register_and_Instruction_Quick_Start
+				nice table
+		'''
 
 
 
