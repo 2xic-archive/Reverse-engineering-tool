@@ -93,9 +93,6 @@ def parse_dynamic(elf_target):
 			print("0x%018x %20s [0x%x]" %(tag, tag, identity))
 
 
-
-
-
 def link_lib_and_binary(binary, library):
 	binary_map_functions = {
 

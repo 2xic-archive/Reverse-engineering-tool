@@ -968,7 +968,44 @@ Patching the original switch statement under "Collect prefixes" to make the swit
 
 
 			-	whooo!!! I did it !
-			
+		
+
+		- 	fstat
+
+			-	okay, so lets try to see the structure
+
+				-	https://stackoverflow.com/questions/35392291/how-to-convert-between-a-dev-t-and-major-minor-device-numbers
+					-	nice for compatability later....
+
+				-	trying to find the definition of the fstat system call
+
+
+				0x7fffffffe978:	0x00451e6a	0x00000000	
+								0x00000011	0x00000000 		<- st_dev
+				0x7fffffffe988:	0x00000005	0x00000000		<- st_ino
+								0x00000001	0x00000000		<- st_mode
+				0x7fffffffe998:	0x00002190	0x00000000		<- st_nlink
+								0x00000005	0x00000000		<- st_uid
+				0x7fffffffe9a8:	0x00008802	0x00000000		<- st_gid
+								0x00000000	0x00000000		<- st_rdev
+				0x7fffffffe9b8:	0x00000400	0x00000000		<- st_size
+								0x00000000	0x00000000		<- st_blksize
+				0x7fffffffe9c8:	0x5cee6c39	0x00000000		<-	st_blocks
+								0x16030145	0x00000000	
+
+
+
+
+
+				0x7fffffffe9d8:	0x5cee6c39	0x00000000	0x16030145	0x00000000
+				0x7fffffffe9e8:	0x5cee670d	0x00000000	0x16030145	0x00000000
+				0x7fffffffe9f8:	0x00000000	0x00000000	0x00000000	0x00000000
+				0x7fffffffea08:	0x00000000	0x00000000	0x006b2300	0x00000000
+				0x7fffffffea18:	0x004a6260	0x00000000	0x00489704	0x00000000
+				0x7fffffffea28:	0x0040d004	0x00000000	0x006b2300	0x00000000
+				0x7fffffffea38:	0xffffffff	0x00000000	0x00489704	0x00000000
+
+
 
 - to future generations, reading kernel source code does help a lot to bootstrap unicorn!
 	-	here are some resources that was nice.
@@ -991,6 +1028,9 @@ Patching the original switch statement under "Collect prefixes" to make the swit
 
 			# https://wiki.cdot.senecacollege.ca/wiki/X86_64_Register_and_Instruction_Quick_Start
 				nice table
+
+
+			https://filippo.io/linux-syscall-table/  <- BEST TABLE FOR SYSCALL LOOKUP
 		'''
 
 

@@ -1,17 +1,23 @@
+import struct
+import time
+import sys
+import os
+import random
+import threading
+
+
 from unicorn import *
 from unicorn.x86_const import *
 from capstone import *
-import struct
 
 from .dynamic_linker import *
 from elf.elf_parser import *
 from .unicorn_helper import *
-import time
-import sys
-import os
 from .syscall_handler import *
-import random
-import threading
+from .instruction_handling import *
+from .memory_mapper import *
+from .stack import *
+from .msr import *
 
 def threaded(function):
 	def wrapper(*args, **kwargs):
@@ -21,229 +27,31 @@ def threaded(function):
 	return wrapper
 
 
-class stack_handler():
-	def __init__(self):
-		self.vsdo_start = 0x2000000
-
-	def push_string(self, string_list):
-		for string in string_list:
-			self.push_bytes(string + "\x00")
-
-	def byte_string_with_length(self, input_string, length=0):
-		start = bytearray(input_string.encode())
-		# padding
-		for i in range(len(input_string), length):
-			start.append(0)
-		if(start[length - 1] != 0):
-			raise Exception("not null terminated string")
-		return bytes(start)
-
-	def push_bytes(self, bytes_array):
-		rsp = self.emulator.reg_read(UC_X86_REG_RSP)
-		rsp -= len(bytes_array)
-		self.emulator.mem_write(rsp, bytes_array)
-		self.emulator.reg_write(UC_X86_REG_RSP, rsp)
-		assert(type(rsp) != None)
-		return rsp
-
-	def stack_insert_at_reverse_index(self, index, bytes_data):
-		self.emulator.mem_write(self.stack_pointer + index, bytes_data)
-		return (index + len(bytes_data))
-
-	def add_zero_byte(self):
-		return self.push_bytes(bytes(bytearray(1)))
-
-	def hex_bytes(hex_string):
-		return bytes(reversed(bytes(bytearray.fromhex(hex_string.replace("0x", "")))))
-	
-	def push_string(self, string):
-		assert(type(string) == str)
-		return self.push_bytes((string + "\0").encode())
-
-	def random_prng_bytes(self, size=16):
-		return bytes(bytearray(random.getrandbits(8) for _ in range(size)))
-
-	def arch_align_stack(self):
-		#	https://elixir.bootlin.com/linux/v3.18/source/arch/x86/kernel/process.c#L459
-		sp = self.emulator.reg_read(UC_X86_REG_RSP)
-		sp -= random.randint(0, 256) % 8192;
-		sp &= ~0xf
-		self.emulator.reg_write(UC_X86_REG_RSP, sp)
-		return sp
-
-	def stack_round(self, item):
-		return ((15 + (self.stack_pointer)) + item) &~ 15
-
-	def stack_set(self, value):
-		self.emulator.reg_write(UC_X86_REG_RSP, value)
-
-	def align_stack(self):
-		#	https://elixir.bootlin.com/linux/v3.18/source/arch/x86/kernel/process.c#L459
-		rsp = self.emulator.reg_read(UC_X86_REG_RSP)
-		rsp &= ~0xf
-		self.emulator.reg_write(UC_X86_REG_RSP, rsp)
-
-	def init_stack(self):
-		start = self.stack_pointer
-
-		self.actual_location_exec = self.push_string("/root/test/test_binaries/static_small")
-		self.actual_platform_location = self.push_string("x86_64")
-		self.actual_location_prng = self.push_bytes(self.random_prng_bytes())
-
-		self.setup_aux_vector()
-		
-		argc = 0
-		envp = 1
-		items = (argc + 1) + (envp + 1) + 1
-
-		self.push_bytes(struct.pack("<Q", 0)) # null envp
-
-		self.push_bytes(struct.pack("<Q", 0)) # null arg
-		self.push_bytes(struct.pack("<Q", self.actual_location_exec)) # argc
-		self.push_bytes(struct.pack("<Q", 1)) # argc
-
-		end = self.stack_pointer
-		delta = (start - end)
-			
-		return start, end, delta
-
-	@property
-	def stack_pointer(self):
-		return self.emulator.reg_read(UC_X86_REG_RSP)
-
-
-	def aux_entry(self, key_id, val):
-		self.aux_vector.append((key_id, val))
-
-	def setup_aux_vector(self):
-		self.aux_vector = []
-	
-		#	https://elixir.bootlin.com/linux/v3.18/source/include/uapi/linux/auxvec.h#L11
-		self.AT_NULL  =   0	#end of vector 
-		self.AT_IGNORE =  1	 # entry should be ignored 
-		self.AT_EXECFD =  2	 # file descriptor of program 
-		self.AT_PHDR  =   3	 # program headers for program 
-		self.AT_PHENT =   4	 # size of program header entry 
-		self.AT_PHNUM =   5	 # number of program headers 
-		self.AT_PAGESZ =  6	 # system page size 
-		self.AT_BASE  =   7	 # base address of interpreter 
-		self.AT_FLAGS =   8	 # flags 
-		self.AT_ENTRY =   9	 # entry point of program 
-		self.AT_NOTELF =  10	 # program is not ELF 
-		self.AT_UID    =  11	 # real uid 
-		self.AT_EUID  =   12	 # effective uid 
-		self.AT_GID   =   13	 # real gid 
-		self.AT_EGID   =  14	 # effective gid 
-		self.AT_PLATFORM  = 15  # string identifying CPU for optimizations 
-		self.AT_HWCAP   = 16    # arch dependent hints at CPU capabilities 
-		self.AT_CLKTCK =  17	 # frequency at which times() increments 
-		self.AT_SECURE  = 23    # secure mode boolean */
-		self.AT_BASE_PLATFORM = 24	 # string identifying real platform, may differ from AT_PLATFORM. 
-		self.AT_RANDOM = 25	 # address of 16 random bytes 
-		self.AT_HWCAP2 = 26	 # extension of AT_HWCAP 
-		self.AT_EXECFN = 31	 # filename of program 
-		self.AT_SYSINFO = 32
-		self.AT_SYSINFO_EHDR = 33
-
-
-		self.ELF_EXEC_PAGESIZE = 4096
-
-		self.aux_entry(self.AT_NULL, 0x0)
-
-		self.aux_entry(self.AT_PLATFORM, self.actual_platform_location) 
-		self.aux_entry(self.AT_EXECFN, self.actual_location_exec) 
-		self.aux_entry(self.AT_RANDOM, self.actual_location_prng)	
-
-		self.aux_entry(self.AT_SECURE, 0x0)		#	super secure
-		self.aux_entry(self.AT_EGID, 0x500)
-		self.aux_entry(self.AT_GID, 0x500)
-		self.aux_entry(self.AT_EUID, 0x500)
-		self.aux_entry(self.AT_UID, 0x500)
-
-		self.aux_entry(self.AT_ENTRY, self.BASE + self.target.program_entry_point) 	
-		self.aux_entry(self.AT_FLAGS, 0x0)		#	what are flags?
-		self.aux_entry(self.AT_BASE, 0x0)
-
-		self.aux_entry(self.AT_PHNUM, self.target.program_header_count)
-		self.aux_entry(self.AT_PHENT, self.target.program_header_size)
-		self.aux_entry(self.AT_PHDR, self.BASE + self.target.program_header_start)
-
-		self.aux_entry(self.AT_CLKTCK, 100)
-		self.aux_entry(self.AT_PAGESZ, self.ELF_EXEC_PAGESIZE)
-		self.aux_entry(self.AT_HWCAP, 0x42424242)
-		self.aux_entry(self.AT_SYSINFO_EHDR, self.vsdo_start)
-
-
-		for key, value in self.aux_vector:
-			# key value storage, in memory!
-			self.push_bytes(bytes(bytearray(struct.pack("<Q", value))))
-			self.push_bytes(bytes(bytearray(struct.pack("<Q", key))))
-
-	@property
-	def path(self):
-		return os.path.dirname(os.path.realpath(__file__)) + "/"
-
-	def setup_vsdo(self):
-		self.emulator.mem_map(self.vsdo_start, 1024 * 1024)
-		# currently loading this binary into memory... not the best way of doing things....
-		self.emulator.mem_write(self.vsdo_start, open(self.path + "vsdo.bin", "rb").read())
-
-class emulator(stack_handler):
+class emulator(stack_handler, memory_mapper, msr_helper):
 	def __init__(self, target):
-		super().__init__()
+
 
 		self.target = target
-
 		self.emulator = Uc(UC_ARCH_X86, UC_MODE_64)
 
+		stack_handler.__init__(self)
+		memory_mapper.__init__(self)
+		msr_helper.__init__(self)
 
 		self.setup_vsdo()
 
 		'''
 			Program memory
 		'''
-		self.target = target
-		self.BASE = 0x400000
-		self.program_size =  1024 * 1024 * 8
-
 		self.logging = False
 
-
-		#	PAGE_ZERO
-		self.emulator.mem_map(0, 0x400000)
-
-
-		self.emulator.mem_map(self.BASE, self.program_size)
-		self.emulator.mem_write(0x400000, self.target.file[:0x18f])
-		self.load_binary_sections()
-
-		'''
-			stack memory
-		'''
-		stack_adr = 0x1200000
-		stack_size =  (1024 * 1024 * 8) # 8 mb stack
-
-		self.emulator.mem_map(stack_adr, stack_size)
-		self.emulator.reg_write(UC_X86_REG_RSP, stack_adr + stack_size - 1)
-
-
-		'''
-			* Dynamic mapping will happen here *
-				-	already coded part of the linker
-				-	will have a static binary running before more work on dynamic
-		'''
-
-		address_space = {
-			"stack":[stack_adr, stack_adr + stack_size],
-			"program":[self.BASE, self.program_size]
-		}
-
-		self.unicorn_debugger = unicorn_debug(self.emulator, self.section_virtual_map, self.section_map, address_space, self.logging)
+		self.unicorn_debugger = unicorn_debug(self.emulator, self.section_virtual_map, self.section_map, self.address_space, self.logging)
 		self.unicorn_debugger.full_trace = True
 
 
 		#	used to follow the same path as gdb
 		#	I don't think this hook actually is needed to make the binary run "correctly"
+		
 		self.unicorn_debugger.add_hook("cpuid", {
 			0:{
 				"RAX":0xd,
@@ -317,47 +125,6 @@ class emulator(stack_handler):
 			}
 		)
 
-
-#		self.unicorn_debugger.add_breakpoint(0x414253)#, "jump")
-		self.unicorn_debugger.add_breakpoint(0x414253, "jump") #  qword [fs:rax], main_arena
-		self.unicorn_debugger.add_breakpoint(0x43fede, "jump") # qword [fs:rcx], rdx
-		self.unicorn_debugger.add_breakpoint(0x43fef0, "jump") # mov qword [fs:rcx], rdx
-		self.unicorn_debugger.add_breakpoint(0x43fefb, "jump") # qword [fs:rdx], rax
-
-
-		#	need to write back the value that should have been written at
-		#	0x414253
-		#	fs:
-		self.unicorn_debugger.add_hook("0x4131e0", {
-			0:{
-				"RBX":0x6b2800
-			}
-		},
-			{
-				"max_hit_count":10
-			}
-		)
-		#	fs:
-		self.unicorn_debugger.add_hook("0x435ec3",{
-			0:{
-				#	just want to jump the instruction....
-			}		
-		},
-			{
-				"max_hit_count":3
-			}
-		)
-		# fs:rax
-		self.unicorn_debugger.add_hook("0x413bef", {
-			0:{
-				"RBX":0x6b2800	
-			}
-		},
-			{
-				"max_hit_count":0
-			}
-		)
-
 		self.unicorn_debugger.add_hook("0x431757", {
 			0:{
 				"ymm0":"xmm0",
@@ -368,17 +135,7 @@ class emulator(stack_handler):
 				"max_hit_count":0
 			}
 		)
-
-		# need to fix interface with [fs:rax]
-		self.unicorn_debugger.add_hook("0x43febe", {
-			0:{
-				"RAX":0x6b39c0 
-			}
-		},
-			{
-				"max_hit_count":0
-			}
-		)
+		
 
 	def load_binary_sections(self):
 		self.brk = 0x6b6000
@@ -443,13 +200,13 @@ class emulator(stack_handler):
 
 		def hook_code(mu, address, size, user_data):  
 			try:
-				self.log_text('>>> (%x) Tracing instruction at 0x%x  [0x%x] (%s), instruction size = 0x%x' % (self.unicorn_debugger.instruction_count, address, address-self.BASE, self.unicorn_debugger.determine_location(address), size))
+				print('>>> (%x) Tracing instruction at 0x%x  [0x%x] (%s), instruction size = 0x%x' % (self.unicorn_debugger.instruction_count, address, address-self.base_program_address, self.unicorn_debugger.determine_location(address), size))
 
 
 				'''
 					baisc yeah, the database will take over here(soon)...
 				'''
-				address_hex = hex(address-self.BASE)
+				address_hex = hex(address-self.base_program_address)
 				if(self.address_register.get(address_hex, None) == None):
 					self.address_register[address_hex] = []
 				current_state = {
@@ -457,7 +214,7 @@ class emulator(stack_handler):
 				}
 				for i in ["rax", "rip", "eflags", "rsp"]:
 					if(i == "rip"):
-						current_state[i]  = hex(mu.reg_read(eval("UC_X86_REG_{}".format(i.upper()))) - self.BASE)
+						current_state[i]  = hex(mu.reg_read(eval("UC_X86_REG_{}".format(i.upper()))) - self.base_program_address)
 					else:
 						current_state[i]  = hex(mu.reg_read(eval("UC_X86_REG_{}".format(i.upper()))))
 

@@ -10,6 +10,8 @@ def hook_syscall32(mu, user_data):
 	print(">>> got SYSCALL with EAX = 0x%x" %(eax))
 	mu.emu_stop()
 
+
+
 def hook_syscall64(mu, user_data):
 	rax = mu.reg_read(UC_X86_REG_RAX)
 	rdi = mu.reg_read(UC_X86_REG_RDI)
@@ -25,7 +27,7 @@ def hook_syscall64(mu, user_data):
 		mu.reg_write(UC_X86_REG_R11, 0x306)
 		mu.reg_write(UC_X86_REG_DL, 0x4)
 
-		end_index = 64 	+ 8
+		end_index = 64 + 8
 		end_index = user_data.stack_insert_at_reverse_index(end_index, user_data.byte_string_with_length("Linux", 65))
 		end_index = user_data.stack_insert_at_reverse_index(end_index, user_data.byte_string_with_length("vultr.guest", 65))
 		end_index = user_data.stack_insert_at_reverse_index(end_index, user_data.byte_string_with_length("4.9.0-8-amd64", 65))
@@ -125,6 +127,43 @@ def hook_syscall64(mu, user_data):
 			mu.emu_stop()
 			print(e)
 			pass	
+
+	elif(rax == 0x5):
+		'''
+		from http://man7.org/linux/man-pages/man2/stat.2.html
+
+ 			struct stat {
+               dev_t     st_dev;         /* ID of device containing file */		
+               ino_t     st_ino;         /* Inode number */
+               mode_t    st_mode;        /* File type and mode */ 		 
+               nlink_t   st_nlink;       /* Number of hard links */
+               uid_t     st_uid;         /* User ID of owner */
+               gid_t     st_gid;         /* Group ID of owner */
+               dev_t     st_rdev;        /* Device ID (if special file) */
+               off_t     st_size;        /* Total size, in bytes */
+               blksize_t st_blksize;     /* Block size for filesystem I/O */
+               blkcnt_t  st_blocks;      /* Number of 512B blocks allocated */
+
+               /* Since Linux 2.6, the kernel supports nanosecond
+                  precision for the following timestamp fields.
+                  For the details before Linux 2.6, see NOTES. */
+
+               struct timespec st_atim;  /* Time of last access */
+               struct timespec st_mtim;  /* Time of last modification */
+               struct timespec st_ctim;  /* Time of last status change */
+
+           #define st_atime st_atim.tv_sec      /* Backward compatibility */
+           #define st_mtime st_mtim.tv_sec
+           #define st_ctime st_ctim.tv_sec
+           };
+		'''
+		file_descripor = rdi # fd
+		strcuture = rsi
+		_bytes_, string = user_data.unicorn_debugger.read_2_null(strcuture)		
+		print(string)
+
+		mu.emu_stop()
+
 
 	elif(rax == 0xe7):
 		#	http://man7.org/linux/man-pages/man2/exit_group.2.html
