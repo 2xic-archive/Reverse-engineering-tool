@@ -44,14 +44,17 @@ html, body {
 	max-width: 100%;
 	min-width: 100%;
 
+
 	max-height: 29%; 
 	min-height: 29%;
+	
 	overflow-y: scroll;
 
 	border-top-style: solid;
 	border-bottom-style: solid;
 	overflow: scroll;
 }
+
 
 #container_item_50{
 	display: flex;

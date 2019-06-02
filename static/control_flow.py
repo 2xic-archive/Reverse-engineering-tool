@@ -187,8 +187,10 @@ class cfg:
 			hm... strange
 		'''
 		if not found_all:
-			real_highest = self.get_block(hex(highest_address))[1]["address"]
-			return self.store_blocks(real_highest, count=count + 1)
+			block = self.get_block(hex(highest_address))
+			if(len(block) > 1):
+				real_highest = block[1]["address"]
+				return self.store_blocks(real_highest, count=count + 1)
  
 	def return_edge_map(self):
 		dfs_edges = OrderedDict()
@@ -220,14 +222,16 @@ class cfg:
 
 	def dfs_path(self, grapth, start, end):
 		stack = [(start, [start])]
+		visited_node = []
 		while len(stack) > 0:
 			(vertex, current_path) = stack.pop()
-			if(vertex in grapth.keys()):
+			if(vertex in grapth.keys() and vertex not in visited_node):
 				for edges in (set(grapth[vertex]) - set(current_path)):
 					if(edges == end):
 						yield current_path + [edges]
 					else:
 						stack.append((edges, current_path + [edges]))
+				visited_node.append(vertex)
 
 	def hirachy(self):
 		dfs_edges, dfs_edges_type = self.return_edge_map()
@@ -246,6 +250,8 @@ class cfg:
 		zero_nodes = []
 
 		highest_level = 0
+
+#		print("code blocks %i" % (len(grapth["code"].keys())))
 		for code_block in grapth["code"].keys():
 			if(code_block == head):
 				continue

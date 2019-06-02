@@ -81,6 +81,7 @@ class model(model_configs):
 
 		}
 		for index, key in code_sections.items():
+			print("Targett == {}".format(key))
 			text_content, virtual_address = self.static.read_section(key)
 			decompiled, registered_touched, new_comments = decompile(text_content, virtual_address, capstone_mode, self.static.qword_helper)
 			self.decompiled_sections[index] = {"section_name":key, 
@@ -89,7 +90,6 @@ class model(model_configs):
 											}
 
 			grapth = self.create_CFG_partial(self.decompiled_sections[index]["code"], key)
-
 			self.resolve_comments(new_comments)
 
 			if(self.socket_io != None):
@@ -98,9 +98,8 @@ class model(model_configs):
 						 "grapth":self.cfg
 					})
 			print("parsed another section")
-
-			time.sleep(10)
-	
+#			time.sleep(10) # (used to debug)
+		print("done loading....")
 		if(self.load_code_only_sections):
 			self.binary_sections = self.decompiled_sections
 			return self.decompiled_sections

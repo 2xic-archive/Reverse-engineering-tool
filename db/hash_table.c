@@ -14,7 +14,7 @@
 	}
 #endif
 
-
+#define local_debug 1
 #define TABLE_SIZE 1024
 
 struct hashtable_item_pointer{
@@ -50,6 +50,11 @@ struct hash_table_structure {
 	}
 #endif
 
+void debug_print(char *string){
+	if(local_debug == 1){
+		printf("[DEBUG]%s\n", string);
+	}
+}
 
 struct hash_table_structure *init_table(char *keyword){
 	struct hash_table_structure *hash_table = malloc(sizeof(struct hash_table_structure));
@@ -77,18 +82,25 @@ void *add_hash_table_value(struct hash_table_structure *hash_table, char *keywor
 
 		struct hashtable_item_pointer *hash_table_entry = malloc(sizeof(struct hashtable_item_pointer));
 		hash_table_entry->key = "base";
-		hash_table_entry->value =  init_vector_pointer("collisions");
+		hash_table_entry->value = init_vector_pointer("collisions");
 		hash_table_entry->type = type;
 		hash_table->items[index] = hash_table_entry;
 
 		hash_table_entry->value->type = 0;
 
+
+		int n = 32;
+		char *keyword_copy = (char*) malloc((n+1)*sizeof(char));
+		strncpy(keyword_copy, keyword, n);
+
 		if(type == VALUE_INT){
-			value_vector = vector_add_pointer(hash_table_entry->value, init_vector_pointer(keyword));
+			value_vector = vector_add_pointer(hash_table_entry->value, init_vector_pointer(keyword_copy));
+			value_vector->malloc_keyword = 1;
 			vector_add_pointer(value_vector, value);
 		}else if(type == VALUE_VECTOR){
 			hash_table_entry->value->type = 2;
-			value_vector = vector_add_pointer(hash_table_entry->value, init_vector_pointer(keyword));
+			value_vector = vector_add_pointer(hash_table_entry->value, init_vector_pointer(keyword_copy));
+			value_vector->malloc_keyword = 1;
 			vector_add_pointer(value_vector, init_vector_pointer(value));
 		}
 	}else{
@@ -104,12 +116,19 @@ void *add_hash_table_value(struct hash_table_structure *hash_table, char *keywor
 				break;
 			}
 		}
+
+		int n = 32;
+		char *keyword_copy = (char*) malloc((n+1)*sizeof(char));
+		strncpy(keyword_copy, keyword, n);
+		
 		if(found_entry == NULL){
 			if(type == VALUE_INT){
-				value_vector = vector_add_pointer(address->value, init_vector_pointer(keyword));
+				value_vector = vector_add_pointer(address->value, init_vector_pointer(keyword_copy));
+				value_vector->malloc_keyword = 1;
 				vector_add_pointer(value_vector, value);
 			}else if(type == VALUE_VECTOR){
-				value_vector = vector_add_pointer(address->value, init_vector_pointer(keyword));
+				value_vector = vector_add_pointer(address->value, init_vector_pointer(keyword_copy));
+				value_vector->malloc_keyword = 1;
 				vector_add_pointer(value_vector, init_vector_pointer(value));
 			}
 		}else{
@@ -130,6 +149,7 @@ void *get_hash_table_value(struct hash_table_structure *hash_table, char*keyword
 	int index = hash_function(keyword);
 
 	if(hash_table->max_capacity < index){
+		debug_print("hit max capacity!\n");
 		return NULL;
 	}
 
@@ -141,13 +161,16 @@ void *get_hash_table_value(struct hash_table_structure *hash_table, char*keyword
 	
 		for(int i = 0; i < vector_table->size; i++){
 			struct vector_stucture_pointer *vec = vector_get_pointer(address->value, i);
+
 			if(strcmp(vec->keyword, keyword) == 0){
 				found_key = vec;
 				break;
 			}
 		}
+	//	debug_print("found vector");
 		return found_key;
 	}
+	debug_print("element was null, have the element been inserted?!\n");
 	return NULL;
 }
 
@@ -178,49 +201,51 @@ int free_table(struct hash_table_structure *hash_table){
 }
 
 
+#ifdef DEBUG
+	void test_bad_hash_function(void){
+		struct hash_table_structure *address_table = init_table("address");	
 
-void test_bad_hash_function(void){
-	struct hash_table_structure *address_table = init_table("address");	
+		struct vector_stucture_pointer *value_list;
+		struct vector_stucture_pointer *actual_value;
 
-	struct vector_stucture_pointer *value_list;
-	struct vector_stucture_pointer *actual_value;
+		struct vector_stucture_pointer *found_value_list;
 
-	struct vector_stucture_pointer *found_value_list;
+		int a = 40;
+		int b = 90;
 
-	int a = 40;
-	int b = 90;
+		value_list = add_hash_table_value(address_table, "0x1", NULL, VALUE_VECTOR);
+		actual_value = vector_get_pointer(value_list, 0);
 
-	value_list = add_hash_table_value(address_table, "0x1", NULL, VALUE_VECTOR);
-	actual_value = vector_get_pointer(value_list, 0);
+		vector_add_pointer(actual_value, &a);
 
-	vector_add_pointer(actual_value, &a);
+		found_value_list = get_hash_table_value(address_table, "0x1");			
+		actual_value = vector_get_pointer(found_value_list, 0);
 
-	found_value_list = get_hash_table_value(address_table, "0x1");			
-	actual_value = vector_get_pointer(found_value_list, 0);
+		assert(strcmp(found_value_list->keyword, "0x1") == 0);
 
-	assert(strcmp(found_value_list->keyword, "0x1") == 0);
+		int *value;
+		value = vector_get_pointer(actual_value, 0);
+		assert(*value == 40);
 
-	int *value = vector_get_pointer(actual_value, 0);
-	assert(*value == 40);
+		value_list = add_hash_table_value(address_table, "0x2", NULL, VALUE_VECTOR);
+		actual_value = vector_get_pointer(value_list, 0);
 
-	value_list = add_hash_table_value(address_table, "0x2", NULL, VALUE_VECTOR);
-	actual_value = vector_get_pointer(value_list, 0);
+		vector_add_pointer(actual_value, &b);
 
-	vector_add_pointer(actual_value, &b);
+		found_value_list = get_hash_table_value(address_table, "0x2");			
 
-	found_value_list = get_hash_table_value(address_table, "0x2");			
+		assert(found_value_list != NULL);
+		assert(strcmp(found_value_list->keyword, "0x2") == 0);
 
-	assert(found_value_list != NULL);
-	assert(strcmp(found_value_list->keyword, "0x2") == 0);
+		actual_value = vector_get_pointer(found_value_list, 0);
 
-	actual_value = vector_get_pointer(found_value_list, 0);
+		value = vector_get_pointer(actual_value, 0);
+		assert(*value == 90);
 
-	value = vector_get_pointer(actual_value, 0);
-	assert(*value == 90);
+		free_table(address_table);
 
-	free_table(address_table);
-
-}
+	}
+#endif
 
 
 

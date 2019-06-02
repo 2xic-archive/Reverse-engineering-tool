@@ -87,7 +87,7 @@
 							</canvas>
 						</div>
 					</div>
-					<div id="container_item_30" name="dynamic-div">
+					<div id="container_item_30" name="dynamic_div">
 						<center>
 							<h1>Unicorn data here</h1>						
 						</center>
@@ -99,38 +99,61 @@
 
 		<script type="text/javascript">
 			var socket = io.connect('http://' + document.domain + ':' + location.port);
-			
-			socket.on('connect', function() {
-				socket.emit('online')
-			});
+			var benchmark = true;
 
-			socket.on('error', function(msg){
-				if(msg.indexOf("xhr") == -1){
-					alert(msg);
+			if(!benchmark){
+				socket.on('connect', function() {
+					socket.emit('online')
+				});
+
+				socket.on('error', function(msg){
+					if(msg.indexOf("xhr") == -1){
+						alert(msg);
+					}
+				});
+
+				socket.on('dynamic_data', function(msg){
+					create_dynamic_view(msg);
+				});
+
+				socket.on('block', function(msg){
+
+	//				console.log(msg);
+
+					code_sections = msg["sections"];
+
+					create_flat_view(msg["code"]);
+					create_blocks(msg["grapth"]);
+					if(last_message == undefined){
+						create_grapth(msg["grapth"], 0, false);
+					}else{
+						create_grapth(msg["grapth"], 0, true);
+					}
+				});
+
+				socket.on('hex_response', function(msg){
+					if(msg != null && msg["data"] != null){
+						create_hex_view(msg["data"]);
+					}
+				});
+			}else{
+
+/*				var code = {
+
+				};*/
+				var code_size = 10000;
+				for(var i = 0; i < code_size; i++){
+//					code[i]["code"][]
+
+					create_table_row(undefined, i, {"instruction":"test", "argument":"pop", "registers":[],
+													"comment":""}, [0,0]);
 				}
-			});
 
-			socket.on('dynamic_data', function(msg){
-				create_dynamic_view(msg);
-			});
 
-			socket.on('block', function(msg){
-				code_sections = msg["sections"];
+			}
 
-				create_flat_view(msg["code"]);
-				create_blocks(msg["grapth"]);
-				if(last_message == undefined){
-					create_grapth(msg["grapth"], 0, false);
-				}else{
-					create_grapth(msg["grapth"], 0, true);
-				}
-			});
 
-			socket.on('hex_response', function(msg){
-				if(msg != null && msg["data"] != null){
-					create_hex_view(msg["data"]);
-				}
-			});
+
 		</script>
 	</body>
 </html>

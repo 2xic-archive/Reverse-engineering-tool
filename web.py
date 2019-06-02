@@ -23,6 +23,17 @@ def sessions():
 	return send_from_directory(static_file_dir, "index.html")
 
 
+@app.route("/block")
+def check_block():
+	import json
+	global target
+	return json.dumps({"code":target.decompiled_sections,
+		 "sections":target.static.section_sizes,
+		 "grapth":target.cfg
+		})
+#	return json.loads(open("big_binary.txt", "r").read())
+	
+
 @app.route("/<path:path>")
 def folder_path(path):
 	return send_from_directory(static_file_dir, path)
@@ -30,6 +41,7 @@ def folder_path(path):
 @socketio.on("online")
 def event_code(methods=["GET", "POST"]):
 	global target
+	print("sending the binary data")
 	socketio.emit("block", 
 		{"code":target.decompiled_sections,
 		 "sections":target.static.section_sizes,
@@ -118,13 +130,12 @@ if __name__ == "__main__":
 	if(len(sys.argv) > 1):
 		import atexit
 		atexit.register(exit_handler)
-
 		if(sys.argv[1].endswith(".pickle")):
 			pikcle_data = open(sys.argv[1], "rb") 
 			target = pickle.load(pikcle_data)
 		else:
 			target = model(elf(sys.argv[1]), socketio)
-		socketio.run(app, debug=True, host= '0.0.0.0')
+		socketio.run(app, debug=True, host= '0.0.0.0', port=81)
 	else:
 		print("scripy.py elf-binary")
 

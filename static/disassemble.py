@@ -72,9 +72,12 @@ def decompile(input_bytes, start_address, mode, qword):
 
 		#	can actually be pre calculated by instruction size
 		if("rip + " in dissably.op_str and "qword ptr" in dissably.op_str):
-			next_pointer_address = "0x%x" % (dissably.address)
-			next_pointer =  int(dissably.op_str[dissably.op_str.index("0x"):-1], 16)
-
+			try:
+				next_pointer_address = "0x%x" % (dissably.address)
+				next_pointer =  int(dissably.op_str[dissably.op_str.index("0x"):-1], 16)
+			except Exception as e:
+				pass
+				
 		if("0x%x" % (dissably.address) in qword.keys()):
 			decompiled["0x%x" % (dissably.address)]["comment"] = qword["0x%x" % (dissably.address)]
 		

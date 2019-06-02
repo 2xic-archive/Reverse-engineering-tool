@@ -1,0 +1,22 @@
+
+
+
+
+
+Parts of doing a decompiler is simple, you can come along way with simple parsing of the assembly. Function arguments gets pushed to the stack and then a function get's called, easy to map.... Control flow, if/else and loops should also be easy to map from assembly to c. Bigger challenge is to know type of variable, however the emulator can help the decompiler by reporting what function allocated the variable. 
+
+
+Obfuscated code will also be a challange, I think solving it as a grapth problem is the way to go.
+
+
+Some source code to read before starting work on this
+
+	-	https://github.com/NationalSecurityAgency/ghidra/tree/49c2010b63b56c8f20845f3970fedd95d003b1e9/Ghidra/Features/Decompiler
+	-	there was also some nice stuff here https://upload.wikimedia.org/wikipedia/commons/5/53/X86_Disassembly.pdf
+
+
+	-	https://www.sba-research.org/wp-content/uploads/publications/Code_Obfuscation_CameraReady.pdf
+	-	https://arxiv.org/pdf/1704.02307.pdf
+
+
+	-	some good here also http://tigress.cs.arizona.edu/img/eurocrypt-2016.pdf

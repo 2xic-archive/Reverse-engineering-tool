@@ -34,7 +34,7 @@ function moving_rows(table_row){
 			section = look_up_section(table_row.getAttribute("name").replace("row_", ""));
 		}
 
-		if(section != last_index || old_target != target_section){
+		if(section != undefined && section != last_index || old_target != target_section){
 			if(old_target != target_section){
 				create_grapth(last_message, 0, false);
 				call_stack = [];
@@ -71,7 +71,8 @@ function moving_rows(table_row){
 			document.getElementById("flat_view_table").rows[table_row.rowIndex].scrollIntoView(false);//status[1]);
 		}
 
-		socket.emit("dynamic_info", {data:{
+		socket.emit("dynamic_info", {
+				data:{
 					"address":table_row.getAttribute("name").replace("row_", "")
 				}
 		});
@@ -197,12 +198,16 @@ window.addEventListener("keydown", function(e) {
 				moving_rows(target[0]);
 			}else{				
 				var id = document.activeElement.id.replace("table", "");
-				var edges = refrence_key_node[id]["edges"];
-				if(edges.length == 1){
-					var target = edges[0];
-					call_stack.push(id);
-					move_2_node(target);
-					global_row_index = 0;
+				var edges = refrence_key_node[id];
+
+				if(edges != undefined){
+					edges = edges["edges"];
+					if(edges.length == 1){
+						var target = edges[0];
+						call_stack.push(id);
+						move_2_node(target);
+						global_row_index = 0;
+					}
 				}
 			}
 		}
@@ -212,23 +217,29 @@ window.addEventListener("keydown", function(e) {
 			if(e.keyCode == 37){
 				e.preventDefault();
 				var id = document.activeElement.id.replace("table", "");
-				var edges = refrence_key_node[id]["edges"];
-				if(edges.length > 0){
-					var target = edges[0];
-					call_stack.push(id);
-					move_2_node(target);
-					global_row_index = 0;
+				var edges = refrence_key_node[id]
+				if(edges != undefined){
+					edges = edges["edges"];
+					if(edges.length > 0){
+						var target = edges[0];
+						call_stack.push(id);
+						move_2_node(target);
+						global_row_index = 0;
+					}
 				}
 			}
 			if(e.keyCode == 39){
 				e.preventDefault();			
 				var id = document.activeElement.id.replace("table", "");
-				var edges = refrence_key_node[id]["edges"];
-				if(edges.length > 0){
-					var target = edges[edges.length - 1];
-					call_stack.push(id);
-					move_2_node(target);
-					global_row_index = 0;
+				var edges = refrence_key_node[id]
+				if(edges != undefined){
+					edges = edges["edges"];
+					if(edges.length > 0){
+						var target = edges[edges.length - 1];
+						call_stack.push(id);
+						move_2_node(target);
+						global_row_index = 0;
+					}
 				}
 			}
 		}

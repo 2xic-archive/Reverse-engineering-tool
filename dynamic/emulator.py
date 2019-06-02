@@ -19,6 +19,8 @@ from .memory_mapper import *
 from .stack import *
 from .msr import *
 
+import triforce_db
+
 def threaded(function):
 	def wrapper(*args, **kwargs):
 		thread = threading.Thread(target=function, args=args, kwargs=kwargs)
@@ -39,6 +41,20 @@ class emulator(stack_handler, memory_mapper, msr_helper):
 		msr_helper.__init__(self)
 
 		self.setup_vsdo()
+
+
+		self.db_registers = [
+			("rax", UC_X86_REG_RAX),
+			("rsi", UC_X86_REG_RSI),
+			("rdi", UC_X86_REG_RDI),
+			("rip", UC_X86_REG_RIP),
+			("rsp", UC_X86_REG_RSP)
+		]
+
+		self.db = triforce_db.db_init()
+
+		for register, unicorn_refrence in self.db_registers:
+			self.db.add_register(register)
 
 		'''
 			Program memory
@@ -206,6 +222,10 @@ class emulator(stack_handler, memory_mapper, msr_helper):
 				'''
 					baisc yeah, the database will take over here(soon)...
 				'''
+				for register_tuple in self.db_registers:
+					self.db.add_register_hit(hex(address), register_tuple[0], mu.reg_read(register_tuple[1]))
+				
+				'''
 				address_hex = hex(address-self.base_program_address)
 				if(self.address_register.get(address_hex, None) == None):
 					self.address_register[address_hex] = []
@@ -219,7 +239,7 @@ class emulator(stack_handler, memory_mapper, msr_helper):
 						current_state[i]  = hex(mu.reg_read(eval("UC_X86_REG_{}".format(i.upper()))))
 
 				self.address_register[address_hex].append(current_state)
-
+				'''
 
 				self.unicorn_debugger.tick(address, size)
 			
@@ -284,10 +304,18 @@ class emulator(stack_handler, memory_mapper, msr_helper):
 		except Exception as e:
 			print(e)
 			self.unicorn_debugger.log_file.close()
+		
+	
+	def get_register_data(self, address, excecution_round=0):
+		if(type(address) == int):
+			address = hex(address)
+		diconary_map = {
 
-
-	def get_register_data(self, address):
-		#	basic api, easy to integrate with the database.
-		return self.address_register.get(address, [])
-
+		}
+		for register, unicorn_register in self.db_registers:
+			address_values = self.db.get_register_hit(address, register, excecution_round)
+			if(len(address_values) == 0):
+				continue
+			diconary_map[register] = address_values
+		return diconary_map
 

@@ -79,7 +79,7 @@ class unicorn_debug():
 
 
 		self.instruction_count = 0
-		self.max_instructions = 8000
+		self.max_instructions = 100
 
 		self.full_trace = False
 
@@ -432,7 +432,8 @@ class unicorn_debug():
 			
 			if(self.max_instructions <= self.instruction_count):
 				print("hit instruction_count limit. exited")
-				exit(0)
+				self.unicorn.emu_stop()
+				#exit(0)
 
 		except Exception as e:
 			print(e)

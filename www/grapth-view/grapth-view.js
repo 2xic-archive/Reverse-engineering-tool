@@ -25,7 +25,11 @@ var global_row_index = undefined;
 
 function look_up_section(address){
 	var i;
-	for(i = 0; i < look_up_table[target_section].length; i++){
+	var look_up_table_section = look_up_table[target_section];
+	if(look_up_table_section == undefined){
+		return undefined;
+	}
+	for(i = 0; i < look_up_table_section.length; i++){
 		if(parseInt(address, 16) < parseInt(look_up_table[target_section][i], 16)){
 			break;
 		}
@@ -306,14 +310,17 @@ function dfs_draw(stack, ctx, mapping){
 
 
 function create_grapth(msg, index, message_only){
-	if(index != undefined){
+	if(index != undefined && msg != undefined){
 		last_message = msg;
 		last_index = index;
 		
-		msg = msg[target_section][index];
+		msg = msg[target_section];
+		if(msg != undefined){
+			msg = msg[index];
+		}
 	}
 
-	if(!message_only){
+	if(!message_only && msg != undefined){
 		clear_grapth();	
 			
 		var nodes = Object.keys(msg["code"]);	

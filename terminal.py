@@ -25,8 +25,6 @@ if not test_hello:
 	dynamic.run()
 else:
 	static = elf("./test_binaries/small_c_hello")
-
-
 	dynamic = emulator(static)
 	dynamic.run()
 

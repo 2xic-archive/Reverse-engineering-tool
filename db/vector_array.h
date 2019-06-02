@@ -20,6 +20,7 @@ struct vector_stucture_pointer {
 	char *keyword;
 	int size;
 	int type;
+	int malloc_keyword;
 	void **items;
 };
 
