@@ -6,8 +6,8 @@ var file_name = undefined;
 
 var call_stack = [];
 
-
-
+var global_row_index = 0;
+var grapth_row_index = 0;
 
 function is_element_visible(child, parrent) {
 	if(child == undefined || parrent == undefined){
@@ -23,9 +23,12 @@ function is_element_visible(child, parrent) {
 	return [isVisible, bottom <= parrent_location.height];
 }
 
+//var last_section = ".init";
 
-function moving_rows(table_row){
-	if(table_row != undefined && table_row.getAttribute("type") == "flat"){
+var boundary = [];
+
+function moving_rows(table_row, keep_row){
+	/*if(table_row != undefined && table_row.getAttribute("type") == "flat"){
 		var old_target = target_section;
 		target_section = table_row.getAttribute("section");
 		
@@ -60,12 +63,57 @@ function moving_rows(table_row){
 	}else{
 		global_row_index = table_row.rowIndex;
 	}
-
+*/
+	
+	console.log(table_row);
 	if(table_row != undefined){
-		var last_target = table_row.rowIndex;
+		var new_section = table_row.getAttribute("section");
+		if(new_section != undefined){
+			var current_space = parseInt(table_row.children[0].innerText, 16);	
+			var new_boundary = false;
+			if(boundary == undefined){
+				new_boundary = true;
+			}else if(0 < boundary.length){
+				new_boundary = (!( (boundary[0] < current_space)  && (current_space < boundary[1])));
+			}
+			
+			if(target_section != new_section || new_boundary){
+				target_section = new_section;
+
+				var section_target = address_section[new_section];
+				if(section_target != undefined){
+					var target_space = Object.keys(section_target);
+					if(target_space.length == 0){
+						create_grapth(last_message, 0, false);
+						boundary = undefined;
+					}else{
+						for(var i = 0; i < target_space.length; i++){
+							if(current_space < parseInt(target_space[i], 16)){
+								console.log([current_space , target_space[i]]);
+								create_grapth(last_message, (address_section[new_section][target_space[i]] - 1), false);
+								if(i == 0){
+									boundary = [0, parseInt(target_space[i], 16)];
+								}else{
+									boundary = [parseInt(target_space[i - 1], 16), parseInt(target_space[i], 16)];
+								}
+								break;
+							}
+						}
+					}
+				}					
+			}
+		}
+
 		var target = document.getElementsByName(table_row.getAttribute("name"));
 		ligther.highlight(target);
-		
+		if(keep_row == undefined){
+			global_row_index = target[0].rowIndex;
+			grapth_row_index = target[1].rowIndex;
+			call_stack = [];
+			console.log([global_row_index, grapth_row_index]);
+		}
+
+		/*
 		var status = is_element_visible(target[0], document.getElementsByName("flat-view-div")[0]);
 		if(!status[0]){
 			document.getElementById("flat_view_table").rows[table_row.rowIndex].scrollIntoView(false);//status[1]);
@@ -76,13 +124,20 @@ function moving_rows(table_row){
 					"address":table_row.getAttribute("name").replace("row_", "")
 				}
 		});
+		global_row_index = table_row.rowIndex;
+		*/
 
+
+	//	console.log("hwat is rong2");
+	//	console.log(global_row_index);
+	//	console.log(table_row.rowIndex);
+		/*
 		if(target[0].getAttribute("id") != "section"){
 			var status = is_element_visible(target[1], document.getElementsByName("grapth-div")[0]);
 			if(!status[0]){
 				target[1].scrollIntoView(false);
 			}
-		}
+		}*/
 	}
 }
 
@@ -162,22 +217,31 @@ window.addEventListener("keydown", function(e) {
 	if(38 <= e.keyCode <= 40  && document.activeElement.nodeName != "SPAN"){
 		// space and arrow keys
 		// up and down
+
+	//	console.log(global_row_index);
+	//	console.log("wut");
+
 		var index = global_row_index;
-		var flat_view = false;
-		if(document.activeElement.id == "flat_view_table"){
-			index = flat_view_index;		
-			flat_view = true;
+		var flat_view = true;
+		if(document.activeElement.getAttribute("name") == "grapth_table_code"){
+			index = grapth_row_index;		
+			flat_view = false;
 		}
+		console.log([global_row_index, grapth_row_index]);
 
 		// up and down
+		/*function move_up(){
+
+		}*/
+		
 		if(e.keyCode == 38){
 			e.preventDefault();
 			if(0 <= (index - 1)){
 				index -= 1;
 				var target_row = document.activeElement.rows[index];
+		//		console.log(target_row);
 				var target = document.getElementsByName(target_row.getAttribute("name"));
-		//		ligther.highlight(target);
-				moving_rows(target[0]);			
+				moving_rows(target[0], false);			
 			}else if(!flat_view){
 				var target = call_stack.pop();
 				if(target != undefined){
@@ -190,14 +254,16 @@ window.addEventListener("keydown", function(e) {
 
 		if(e.keyCode == 40){
 			e.preventDefault();
-			var target_element = document.activeElement.rows;
+			console.log(index);
+			var target_element = document.activeElement.rows;//[index];
+//			console.log(target_element);
 			if((index + 1) < target_element.length){
 				index += 1;
 				var target_row = target_element[index];
 				var target = document.getElementsByName(target_row.getAttribute("name"));
-				moving_rows(target[0]);
+				moving_rows(target[0], false);
 			}else{				
-				var id = document.activeElement.id.replace("table", "");
+				var id = document.activeElement.id;//.replace("table", "");
 				var edges = refrence_key_node[id];
 
 				if(edges != undefined){
@@ -206,49 +272,56 @@ window.addEventListener("keydown", function(e) {
 						var target = edges[0];
 						call_stack.push(id);
 						move_2_node(target);
-						global_row_index = 0;
+						index = 0;
 					}
 				}
 			}
 		}
-			
+
 		//	left and rigth
-		if(!(document.activeElement.id == "flat_view_table")){
+		if(document.activeElement.getAttribute("name") == "grapth_table_code"){
 			if(e.keyCode == 37){
 				e.preventDefault();
-				var id = document.activeElement.id.replace("table", "");
-				var edges = refrence_key_node[id]
+				var id = document.activeElement.id;//document.activeElement.getAttribute("name");//.replace("table", "");
+				console.log(refrence_key_node);
+				var edges = refrence_key_node[id];
+				console.log(edges);
 				if(edges != undefined){
 					edges = edges["edges"];
 					if(edges.length > 0){
 						var target = edges[0];
 						call_stack.push(id);
 						move_2_node(target);
-						global_row_index = 0;
+						index = 0;
 					}
 				}
 			}
 			if(e.keyCode == 39){
 				e.preventDefault();			
-				var id = document.activeElement.id.replace("table", "");
-				var edges = refrence_key_node[id]
+				var id = document.activeElement.id;//.replace("table", "");
+				console.log(refrence_key_node);
+				var edges = refrence_key_node[id];
+				console.log(edges);
 				if(edges != undefined){
 					edges = edges["edges"];
 					if(edges.length > 0){
 						var target = edges[edges.length - 1];
 						call_stack.push(id);
 						move_2_node(target);
-						global_row_index = 0;
+						index = 0;
 					}
 				}
 			}
 		}
 
-		if(document.activeElement.id != "flat_view_table" && !(e.keyCode == 37 || e.keyCode == 39)){
-			global_row_index = index;
+
+		if(document.activeElement.getAttribute("name") == "grapth_table_code"){
+			grapth_row_index = index;
 		}else{
-			flat_view_index = index;
+			global_row_index = index;
 		}
+		
+
 	}
 }, false);
 
@@ -286,9 +359,12 @@ function move_2_node(target, index){
 	if(index == undefined){
 		index = 0;
 	}
-	target.table_reference.rows[index].click();
+//	console.log(target.table_reference);
+	//document.getElementsByName(target.table_reference.rows[index].getAttribute("name");
+	//target.table_reference.rows[index].click();
 	target.table_reference.focus();
-}
+	moving_rows(target.table_reference.rows[index], false);
+}	
 
 
 function jump_2_node(row){
@@ -332,6 +408,18 @@ function highlight_low(e){
 	}
 }
 
+
+document.addEventListener('click', function(e){
+	if(e.target.tagName == "TD" || e.target.tagName == "TR"){
+		var target = e.target;
+		if(e.target.tagName == "TD"){
+			target = e.target.parentElement;
+		}
+//		target.style.background = "red";
+		moving_rows(target);
+		//console.log(target);
+	}
+});
 
 
 

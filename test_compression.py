@@ -3,7 +3,11 @@ import binascii
 
 
 '''
-	
+
+
+	hopper uses 10 seconds (9739ms) to load the big binary I am working on loading
+	FAST!
+
 	this was intresting, a bit relevant as well
 		-	https://speakerdeck.com/perone/pytorch-under-the-hood?slide=104
 
@@ -53,6 +57,8 @@ import binascii
 	-	Another problem (because of the json) is the memory usage, I want to query the server for what
 		is possible IF it does not make the user experience BAD.
 
+			-	I should make the creation of new rows in a thread...
+
 
 	I know the backend, especially the code responsible for the control grapth could need a optimization.
 	However, generating a control grapth is not easy so I'm not sure how good of an alogritm you can get. 
@@ -79,19 +85,31 @@ import binascii
 
 		
 '''
+import base64
 
-data = open("big_binary.txt", "r").read().encode()
+data = "sega".encode() #open("big_binary.txt", "r").read().encode()
 
 compress = zlib.compressobj(zlib.Z_DEFAULT_COMPRESSION, zlib.DEFLATED, +15)  
 compressed_data = compress.compress(data)  
 compressed_data += compress.flush()
 
 
+print(list())
+
+print(str(base64.b64encode(compressed_data)))
+
+
 data2 = zlib.decompressobj()  
 decompressed_data = data2.decompress(compressed_data)#[i:i+1024])
 decompressed_data += data2.flush()
 
+#print(decompressed_data)
+#open("comressed", "w").write(str(base64.b64encode(decompressed_data)))
+
+
 decompressed_data = str(decompressed_data)
+
+
 
 #print('Decompressed data: ' + decompressed_data)
 

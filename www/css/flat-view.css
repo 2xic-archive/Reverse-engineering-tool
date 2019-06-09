@@ -44,3 +44,6 @@ tr[block_start] {
 	border-style: dotted;
 }
 
+td[comment]{
+	color: green;
+}

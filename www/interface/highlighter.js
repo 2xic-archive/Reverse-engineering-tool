@@ -33,14 +33,18 @@ function stop_char(char){
 	return false;
 }
 
-function code_highlighter(current, registers){
+function code_highlighter(current, registers, target){
 	var current_text = current;
 	if(registers.length == 0){
 		registers.push("none");
 	}
 
-	for(var i = 0; i < registers.length; i++){
+	var insertions = 0;
+	var possible_splits = current.split(" ").length;
+
+	for(var i = 0; i < registers.length && (insertions < possible_splits); i++){
 		var word_length = registers[i].length;
+
 		var word = registers[i];
 		var key_word_index = 0;
 		
@@ -58,7 +62,7 @@ function code_highlighter(current, registers){
 			all_registers.add(word);
 		}
 		
-		while(index < size){
+		while(index < size && (insertions < possible_splits)){
 			if(current_text[index] == "<"){
 				refrence_count += 1;
 			}
@@ -88,6 +92,7 @@ function code_highlighter(current, registers){
 						var span_start = "<span style='color:red;' contenteditable='false' key='" + word +"'>";
 						current_text = current_text.insert(index + 1, span_end);
 						current_text = current_text.insert(index - word_length + 1, span_start);
+						insertions++;
 
 						size += span_start.length + span_end.length;
 						index += (span_start.length + span_end.length);// + 1;
@@ -107,6 +112,7 @@ function code_highlighter(current, registers){
 					var span_start = "<span style='color:blue;' key='" + "hex" +"'>";
 					current_text = current_text.insert(index, span_end);
 					current_text = current_text.insert(hex_start, span_start);
+					insertions++;
 
 					size += span_start.length + span_end.length;
 					index += (span_start.length + span_end.length);// 		
@@ -129,7 +135,14 @@ function code_highlighter(current, registers){
 			hex_mode = false;
 		}
 	}
-	return current_text;
+	if(target == undefined){
+		return current_text;
+	}else{
+		worker.postMessage({
+			'cmd': 'code_highlighter', 
+			'value': current_text
+		});
+	}
 }
 
 //console.log(code_highlighter("add	rsp, 8", []));

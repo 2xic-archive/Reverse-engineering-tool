@@ -99,6 +99,12 @@ class elf:
 		else:
 			name = program_header_type_name.get(program_header_type, "NULL")
 
+
+#		print(program_header_type)
+		if(program_header_type == 0x00000001 and self.base_address != None):
+			self.base_address = program_header_viritual_address
+#			print(hex(program_header_viritual_address))
+
 		return {
 			"type":program_header_type,
 			"type_name":name,
@@ -140,7 +146,7 @@ class elf:
 			self.sections_with_name[name] = self.section_headers[i]
 			self.sections_with_name_index[i] = name
 			self.section_sizes[name] = [self.section_headers[i]["file_offset"], self.section_headers[i]["size"]] 
-
+		self.section_sizes["base_address"] = self.base_address
 
 	def read_section(self, key):
 		section = self.sections_with_name[key]
@@ -212,6 +218,7 @@ class elf:
 
 		self.is_64_bit = self.file[0x04] == 2
 		self.extra_offset = 0 if not self.is_64_bit else 4
+		self.base_address = None
 
 		self.section_headers = OrderedDict()
 		self.program_headers = OrderedDict()

@@ -4,6 +4,20 @@
 		<title>reversing</title>
 		<meta charset="utf-8"/>
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.3/socket.io.min.js"></script>
+		<!--
+			testing with pako....
+		!-->
+
+		<!--
+			https://github.com/NeXTs/Clusterize.js
+		!-->
+		<link href="clusterize/clusterize.css" rel="stylesheet">
+		<script src="clusterize/clusterize.min.js"></script>
+
+		<script type="text/javascript" src="pako.min.js"></script>
+
+		<script src="cache.js"></script>
+		<script src="benchmarker.js"></script>
 
 		<script src="interface/backward_forward.js"></script>
 		<script src="interface/highlighter.js"></script>
@@ -52,30 +66,110 @@
 
 			<div id="container">
 				<div id="container_row">
-					<div id="container_item_70" name="flat-view-div">
+					<!--
+					<div id="container_item_70" name="flat-view-div"  class="clusterize">
+					!-->
+
 						<!--    flat-view   !-->
+						<!--
 						<table id="flat_view_table">
 							<tr id="table_header">
-								<th>section</th>
 								<th>address</th>
 								<th>code</th>
 								<th>comment</th>
 							</tr>
 						</table>
+						!-->
+						<!--
+							  <table>
+							    <thead>
+							      <tr>
+							        <th>address</th>
+									<th>code</th>
+									<th>comment</th>
+							      </tr>
+							    </thead>
+							  </table>
+
+							  <div id="instruction_scroll" class="clusterize-scroll">
+							    <table>
+							      <tbody id="instruction_content" class="clusterize-content">
+							        <tr class="clusterize-no-data">
+							          <td>Loading data…</td>
+							        </tr>
+							      </tbody>
+							    </table>
+							  </div>
+							!-->
+
+							<div class="clusterize">
+							<!--
+							  <table>
+							    <thead>
+							       <tr>
+							        <th>address</th>
+									<th>code</th>
+									<th>comment</th>
+							      </tr>
+							    </thead>
+							  </table>
+							 !-->
+							  <div id="scrollArea" class="clusterize-scroll">
+							    <table>
+							      <tbody id="contentArea" class="clusterize-content">
+							        <tr class="clusterize-no-data">
+							          <td>Loading data…</td>
+							        </tr>
+							      </tbody>
+							    </table>
+							  </div>
+							</div>
+					<!--
 					</div>
+					!-->
+					<!--
 					<div name="hex_view" id="container_item_30">
 						<div id="container_item_50">
-							<div id="container_full">
-								<table id="hex_table">
+							
+							<div id="container_full" class="clusterize">
+									<table>
+										<thead>
+
+
+										</thead>
 								</table>
+
+								<div id="hex_scroll" class="clusterize-scroll">
+								    <table>
+								      <tbody id="hex_area" class="clusterize-content">
+								        <tr class="clusterize-no-data">
+								          <td>Loading data…</td>
+								        </tr>
+								      </tbody>
+								    </table>
+								  </div>
 							</div>
 							<div id="container_full">
-								<table id="char_table">
-										
+								<table>
+										<thead>
+
+								</thead>
 								</table>
-							</div>
+
+								<div id="char_scroll" class="clusterize-scroll">
+								    <table id="char_table">
+								      <tbody id="char_area" class="clusterize-content">
+								        <tr class="clusterize-no-data">
+								          <td>Loading data…</td>
+								        </tr>
+								      </tbody>
+								    </table>
+								  </div>
+							</div>							
 						</div>
 					</div>
+					!-->
+					
 				</div>
 
 				<!--    Grapth-view !-->        
@@ -117,11 +211,7 @@
 				});
 
 				socket.on('block', function(msg){
-
-	//				console.log(msg);
-
 					code_sections = msg["sections"];
-
 					create_flat_view(msg["code"]);
 					create_blocks(msg["grapth"]);
 					if(last_message == undefined){
@@ -130,30 +220,15 @@
 						create_grapth(msg["grapth"], 0, true);
 					}
 				});
-
+				/*
 				socket.on('hex_response', function(msg){
 					if(msg != null && msg["data"] != null){
 						create_hex_view(msg["data"]);
 					}
-				});
+				});*/
 			}else{
-
-/*				var code = {
-
-				};*/
-				var code_size = 10000;
-				for(var i = 0; i < code_size; i++){
-//					code[i]["code"][]
-
-					create_table_row(undefined, i, {"instruction":"test", "argument":"pop", "registers":[],
-													"comment":""}, [0,0]);
-				}
-
-
+				load_view_cache();
 			}
-
-
-
 		</script>
 	</body>
 </html>

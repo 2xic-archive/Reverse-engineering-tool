@@ -1,0 +1,45 @@
+
+
+<html>
+<head>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.3/socket.io.min.js"></script>
+
+  <script type="text/javascript">
+
+  	var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+		socket.on('connect', function() {
+			socket.emit('test_compress_server')
+		});
+
+		socket.on('test_compress', function(msg){
+			//if(msg.indexOf("xhr") == -1){
+				
+				// Get some base64 encoded binary data from the server. Imagine we got this:
+		//		console.log(msg);
+				var b64Data     = msg;
+				// Decode base64 (convert ascii to binary)
+				var strData     = atob(b64Data);
+				// Convert binary string to character-number array
+				var charData    = strData.split('').map(function(x){return x.charCodeAt(0);});
+				// Turn number array into byte-array
+				var binData     = new Uint8Array(charData);
+				// Pako magic
+				var data        = pako.inflate(binData);
+
+				// Convert gunzipped byteArray back to ascii string:
+				var strData     = new TextDecoder("utf-8").decode(new Uint16Array(data));
+				console.log(strData);
+				
+			//	console.log("got the message");
+			//	console.log(msg.length);
+		//	}
+		});
+
+
+  </script>
+</head>
+<body>
+console
+</body>
+</html>

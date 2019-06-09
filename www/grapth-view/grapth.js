@@ -49,6 +49,11 @@ class tree_node {
 		ctx.beginPath();
 		ctx.strokeStyle = color;
 		ctx.moveTo(x0, y0);
+		/*
+			+	50
+			-	50
+			makes it curve
+		*/
 		if(x0 == x1){
 			ctx.quadraticCurveTo(x0 , y0, x1 , y1);
 		}
@@ -101,31 +106,35 @@ class tree_node {
 
 	generate_table(){
 		var code_table = document.createElement("table");
-		var table_body = document.createElement("tbody");
+		var table_id = this.unqiue_id;
 
-		var table_id = "table" + this.unqiue_id;
+		code_table.setAttribute("class", "nodes");
+
+//		var table_body = document.createElement("tbody");
+
 
 		code_table.setAttribute("id", table_id);
 		code_table.setAttribute("name", "grapth_table_code");
 		code_table.setAttribute("tabindex", "0");
 
-			
 		for(var i = 0; i < this.code_block.length; i++){
-			var row = table_body.insertRow(i);
-			row.setAttribute("name", "row_" + this.code_block[i]["address"]);
-			row.setAttribute("id", "grapth_" + this.code_block[i]["address"]);
-			row.setAttribute("type", "grapth");
+			var row = document.createElement("tr");;
+			row.setAttribute("name", this.code_block[i]["address"]);
+		//	row.setAttribute("id", "grapth_" + this.code_block[i]["address"]);
+		//	row.setAttribute("type", "grapth");
 
-			var address_cell = row.insertCell(0);
-			var instruction_cell = row.insertCell(1);
-			var argument_cell = row.insertCell(2);
+			var address_cell = document.createElement("td");
+			var instruction_cell = document.createElement("td");
+			var argument_cell =  document.createElement("td");
+			address_cell.innerText = this.code_block[i]["address"];
 
-			address_cell.innerHTML = this.code_block[i]["address"];
-			address_cell.id = "address_cell";
+		
+//			address_cell.id = "address_cell";
 
-			instruction_cell.innerHTML = this.code_block[i]["instruction"];
-			argument_cell.innerHTML = this.code_block[i]["argument"];
-
+			instruction_cell.innerText = this.code_block[i]["instruction"];
+			argument_cell.innerText = this.code_block[i]["argument"];
+				
+			/*
 			if(this.code_block[i]["argument"][0] == "0" && this.code_block[i]["argument"][1] == "x"){
 				argument_cell.setAttribute("onmouseover", "highlight(this)");
 				argument_cell.setAttribute("onmouseout", "highlight_low(this)");
@@ -133,59 +142,82 @@ class tree_node {
 				argument_cell.setAttribute("onClick", "jump_2_node(this)");
 			}
 			row.setAttribute("onClick", "moving_rows(this)");
-	
-			table_body.appendChild(row);
-		}
+			*/
 
-		code_table.appendChild(table_body);
-		code_table.style.minWidth = "100%";
-		return [code_table.outerHTML, table_id];
+			row.appendChild(address_cell);
+			row.appendChild(instruction_cell);
+			row.appendChild(argument_cell);
+
+			code_table.appendChild(row);
+		}
+	
+//		code_table.appendChild(table_body);
+	//	code_table.style.minWidth = "100%";
+		return code_table;//[code_table, table_id];
 	}
 
 	draw(){
-		var element = document.getElementById(this.unqiue_id);
+		start_function("draw_code");
+//		var element = document.getElementById(this.unqiue_id);
+		var element = this.element_reference;
 		if(element == undefined){
-			var node_div = document.createElement("div");
+/*			var node_div = document.createElement("div");
 
-			node_div.setAttribute("level", this.hirachy_level);
+	//		node_div.setAttribute("level", this.hirachy_level);
 			node_div.setAttribute("class", "nodes");
 			node_div.setAttribute("id", this.unqiue_id);
-				
-			node_div.style.top = this.node_top + "px";
-			node_div.style.left = this.node_left + "px";
-				
-			node_div.style.minHeight = this.heigth + "px";
-			node_div.style.minWidth = this.width + "px";
+*/
 
-			node_div.style.maxHeight = this.heigth  + "px";
-			node_div.style.maxWidth = this.width + "px";			
+
+
 			
 			var table = this.generate_table(this.code_block);
-			node_div.innerHTML = table[0];
 
-			document.getElementById("grapth").appendChild(node_div);
+
+		//	table[0].style.top = this.node_top + "px";
+		//	table[0].style.left = this.node_left + "px";
+				
+
+//			node_div.appendChild(table[0]);
+
+			document.getElementById("grapth").appendChild(table);
+
+
 
 			//	finding the actual heigth and readjusting the node size 
-			this.heigth = document.getElementById(table[1]).offsetHeight;
-			this.width = document.getElementById(table[1]).offsetWidth;
-			node_div.style.minHeight = this.heigth + "px";
-			node_div.style.maxHeight = this.heigth + "px";
 
-			
-			this.element_reference = document.getElementById(this.unqiue_id);
-			this.table_reference  = document.getElementById("table" + this.unqiue_id);
 
+
+			/*	
+				all the overhead is here...
+
+				this will cause a overflow
+			*/
+
+			//	all the overhead is here....
+
+			this.heigth = table.offsetHeight;
+			this.width =  table.offsetWidth;
+
+	//		table.style.height = this.heigth + "px";
+			table.style.width = this.width + "px";
+
+	//		node_div.style.heigth = this.heigth + "px";
+	//		node_div.style.heigth = this.heigth + "px";
+		
+			this.element_reference = table;//document.getElementById(this.unqiue_id);
+			this.table_reference  = document.getElementById(this.unqiue_id);
 		}else{
 			element.style.top = this.node_top + "px";
 			element.style.left = this.node_left + "px";
-			this.element_reference = element;
+//			this.element_reference = element;
 		}
 
 
 		if(this.is_root){
 			this.element_reference.setAttribute("root", "yes");
 		}
-
+		end_function("draw_code");
 //		this.debug( this.node_top + "	"  +  this.node_left);		
 	}
 

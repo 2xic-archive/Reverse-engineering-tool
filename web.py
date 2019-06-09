@@ -27,12 +27,36 @@ def sessions():
 def check_block():
 	import json
 	global target
-	return json.dumps({"code":target.decompiled_sections,
+	open("big_binary.txt", "w").write( json.dumps({"code":target.decompiled_sections,
+		 "sections":target.static.section_sizes,
+		 "grapth":target.cfg,
+		 "hex":target.hex
+	}))
+	return "dumped"
+'''
+	json.dumps({"code":target.decompiled_sections,
 		 "sections":target.static.section_sizes,
 		 "grapth":target.cfg
 		})
+'''
 #	return json.loads(open("big_binary.txt", "r").read())
-	
+
+@socketio.on("test_compress_server")
+def check_block():
+	print("got it")
+	import json
+	import base64
+	import zlib  
+	import binascii
+	data = open("big_binary.txt", "r").read().encode() #open("big_binary.txt", "r").read().encode()
+
+	compress = zlib.compressobj(zlib.Z_DEFAULT_COMPRESSION, zlib.DEFLATED, +15)  
+	compressed_data = compress.compress(data)  
+	compressed_data += compress.flush()
+
+#	print(str(base64.b64encode(compressed_data)))
+	print("yo")
+	socketio.emit("test_compress", (base64.b64encode(compressed_data)).decode())	
 
 @app.route("/<path:path>")
 def folder_path(path):
@@ -130,11 +154,13 @@ if __name__ == "__main__":
 	if(len(sys.argv) > 1):
 		import atexit
 		atexit.register(exit_handler)
+		'''
 		if(sys.argv[1].endswith(".pickle")):
 			pikcle_data = open(sys.argv[1], "rb") 
 			target = pickle.load(pikcle_data)
 		else:
 			target = model(elf(sys.argv[1]), socketio)
+		'''
 		socketio.run(app, debug=True, host= '0.0.0.0', port=81)
 	else:
 		print("scripy.py elf-binary")

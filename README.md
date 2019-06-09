@@ -10,6 +10,9 @@ standard view.
 
 if a line have been excecuted you can see the trace of that instruction.
 
+# 	status
+I created a new branch(faster_version) because I hit into problems with the current master version when I tried to run this tool on bigger binaries(mostly frontend releated). The faster_version tries to make it easier to work on bigger binareis.  
+
 #   Notes
 Mostly tested on some CTF (elf)binaries, I'm sure you can make the program do weird things if you try it on something big and complicated. *This program is still under construction*.
 
