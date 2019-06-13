@@ -1,3 +1,4 @@
+/*
 .nodes{
 	border: 1px solid;
 	font-size: 12px;
@@ -11,7 +12,33 @@
 }
 
 #canvas{
-/*	border-style: solid;;*/
+	position: relative;
+}
+*/
+
+#canvas{
 	position: relative;
 }
 
+#grapth {
+    min-height: 500 px;
+    min-width: 500 px;
+    border-style: solid;
+	display: inline-flex;
+	position: relative;
+}
+
+.node {
+    border-style: solid;
+    display: inline-block;
+    /*		top:150px;
+    		left:100px;*/
+    min-width: 300px;
+    max-width: 300px;
+    /*			min-height: 100px;
+    			max-height: 100px;*/
+    margin: 0px;
+    padding: 0px;
+    position: absolute;
+    overflow: scroll;
+}

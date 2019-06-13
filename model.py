@@ -5,6 +5,7 @@ import os
 import pickle
 import json
 from dynamic.emulator import *
+from grapth import *
 
 
 class model_configs():
@@ -24,14 +25,10 @@ def threaded(function):
 class model(model_configs):
 	def __init__(self, static, socket_io):
 		super().__init__()
-
-		print("made again?")
-
-
 		self.static = static
 
-		self.dynamic = emulator(self.static)
-		self.dynamic.run()
+	#	self.dynamic = emulator(self.static)
+	#	self.dynamic.run()
 
 		self.comments = {
 	
@@ -48,8 +45,6 @@ class model(model_configs):
 		self.hex = None
 
 		self.decompile_binary()
-
-
 
 	#	self.cfg = self.create_CFG()
 		self.hex = self.parse_hex()
@@ -71,25 +66,23 @@ class model(model_configs):
 		filehandler = open(self.get_working_dir() + name + ".pickle", "wb") 
 		pickle.dump(self, filehandler)
 
-	@threaded
+#	@threaded
 	def decompile_binary(self):
 		import time
 		code_sections = self.static.get_sections_parsed()
 		capstone_mode = get_capstone_mode(self.static.target_architecture, self.static.is_64_bit)
 
-		self.decompiled_sections = {
-
-		}
+		self.decompiled_sections = OrderedDict()
 		for index, key in code_sections.items():
 			print("Targett == {}".format(key))
 			text_content, virtual_address = self.static.read_section(key)
 			decompiled, registered_touched, new_comments = decompile(text_content, virtual_address, capstone_mode, self.static.qword_helper)
-			self.decompiled_sections[index] = {"section_name":key, 
+			self.decompiled_sections[key] = {"section_name":key, 
 												"code":decompiled, 
 												"registers":registered_touched
 											}
 
-			grapth = self.create_CFG_partial(self.decompiled_sections[index]["code"], key)
+			grapth = self.create_CFG_partial(self.decompiled_sections[key]["code"], key)
 			self.resolve_comments(new_comments)
 
 			if(self.socket_io != None):

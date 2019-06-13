@@ -1,0 +1,46 @@
+
+
+
+
+hopper uses 10 seconds (9739ms) to load the big binary I am working on, need to load FAST!
+
+
+Speed up
+	[Frontend]
+	-	web worker to analyze instruction highlighting
+	-	Load as you scroll?
+		-	Not sure about this one, it will speed up the loading
+			however, if I want to do something I migth be stuck at loading
+			either way.
+			-	migth hurt under a CTF
+
+	[Backend]
+	-	comrpess the json, use lookup values for instruction
+		instead of instering all of them
+			-	I compressed data with 34.392134472587784%
+
+	-	Have the backend find each block, then the frontend
+		can use this data to easier to sepearte blocks
+			-	less work for javascript 
+			-	minimize reflow anywhere I can....
+			
+	-	(write some benchmark code like I did for javascript)
+
+
+
+
+QA:
+	why not just switch from web to qt? 
+		I can write code in the web way faster than I can with QT. Also
+		it will look nicer. There are some bottlenecks with writing code
+		for the web that I just have to be cleaver about. However I'm sure QT can hold 
+		way more objects in frame than a browser can, but program speed is not the reason
+		why I choose to write the GUI in web. I want a seperate backend and frontend and having
+		the web as a frontend makes the seperation easily. 
+
+	Remove json
+		I kinda want to keep json mainly for readability reasons, makes reading 
+		the code a lot easier. However the fact that it generated ~17MB of data is 
+		way to much. Trafering that over the socket usally makes my session end,
+		the times the session does not end it takes way to much time for the socket
+		to recive the data. Not good. (this is when I run the backend not on localhost)

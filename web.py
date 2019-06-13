@@ -22,7 +22,7 @@ static_file_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "www
 def sessions():
 	return send_from_directory(static_file_dir, "index.html")
 
-
+'''
 @app.route("/block")
 def check_block():
 	import json
@@ -33,7 +33,7 @@ def check_block():
 		 "hex":target.hex
 	}))
 	return "dumped"
-'''
+
 	json.dumps({"code":target.decompiled_sections,
 		 "sections":target.static.section_sizes,
 		 "grapth":target.cfg
@@ -100,6 +100,38 @@ def event_code(json_data, methods=["GET", "POST"]):
 	socketio.emit("control", target.get_cfg())
 
 
+@socketio.on("give_grapth")
+def event_code(methods=["GET", "POST"]):
+	global target
+	working_model = target
+	grapth_layout = list(working_model.cfg.values())[0]
+
+	nodes = {
+
+	}
+	print(grapth_layout.keys())
+	for j in grapth_layout[0]["code"].keys():
+		nodes[j] = tree(name=j)
+
+	root_node = nodes[grapth_layout[0]["start"]]
+	for key, childs in grapth_layout[0]["edges"].items():
+		refrence = nodes[key]
+		for child in childs:
+		#	defined_already[child] = False 
+			refrence.add_children(nodes[child])
+			nodes[child].parrent = refrence
+	
+	grapth_refrence = grapth()
+	grapth_refrence.caclulate_node_positions(root_node)
+	socketio.emit("draw",{ 
+				"layout":grapth_refrence.grapth_layout,
+				"code":grapth_layout[0]["code"],
+				"edges":grapth_layout[0]["edges"]
+			}
+	)
+
+
+
 @socketio.on("dynamic_info")
 def event_code(json_data, methods=["GET", "POST"]):
 #	socketio.emit("control", target.get_cfg())
@@ -154,13 +186,11 @@ if __name__ == "__main__":
 	if(len(sys.argv) > 1):
 		import atexit
 		atexit.register(exit_handler)
-		'''
 		if(sys.argv[1].endswith(".pickle")):
 			pikcle_data = open(sys.argv[1], "rb") 
 			target = pickle.load(pikcle_data)
 		else:
 			target = model(elf(sys.argv[1]), socketio)
-		'''
 		socketio.run(app, debug=True, host= '0.0.0.0', port=81)
 	else:
 		print("scripy.py elf-binary")

@@ -14,7 +14,7 @@ from .dynamic_linker import *
 from elf.elf_parser import *
 from .unicorn_helper import *
 from .syscall_handler import *
-from .instruction_handling import *
+#from .instruction_handling import *
 from .memory_mapper import *
 from .stack import *
 from .msr import *

@@ -159,11 +159,13 @@ function create_flat_view(msg){
 	var data = [];
 	
 	//return new Promise(resolve => {
-		var section_size = Object.keys(msg);
+	//	var section_size = Object.keys(msg);
 		
-		for(var i = 0; i < section_size.length; i++){
+		//for(var i = 0; i < section_size.length; i++){
+		for(section_index in msg){
 			//	this is the section
-			var section_index = section_size[i];
+		
+		//	var section_index = section_size[i];
 			var section_name = msg[section_index]["section_name"];
 
 			//	check if it is already created

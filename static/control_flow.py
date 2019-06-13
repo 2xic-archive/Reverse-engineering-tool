@@ -216,7 +216,12 @@ class cfg:
 	def return_node_code(self):
 		code_nodes = OrderedDict()
 		for block in self.blocks:
-			code_nodes[hex(block.start)] = block.instructions
+
+			if(True):
+				code_nodes[hex(block.start)] = block.instructions[-1]["address"]
+			else:
+				code_nodes[hex(block.start)] = block.instructions
+
 		return code_nodes
 
 
@@ -240,10 +245,10 @@ class cfg:
 			"type":dfs_edges_type,
 			"code":self.return_node_code(),
 			"flow":sorted(list(dfs_edges.keys())),
-			"start":hex(self.start_address), 
+			"start":hex(self.start_address)	, 
 			"end":hex(self.end_address)
 		}
-
+		'''
 		head = grapth["start"]
 		grapth["hirachy"] = OrderedDict()
 		grapth["hirachy"][head] = 1
@@ -270,6 +275,7 @@ class cfg:
 
 		grapth["max_level"] = highest_level
 		assert (len(zero_nodes) == 0), "Found a zero node, implement a handler"
+		'''
 		return grapth
 
 

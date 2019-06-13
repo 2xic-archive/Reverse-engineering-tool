@@ -20,8 +20,11 @@ dynamic.run()
 
 
 #static = elf("./test_binaries/static_small")
-static = elf("./test_binaries/fibonacci")
-print(static)
+static = model(elf("./test_binaries/fibonacci"), None)
+#print(static)
+import json
+print(json.dumps(static.cfg[".init"]))
+
 
 '''
 test_hello = False
