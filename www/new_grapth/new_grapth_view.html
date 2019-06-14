@@ -90,6 +90,10 @@
 				console.log(working_head);
 
 				var head = document.getElementById(working_head);
+				if(head == null){
+					continue;
+				}
+
 				var xy = head.getBoundingClientRect();
 
 				/*

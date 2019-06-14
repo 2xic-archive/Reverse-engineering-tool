@@ -5,7 +5,7 @@ import os
 import pickle
 import json
 from dynamic.emulator import *
-from grapth import *
+from .grapth import *
 
 
 class model_configs():
@@ -39,9 +39,9 @@ class model(model_configs):
 		}
 
 		self.socket_io = socket_io
-		self.cfg = {
+		
+		self.cfg = OrderedDict()
 
-		}
 		self.hex = None
 
 		self.decompile_binary()
@@ -118,9 +118,8 @@ class model(model_configs):
 		return self.binary_sections
 
 	def create_CFG_partial(self, code, key):
-		code_blocks = {
+		code_blocks = OrderedDict()
 
-		}
 		section_id = 0
 		block = []
 
@@ -138,6 +137,7 @@ class model(model_configs):
 				section_id += 1
 				block = []
 				found_control_flow = False
+				
 		self.cfg[key] = code_blocks
 		return code_blocks
 

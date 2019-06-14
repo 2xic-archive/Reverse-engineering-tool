@@ -244,38 +244,39 @@ class cfg:
 			"edges":dfs_edges,
 			"type":dfs_edges_type,
 			"code":self.return_node_code(),
-			"flow":sorted(list(dfs_edges.keys())),
+		#	"flow":sorted(list(dfs_edges.keys())),
 			"start":hex(self.start_address)	, 
 			"end":hex(self.end_address)
 		}
-		'''
+		
 		head = grapth["start"]
 		grapth["hirachy"] = OrderedDict()
 		grapth["hirachy"][head] = 1
 		zero_nodes = []
 
-		highest_level = 0
+		highest_level = 1
 
 #		print("code blocks %i" % (len(grapth["code"].keys())))
 		for code_block in grapth["code"].keys():
 			if(code_block == head):
 				continue
 
-			length = 0
+			length = 1
 			for valid_paths in self.dfs_path(grapth["edges"], head, code_block):
 				if(len(valid_paths) > length):
 					length = len(valid_paths)
 			
 			grapth["hirachy"][code_block] = length
-			if(length == 0):
-				zero_nodes.append(code_block)
+			#if(length == 0):
+			#	grapth["hirachy"][code_block] = 1
+				#zero_nodes.append(code_block)
 
-			if(length > highest_level):
+			if(highest_level < length):
 				highest_level = length
 
 		grapth["max_level"] = highest_level
-		assert (len(zero_nodes) == 0), "Found a zero node, implement a handler"
-		'''
+#		assert (len(zero_nodes) == 0), "Found a zero node, implement a handler"
+		
 		return grapth
 
 

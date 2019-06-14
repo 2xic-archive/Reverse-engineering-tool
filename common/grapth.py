@@ -6,6 +6,8 @@ class tree:
 		self.width = 0
 		self.heigth = 0
 
+		self.heigth = 1
+
 		self.mod = 0
 		self.parrent = parrent
 		self.children = []
@@ -23,6 +25,14 @@ class tree:
 
 	def add_children(self, node):
 		self.children.append(node)
+		node.heigth = self.heigth + 1
+
+	def get_children_heigth(self):
+		return self.heigth + 1
+
+	def add_if_unique(self, node):
+		if node not in self.children:
+			self.children.append(node)
 
 	def is_leaf(self):
 		return len(self.children) == 0
@@ -236,3 +246,38 @@ class grapth:
 
 		for child in node.children:
 			self.get_rigth_counter(child, mod_sum, dicionary_refrence)
+
+def get_grapth_layout(grapth_layout):
+	nodes = {
+
+	}
+	nodes["hidden_node"] = tree(name="hidden")
+	for j in grapth_layout["code"].keys():
+		nodes[j] = tree(name=j)
+
+	'''
+		need a better way to solve heigth conflics....
+	'''
+	root_node = nodes["hidden_node"]
+	for key, childs in grapth_layout["edges"].items():
+		refrence = nodes[key]
+		for child in childs:
+			if(nodes[child].parrent == None):
+				refrence.add_children(nodes[child])
+				nodes[child].parrent = refrence
+			elif(nodes[child].heigth < refrence.get_children_heigth()):
+				old_parrent = nodes[child].parrent
+				old_parrent_child_index = old_parrent.children.index(nodes[child])
+				old_parrent.children[old_parrent_child_index] = tree(name="hidden")
+
+				refrence.add_children(nodes[child])
+				nodes[child].parrent = refrence
+
+	root_node.add_if_unique(nodes[grapth_layout["start"]])
+
+	grapth_refrence = grapth()
+	grapth_refrence.caclulate_node_positions(root_node)
+
+	return grapth_refrence.grapth_layout
+
+

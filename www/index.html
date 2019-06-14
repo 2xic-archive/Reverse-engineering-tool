@@ -45,6 +45,7 @@
 			menu
 		!-->
 		<div id="container_split">
+			<!--
 			<div id="menu">
 				<div>
 					<ul>
@@ -60,6 +61,7 @@
 					</div>
 				</div>
 			</div>
+			!-->
 
 			<div id="menu">
 				<!--
@@ -233,15 +235,14 @@
 						contentId: 'contentArea'
 					});
 					
-					socket.emit('give_grapth');
-
+		
 				});
 
 				socket.on('draw', function(msg) {
 					//console.log(msg);
-
-					var ctx = setup_canvas(1280, 800);
-
+					clear_canvas();
+					
+					boundary = msg["boundary"];
 
 					var grapth = msg["layout"];
 					var code_hint = msg["code"];
@@ -255,16 +256,35 @@
 					//	you process one level
 					//	then you check the highest node, that node will have the y of next level + padding
 
+					var section_name = msg["section_name"];
+
 					console.log(code_hint);
 					var last_heigth_max = 0;
+					var last_width_max = 0;
+
+					var canvas_heigth = 0;
+					var canvas_width = 0;
 					for (var level = 0; level < nodes.length; level++) {
 						var max = 0;
 						for (var node = 0; node < grapth[level].length; node++) {
-							var drawn_size = create_node(padding_left + grapth[level][node][1], padding_top + last_heigth_max + grapth[level][node][2], grapth[level][node][0], code_hint[grapth[level][node][0]] );
-							drawn_size.setAttribute("id", grapth[level][node][0]);
-							var offsetHeight = drawn_size.offsetHeight;
+							if(0 <= grapth[level][node][0].indexOf("hidden")){
+								continue;
+							}
+							var drawn = create_node(padding_left + grapth[level][node][1], padding_top + last_heigth_max + grapth[level][node][2], grapth[level][node][0], code_hint[grapth[level][node][0]],
+								section_name);
+
+							var drawn_element = drawn[0];
+							drawn_element.setAttribute("id", grapth[level][node][0]);
+
+							canvas_width = Math.max(drawn[1], canvas_width);
+							canvas_heigth = Math.max(drawn[2], canvas_heigth);
+							
+							var offsetHeight = drawn_element.offsetHeight;
+							var offsetWidth = drawn_element.offsetWidth;
+
 							max = Math.max(max, offsetHeight);
-							console.log(offsetHeight);
+
+							last_width_max = Math.max(last_width_max, padding_left + grapth[level][node][1]);
 						}
 						last_heigth_max += (max + space_between_nodes);
 					}
@@ -272,24 +292,50 @@
 					var edges = msg["edges"];
 					var head_edges = Object.keys(edges);
 
+
+					//	0x4006ce
+					//	300 is node
+					var ctx = setup_canvas(canvas_width + 300, canvas_heigth + 300);
+					console.log([last_heigth_max, last_width_max, canvas_heigth])
+
 					var delta = document.getElementsByName("grapth-div")[0].getBoundingClientRect();
+
+
+					
 
 					for (var i = 0; i < head_edges.length; i++) {
 						var working_head = head_edges[i];
 						console.log(working_head);
 
 						var head = document.getElementById(working_head);
+
+						if(head == null){
+						//	console.log("why null ? " + working_head);
+							continue;
+						}
+
+
 						var xy = head.getBoundingClientRect();
 
-						/*
-							-	5 is for the border size
-						*/
+						//	-	5 is for the border size
 						var x0 = (xy.left + (xy.width) / 2) - delta.left;
-						var y0 = (xy.top + xy.height - 5) - delta.top;
+						var y0 = (xy.top + xy.height) - delta.top;
+
+
+						refrence_key_node[working_head] = [];
+
 
 						for (var j = 0; j < edges[working_head].length; j++) {
 							var edge_id = edges[working_head][j];
-							var edge_xy = document.getElementById(edge_id).getBoundingClientRect();
+							var edge = document.getElementById(edge_id);
+							if(edge == null){
+					//			console.log("why null ? " + edge_id);
+								continue;
+							}
+
+							refrence_key_node[working_head].push(edge);
+
+							var edge_xy = edge.getBoundingClientRect();
 							var x1 = (edge_xy.left + (edge_xy.width) / 2) - delta.left;
 							var y1 = (edge_xy.top) - delta.top;
 
@@ -297,15 +343,15 @@
 							ctx.strokeStyle = "red";
 							ctx.moveTo(x0, y0);
 
-							if (x0 < x1) {
+							if(x0 == x1){
+								ctx.quadraticCurveTo(x0, y0, x1, y1);
+							}else if (x0 < x1) {
 								ctx.quadraticCurveTo(x0 + 50, y0, x1, y1);
 							} else {
 								ctx.quadraticCurveTo(x0 - 50, y0, x1, y1);
 							}
 							ctx.stroke();
 						}
-						console.log("");
-						break;
 					}
 				});
 

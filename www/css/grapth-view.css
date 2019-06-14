@@ -21,9 +21,9 @@
 }
 
 #grapth {
-    min-height: 500 px;
-    min-width: 500 px;
-    border-style: solid;
+    min-height: 500px;
+    min-width: 500px;
+  /*  border-style: solid;*/
 	display: inline-flex;
 	position: relative;
 }

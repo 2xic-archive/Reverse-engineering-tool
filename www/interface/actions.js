@@ -67,6 +67,7 @@ function moving_rows(table_row, keep_row){
 	
 	console.log(table_row);
 	if(table_row != undefined){
+		/*
 		var new_section = table_row.getAttribute("section");
 		if(new_section != undefined){
 			var current_space = parseInt(table_row.children[0].innerText, 16);	
@@ -103,6 +104,25 @@ function moving_rows(table_row, keep_row){
 				}					
 			}
 		}
+		*/
+		var current_space = parseInt(table_row.children[0].innerText, 16);	
+			
+		var new_section = table_row.getAttribute("section");
+		var new_boundary = false;
+		
+		if(boundary.length == 0){
+			new_boundary = true;
+		}else if(0 < boundary.length){
+			new_boundary = (!( (boundary[0] <= current_space)  && (current_space <= boundary[1])));
+		}
+
+		if(new_boundary){
+			console.log("refresh!");
+			socket.emit('give_grapth', {
+				"section":table_row.getAttribute("section"),
+				"address":table_row.getAttribute("name")
+			});
+		}
 
 		var target = document.getElementsByName(table_row.getAttribute("name"));
 		ligther.highlight(target);
@@ -110,7 +130,7 @@ function moving_rows(table_row, keep_row){
 			global_row_index = target[0].rowIndex;
 			grapth_row_index = target[1].rowIndex;
 			call_stack = [];
-			console.log([global_row_index, grapth_row_index]);
+		//	console.log([global_row_index, grapth_row_index]);
 		}
 
 		/*
@@ -245,7 +265,7 @@ window.addEventListener("keydown", function(e) {
 			}else if(!flat_view){
 				var target = call_stack.pop();
 				if(target != undefined){
-					var element = refrence_key_node[target].table_reference;
+					var element = refrence_key_node[target].children[0];
 					move_2_node(refrence_key_node[target], element.rows.length - 1);
 					index = element.rows.length - 1;
 				}
@@ -267,7 +287,7 @@ window.addEventListener("keydown", function(e) {
 				var edges = refrence_key_node[id];
 
 				if(edges != undefined){
-					edges = edges["edges"];
+				//	edges = edges["edges"];
 					if(edges.length == 1){
 						var target = edges[0];
 						call_stack.push(id);
@@ -282,32 +302,33 @@ window.addEventListener("keydown", function(e) {
 		if(document.activeElement.getAttribute("name") == "grapth_table_code"){
 			if(e.keyCode == 37){
 				e.preventDefault();
-				var id = document.activeElement.id;//document.activeElement.getAttribute("name");//.replace("table", "");
-				console.log(refrence_key_node);
+				var id = document.activeElement.parentElement.id;//document.activeElement.getAttribute("name");//.replace("table", "");
+//				console.log(refrence_key_node);
 				var edges = refrence_key_node[id];
-				console.log(edges);
+//				console.log(edges);
 				if(edges != undefined){
-					edges = edges["edges"];
-					if(edges.length > 0){
+				//	edges = edges["edges"];
+					if(0 < edges.length){
 						var target = edges[0];
 						call_stack.push(id);
-						move_2_node(target);
+						move_2_node(target.children[0]);
 						index = 0;
 					}
 				}
 			}
 			if(e.keyCode == 39){
 				e.preventDefault();			
-				var id = document.activeElement.id;//.replace("table", "");
+				var id = document.activeElement.parentElement.id;//.replace("table", "");
 				console.log(refrence_key_node);
+				console.log(id);
 				var edges = refrence_key_node[id];
 				console.log(edges);
 				if(edges != undefined){
-					edges = edges["edges"];
-					if(edges.length > 0){
+				//	edges = edges["edges"];
+					if(0 < edges.length){
 						var target = edges[edges.length - 1];
 						call_stack.push(id);
-						move_2_node(target);
+						move_2_node(target.children[0]);
 						index = 0;
 					}
 				}
@@ -362,8 +383,8 @@ function move_2_node(target, index){
 //	console.log(target.table_reference);
 	//document.getElementsByName(target.table_reference.rows[index].getAttribute("name");
 	//target.table_reference.rows[index].click();
-	target.table_reference.focus();
-	moving_rows(target.table_reference.rows[index], false);
+	target.focus();
+	moving_rows(target.rows[index], false);
 }	
 
 
