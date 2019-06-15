@@ -31,7 +31,7 @@ def threaded(function):
 
 class emulator(stack_handler, memory_mapper, msr_helper):
 	def __init__(self, target):
-
+		self.logging = False
 
 		self.target = target
 		self.emulator = Uc(UC_ARCH_X86, UC_MODE_64)
@@ -59,7 +59,6 @@ class emulator(stack_handler, memory_mapper, msr_helper):
 		'''
 			Program memory
 		'''
-		self.logging = False
 
 		self.unicorn_debugger = unicorn_debug(self.emulator, self.section_virtual_map, self.section_map, self.address_space, self.logging)
 		self.unicorn_debugger.full_trace = True
@@ -167,7 +166,7 @@ class emulator(stack_handler, memory_mapper, msr_helper):
 			self.section_map[name] = [ int(content["virtual_address"],16),  int(content["virtual_address"],16) + content["size"]]
 
 			if(content["type_name"] == "SHT_NOBITS" or not "SHF_ALLOC" in content["flags"]):
-				print("Skipped section %s (%s)" % (name, content["flags"]))
+				self.log_text("Skipped section %s (%s)" % (name, content["flags"]))
 				continue
 
 			if("SHF_WRITE" in content["flags"]):
@@ -183,7 +182,7 @@ class emulator(stack_handler, memory_mapper, msr_helper):
 			end = int(content["virtual_address"],16) + int(content["size"])
 
 
-			print("Loaded section %s at 0x%x -> 0x%x (%s)" % (name, start, end, content["flags"]))
+			self.log_text("Loaded section %s at 0x%x -> 0x%x (%s)" % (name, start, end, content["flags"]))
 
 			self.emulator.mem_write(int(content["virtual_address"],16), section_bytes)
 
@@ -217,30 +216,11 @@ class emulator(stack_handler, memory_mapper, msr_helper):
 		def hook_code(mu, address, size, user_data):  
 			try:
 				print('>>> (%x) Tracing instruction at 0x%x  [0x%x] (%s), instruction size = 0x%x' % (self.unicorn_debugger.instruction_count, address, address-self.base_program_address, self.unicorn_debugger.determine_location(address), size))
+			#	self.log_text('>>> (%x) Tracing instruction at 0x%x  [0x%x] (%s), instruction size = 0x%x' % (self.unicorn_debugger.instruction_count, address, address-self.base_program_address, self.unicorn_debugger.determine_location(address), size))
 
-
-				'''
-					baisc yeah, the database will take over here(soon)...
-				'''
 				for register_tuple in self.db_registers:
 					self.db.add_register_hit(hex(address), register_tuple[0], mu.reg_read(register_tuple[1]))
 				
-				'''
-				address_hex = hex(address-self.base_program_address)
-				if(self.address_register.get(address_hex, None) == None):
-					self.address_register[address_hex] = []
-				current_state = {
-
-				}
-				for i in ["rax", "rip", "eflags", "rsp"]:
-					if(i == "rip"):
-						current_state[i]  = hex(mu.reg_read(eval("UC_X86_REG_{}".format(i.upper()))) - self.base_program_address)
-					else:
-						current_state[i]  = hex(mu.reg_read(eval("UC_X86_REG_{}".format(i.upper()))))
-
-				self.address_register[address_hex].append(current_state)
-				'''
-
 				self.unicorn_debugger.tick(address, size)
 			
 			except  Exception as e:
@@ -305,13 +285,14 @@ class emulator(stack_handler, memory_mapper, msr_helper):
 			print(e)
 			self.unicorn_debugger.log_file.close()
 		
-	
+	#	from web -> checking the db
 	def get_register_data(self, address, excecution_round=0):
 		if(type(address) == int):
 			address = hex(address)
 		diconary_map = {
 
 		}
+#		print(address)
 		for register, unicorn_register in self.db_registers:
 			address_values = self.db.get_register_hit(address, register, excecution_round)
 			if(len(address_values) == 0):

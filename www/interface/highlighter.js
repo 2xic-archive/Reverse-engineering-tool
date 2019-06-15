@@ -59,7 +59,7 @@ function code_highlighter(current, registers, target){
 		var space_since_stop = 0;
 
 		if(word != "none"){
-			all_registers.add(word);
+		//	all_registers.add(word);
 		}
 		
 		while(index < size && (insertions < possible_splits)){

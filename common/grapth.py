@@ -257,6 +257,8 @@ def get_grapth_layout(grapth_layout):
 
 	'''
 		need a better way to solve heigth conflics....
+			can have it be using a stack instead of recursion,
+			don't revist already visited nodes...
 	'''
 	root_node = nodes["hidden_node"]
 	for key, childs in grapth_layout["edges"].items():

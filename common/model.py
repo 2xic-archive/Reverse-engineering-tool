@@ -27,9 +27,6 @@ class model(model_configs):
 		super().__init__()
 		self.static = static
 
-	#	self.dynamic = emulator(self.static)
-	#	self.dynamic.run()
-
 		self.comments = {
 	
 		}
@@ -44,10 +41,20 @@ class model(model_configs):
 
 		self.hex = None
 
+		self.done_decompile = False
 		self.decompile_binary()
+
+		self.dynamic = emulator(self.static)
+		self.run_emulator()
+		self.ran_emulator = False
 
 	#	self.cfg = self.create_CFG()
 		self.hex = self.parse_hex()
+
+	def run_emulator(self, force=False):
+		if not self.socket_io == None or force:
+			self.dynamic.run()
+			self.ran_emulator = True
 
 	def add_comment(self, address, content):
 		self.comments[address] = content
@@ -74,7 +81,7 @@ class model(model_configs):
 
 		self.decompiled_sections = OrderedDict()
 		for index, key in code_sections.items():
-			print("Targett == {}".format(key))
+#			print("Targett == {}".format(key))
 			text_content, virtual_address = self.static.read_section(key)
 			decompiled, registered_touched, new_comments = decompile(text_content, virtual_address, capstone_mode, self.static.qword_helper)
 			self.decompiled_sections[key] = {"section_name":key, 
@@ -90,9 +97,12 @@ class model(model_configs):
 						 "sections":self.static.section_sizes,
 						 "grapth":self.cfg
 					})
-			print("parsed another section")
+
+		self.done_decompile = True
+
+#			print("parsed another section")
 #			time.sleep(10) # (used to debug)
-		print("done loading....")
+#		print("done loading....")
 		if(self.load_code_only_sections):
 			self.binary_sections = self.decompiled_sections
 			return self.decompiled_sections

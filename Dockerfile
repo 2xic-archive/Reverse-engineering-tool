@@ -9,7 +9,7 @@ RUN chmod +x ./install.sh
 RUN ./install.sh
 EXPOSE 80
 
-ENTRYPOINT ["python", "web.py"]
+ENTRYPOINT ["python", "main.py"]
 
 #	docker build --tag=reverse .
 #	docker run -p 4000:80 reverse ./test_binaries/fibonacci

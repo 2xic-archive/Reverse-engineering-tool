@@ -4,6 +4,7 @@ import struct
 import sys
 import os
 from unicorn.x86_const import *
+from common.interface import *
 
 def bold_print(text):
 	print(bold_text(text))
@@ -431,8 +432,14 @@ class unicorn_debug():
 			self.resolve_break_point()
 			
 			if(self.max_instructions <= self.instruction_count):
-				print("hit instruction_count limit. exited")
-				self.unicorn.emu_stop()
+				if not should_continue("hit instruction_count limit, continue?"):
+					self.unicorn.emu_stop()
+				else:
+					self.max_instructions *= 2
+			#	print("hit instruction_count limit. exited")
+			#	self.unicorn.emu_stop()
+
+
 				#exit(0)
 
 		except Exception as e:

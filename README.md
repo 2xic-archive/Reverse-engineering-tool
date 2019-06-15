@@ -2,32 +2,26 @@
 
 # Triforce
 
-<img src="README/current_state.png"  width="800px" />
-
-standard view.
-
-<img src="README/dynamic.png"  width="800px" />
-
-if a line have been excecuted you can see the trace of that instruction.
+<img src="README/new_version.png"  width="800px" />
+(web interface, click for better resolution)
 
 # 	status
-I created a new branch(faster_version) because I hit into problems with the current master version when I tried to run this tool on bigger binaries(mostly frontend releated). The faster_version tries to make it easier to work on bigger binareis.  
+There is now a branch called version 0.1, it shows the idea and part of the vision. Master is maybe already version 0.2, it's web component is a lot faster than the previous version(still some left to do). However, I want more work done on the emulator before I do a version bump. I feel I had a bit too much focus on the web interface for version 0.1. Now a big focus will be on extending the dynamic side, this is key for making this software good. That is why I have made a gdb like interface for the terminal, features will come to the terminal before the web interface to make design iterations faster.
 
-#   Notes
-Mostly tested on some CTF (elf)binaries, I'm sure you can make the program do weird things if you try it on something big and complicated. *This program is still under construction*.
-
+#   Note
+Mostly tested on CTF (elf)binaries + some glibc binary, I'm sure you can make the program do weird things if you try it on something big and complicated. *This program is still under construction*.
 
 #	Features
 -	flat view (see all the sections with code)
 -	code grapth (click in a section, view the branches of the block)
--	hex view (click an instruction see where it is in the binary)
--	(work in progress) dynamic view (click an instruction, see what the values have been when that instruction was executed)
+-	~˙hex view (click an instruction see where it is in the binary)~ (currently disabled)
+-	dynamic view (click an instruction, see what the values have been when that instruction was executed)
 -	when you click a jump instruction, it moves you to the target. The jump target was not interesting? Move back with the back arrow at the menu. (will add keyboard shortcut, _ctrl + b_ maybe )
 -	move around with arrow keys. Are you in graph view ? Use left and right arrow to select target block (if you are at a conditional block, if not press down). When you move between blocks a call stack will be made so you can easily move backwards.
 
 
 # Design philosophy
-What do you expect from a reverse engineering tool? You want quick insight into a program. How do you get insight? The best way is to get dynamic data with the aid of static information. The dynamic data show you where you have been, the static can help you get where you want to be. If the binary has been obfuscated the dynamic part will guide the static part. You want to be able to move around in the program flawlessly. This tool will have focus on speed, you want to do things like root cause analysis fast, this tool should work fast in environments like CTFs. 
+What do you expect from a reverse engineering tool? You want quick insight into a program. How do you get insight? The best way is to get static data with the aid of dynamic information. The dynamic data show you where you have been, the static can help you get where you want to be. If the binary has been obfuscated the dynamic part will guide the static part. You want to be able to move around in the program flawlessly. This tool will have focus on speed, you want to do things like root cause analysis fast and this tool should work fast in environments like CTFs. 
 
 
 #  Status with unicorn (dynamic side)
@@ -64,7 +58,10 @@ static and dynamic reverse engineering, one package with a seamless interface.
 
 (from http://www.keystone-engine.org/docs/BHUSA2016-keystone.pdf )
 
-# setup general
+# setup and run
+This program is still under construction, the install can be unstable.
+
+### setup general
 >  pip3 install -r requirements.txt
 - install capstone from the next branch + python binding
 		https://github.com/aquynh/capstone/tree/next
@@ -73,16 +70,14 @@ static and dynamic reverse engineering, one package with a seamless interface.
 - install unicorn + python binding
 		https://github.com/unicorn-engine/unicorn
 
->	python3 web.py ./test_binaries/fibonacci
-
-# setup linux
+### setup linux
 >	./install.sh
 
-# setup docker
+### setup docker
 > 	docker build --tag=triforce .
 
-# run 
-> 	python3 web.py ./test_binaries/fibonacci
+### run 
+> 	python3 main.py ./test_binaries/fibonacci
 
 > 	docker run -p 4000:80 triforce ./test_binaries/fibonacci
 

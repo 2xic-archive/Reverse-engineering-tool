@@ -20,7 +20,7 @@ function interact_with_target(target){
 }
 
 function rewind(){
-	var future = document.getElementById("flat_view_table").rows[flat_view_index];
+	var future = document.getElementById("contentArea").rows[global_row_index];
 	add_element_future(future);
 	
 	var past = element_history.pop();
@@ -32,7 +32,7 @@ function rewind(){
 }
 
 function forward(){
-	add_element_history(document.getElementById("flat_view_table").rows[flat_view_index], true);	
+	add_element_history(document.getElementById("contentArea").rows[global_row_index], true);	
 
 	var future = future_histroy.pop();
 	interact_with_target(future);
@@ -43,11 +43,12 @@ function forward(){
 }
 
 function add_element_history(element, from_forward){
-	if(element_history[element_history.length - 1] != element){
+	if(element_history.length == 0 || element_history[element_history.length - 1] != element){
 		element_history.push(element);
 	}
 
 	if(!from_forward){
+		// future is changed
 		future_histroy = [];
 		document.getElementById("forward").disabled = true;
 	}

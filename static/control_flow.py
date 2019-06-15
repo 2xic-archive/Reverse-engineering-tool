@@ -275,6 +275,7 @@ class cfg:
 				highest_level = length
 
 		grapth["max_level"] = highest_level
+		
 #		assert (len(zero_nodes) == 0), "Found a zero node, implement a handler"
 		
 		return grapth

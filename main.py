@@ -13,3 +13,5 @@ if __name__ == "__main__":
 			go_online(sys.argv[1])
 		else:
 			go_text(sys.argv[1])
+	else:
+		print("script.py binary")

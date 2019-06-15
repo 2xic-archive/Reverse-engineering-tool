@@ -2,17 +2,22 @@
 
 
 
-hopper uses 10 seconds (9739ms) to load the big binary I am working on, need to load FAST!
+Hopper uses 10 seconds (9739ms) to load the big binary I am working on, we also need speed.
 
 
 Speed up
 	[Frontend]
 	-	web worker to analyze instruction highlighting
+		-	challange : clustersize.js will have to search for the object again....
+			it migth not make preformance any better :/
 	-	Load as you scroll?
 		-	Not sure about this one, it will speed up the loading
 			however, if I want to do something I migth be stuck at loading
 			either way.
 			-	migth hurt under a CTF
+			-	maye the terminal interface can come to the rescue, have a core running a socket
+				you can interface with web / terminal since terminal can connect to the socket and 
+				tell the web to update.
 
 	[Backend]
 	-	comrpess the json, use lookup values for instruction
@@ -22,7 +27,7 @@ Speed up
 	-	Have the backend find each block, then the frontend
 		can use this data to easier to sepearte blocks
 			-	less work for javascript 
-			-	minimize reflow anywhere I can....
+			-	minimize reflow anywhere I can....	
 			
 	-	(write some benchmark code like I did for javascript)
 

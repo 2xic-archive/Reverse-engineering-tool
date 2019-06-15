@@ -34,7 +34,7 @@ class memory_mapper(object):
 
 
 		self.emulator.mem_map(location, size)
-		print((location, size))
+	#	print((location, size))
 
 		if not memory_bytes == None:
 			self.emulator.mem_write(location, memory_bytes)
@@ -59,7 +59,7 @@ class memory_mapper(object):
 			self.section_map[name] = [ int(content["virtual_address"],16),  int(content["virtual_address"],16) + content["size"]]
 
 			if(content["type_name"] == "SHT_NOBITS" or not "SHF_ALLOC" in content["flags"]):
-				print("Skipped section %s (%s)" % (name, content["flags"]))
+				self.log_text("Skipped section %s (%s)" % (name, content["flags"]))
 				continue
 
 			if("SHF_WRITE" in content["flags"]):
@@ -76,7 +76,7 @@ class memory_mapper(object):
 
 			low_address = min(low_address, start)
 			high_address = max(high_address, end)
-			print("Loaded section %s at 0x%x -> 0x%x (%s)" % (name, start, end, content["flags"]))
+			self.log_text("Loaded section %s at 0x%x -> 0x%x (%s)" % (name, start, end, content["flags"]))
 
 			mappings.append([int(content["virtual_address"],16), section_bytes])
 

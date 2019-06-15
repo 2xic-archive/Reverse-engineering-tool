@@ -3,7 +3,7 @@ var last_target = -1;
 var look_up_row = {
 
 };
-var all_registers = new Set([]);
+//var all_registers = new Set([]);
 var current_section = undefined;
 
 
@@ -21,18 +21,19 @@ var section_size = {
 
 var table = undefined;
 
-
 /*
-var worker = new Worker('flat-view-worker.js');
+var worker = new Worker('flat-view/flat-view-worker.js');
 worker.onmessage = function(e) {
-	console.log(e);
+//	console.log(e);
+	if(e.data.cmd == "code_highlighter"){
+		document.getElementsByName(e.data.target)[0].children[1].innerHTML = e.data.value;
+	}
 };
 
 worker.onerror = function(e) {
 	console.log(e);
-//	alert('Error: Line ' + e.lineno + ' in ' + e.filename + ': ' + e.message);
-};*/
-
+};
+*/
 
 function init_section(section, index){
 	//var table = document.getElementById("flat_view_table");
@@ -55,44 +56,24 @@ function init_section(section, index){
 function create_table_row(section, address, code, size){
 	var row = document.createElement("tr");
 	row.setAttribute("name", address);
-	//row.setAttribute("onClick", "moving_rows(this)");
-
-	//table.insertRow(-1);
-
-	//row.id = "flat_view_row_" + address;
-
-	//.setAttribute("id", "flat_view_row_" + address);
-//	row.setAttribute("onClick", "moving_rows(this)");
-//	row.setAttribute("name", address);
-
-//	row.setAttribute("type", "flat");
 	row.setAttribute("section", current_section);
-/*	row.setAttribute("name", "row_" + address);
-*/
-
-//	var section_cell = row.insertCell(0);
 	
 	// I was told that generating objects by using string
 	// is faster. That is a lie. I have tested....
-	var address_cell = document.createElement("td"); //row.insertCell(0);
+	var address_cell = document.createElement("td"); 
 	address_cell.innerText = address;
 	address_cell.id = "address_cell";
 
 
 
 	var code_cell = document.createElement("td");
+//	code_cell.innerText =  code["instruction"] + "\t" + code["argument"];
 	code_cell.innerHTML = code["instruction"] + "\t" + code_highlighter(code["argument"], code["registers"])
-//	code_cell.id = "comment_cell_" + address;
 
-
-/*
-	worker.postMessage({
-		"cmd": 'code_highlighter', 
-		"text": code["argument"], 
-		"register":code["registers"],
-		"target":("comment_cell_" + address)
-	});
-*/
+	if(code["argument"][0] == "0" && code["argument"][1] == "x"){
+		code_cell.setAttribute("ondblclick", "find_node(this)");
+		code_cell.setAttribute("jmp_target", code["argument"]);
+	}
 
 	var comment_cell = document.createElement("td");
 	comment_cell.setAttribute("comment", "");

@@ -39,13 +39,12 @@ function filter_search() {
 
 
 function build_table(){
-	var list = Object.keys(block_list).sort();
-	for (var key in list) {
-		var key = list[key];
+	var list = Object.keys(code_lookup);//.sort();
+	for (var i = 0; i < list.length; i++) {
+		var key = list[i];
 		var element = document.createElement("a");
-		element.innerText = block_list[key];
-		element.setAttribute("id", "search_" + block_list[key]);
-		element.setAttribute("orgin", block_list[key]);
+		element.innerText = key;
+		element.setAttribute("orgin", key);
 		element.setAttribute("onClick", "find_section(this);");
 		element.setAttribute("tabindex", "0");
 		document.getElementById("search_content").appendChild(element);
