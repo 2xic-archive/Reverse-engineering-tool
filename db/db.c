@@ -192,27 +192,162 @@ static PyObject *get_register_hit_object(db_object *self, PyObject *args, PyObje
 }
 
 
+/*
+
+	strace
+
+		seems like I can't call c with a list, so I will need to call in for each syscall
+		argument.
+			You can only pass a string or a number, string for name? or should I do a lookup for each name
+			... maybe only index will be needed in the future.
+
+*/
+
+static PyObject *add_syscall_entry(db_object *self, PyObject *args, PyObject *kwargs) {
+	struct vector_stucture_pointer *syscall = init_vector_pointer("singlesyscall");
+
+	if(self->syscall_trace->size <= self->current_execution){
+		PyErr_SetString(PyExc_TypeError, "Need to call add_new_execution or asking for not excecuted index");
+		return NULL;
+	}
+	
+	struct vector_stucture_pointer *execution_list = vector_get_pointer(self->syscall_trace, self->current_execution);
+	vector_add_pointer(execution_list, syscall);
+
+	return PyLong_FromLong(execution_list->size - 1);
+}
+
+static PyObject *add_syscall_argument_string(db_object *self, PyObject *args, PyObject *kwargs) {
+	char *string_argument;
+	int syscall_index; 
+
+	static char *kwlist[] = {"string", "syscall_index", NULL};
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "si", kwlist, &string_argument, &syscall_index)){
+		return NULL;
+	}
+	struct vector_stucture_pointer *execution_list = vector_get_pointer(self->syscall_trace, self->current_execution);
+
+	struct vector_stucture_pointer *syscall_value = vector_get_pointer(execution_list, syscall_index);
+	if(syscall_value == NULL){
+		PyErr_SetString(PyExc_TypeError, "index is not valid");
+		return NULL;
+	}
+	int size = 32;
+	char *syscall_string_argument = (char*) malloc((size + 1)*sizeof(char));
+	strncpy(syscall_string_argument, string_argument, size);
+
+	vector_add_pointer(syscall_value, syscall_string_argument);
+
+	return PyLong_FromLong(syscall_index);
+}
+
+static PyObject *get_syscall_from_index(db_object *self, PyObject *args, PyObject *kwargs) {
+	int syscall_index; 
+
+	static char *kwlist[] = {"syscall_index", NULL};
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "i", kwlist, &syscall_index)){
+		return NULL;
+	}
+
+	struct vector_stucture_pointer *execution_list = vector_get_pointer(self->syscall_trace, self->current_execution);
+
+	if(execution_list == NULL){
+		PyErr_SetString(PyExc_TypeError, "bad execution_time");
+		return NULL;
+	}
+
+
+	struct vector_stucture_pointer *syscall_value = vector_get_pointer(execution_list, syscall_index);
+
+	if(syscall_value == NULL){
+		PyErr_SetString(PyExc_TypeError, "bad syscall_index");
+		return NULL;
+	}
+
+	PyObject* results = PyList_New(0);
+	//	all values are stored in linear form, jump through all the items.
+	for(int i = 0; i < syscall_value->size; i++){
+		char *value =  vector_get_pointer(syscall_value, i);		
+		PyList_Append(results, PyUnicode_FromString(value));
+	}
+	return results;
+}
+
+static PyObject *get_syscalls(db_object *self, PyObject *args, PyObject *kwargs) {
+	struct vector_stucture_pointer *execution_list = vector_get_pointer(self->syscall_trace, self->current_execution);
+
+	if(execution_list == NULL){
+		PyErr_SetString(PyExc_TypeError, "bad execution_time");
+		return NULL;
+	}
+
+	PyObject* results = PyList_New(0);
+
+	for(int i = 0; i < execution_list->size; i++){
+		PyObject* local_results = PyList_New(0);
+		struct vector_stucture_pointer *syscall_value = vector_get_pointer(execution_list, i);
+
+		for(int i = 0; i < syscall_value->size; i++){
+			char *value =  vector_get_pointer(syscall_value, i);		
+			PyList_Append(local_results, PyUnicode_FromString(value));
+		}
+		PyList_Append(results, local_results);
+	}
+	return results;
+}
+
+/*
+	memory controller
+	-	best way to keep track of changes to memory ? 
+		-	proably key value store. 
+			-	can easily look up each address...
+			-	probably nice to keep storage low, handles collisions nice also.
+
+		-	however I want a easy way to see the entire memory.
+			-	so I want to take the orginal memory mapping
+				each instruction usage can commit a change, and then you can rebuild it.
+
+				maybe a tree is nice, an address will have multiple leafs depending on changes.
+				OR just keep the same structure as the db for registers...
+	
+
+	-	how about delta one memory layout from the next?
+
+*/
 
 static PyMethodDef Custom_methods[] = {
-	{"add_new_execution", (PyCFunction) add_new_execution, METH_NOARGS,
-	  "add a execution to track"
+	{"add_new_execution", (PyCFunction) add_new_execution, METH_NOARGS,	
+		"add a execution to track"
 	},
-	{"get_added_count", (PyCFunction) get_added_count, METH_NOARGS,
-	  "add a count of added entries"
+	{"get_added_count", (PyCFunction) get_added_count, METH_NOARGS,	
+		"add a count of added entries"
 	},
-	{"get_register_count", (PyCFunction) get_register_count, METH_NOARGS,
-	  "add a count of registers to track"
+	{"get_register_count", (PyCFunction) get_register_count, METH_NOARGS,	
+		"add a count of registers to track"
 	},
-	{"add_register", (PyCFunction) add_register_object, METH_VARARGS,
-	  "add a register to track"
+	{"add_register", (PyCFunction) add_register_object, METH_VARARGS,	
+		"add a register to track"
 	},
 	{"add_register_hit", (PyCFunction) add_register_hit_object, METH_VARARGS,
 	 "add a register hit value"
 	},
-
 	{"get_register_hit", (PyCFunction) get_register_hit_object, METH_VARARGS,
 	 "get the register values at a certain execution"
 	},
+	// strace database
+	{"add_syscall_entry", (PyCFunction) add_syscall_entry, METH_NOARGS,	
+		"add a new syscall entry"
+	},
+	{"syscall_argument_string", (PyCFunction) add_syscall_argument_string, METH_VARARGS,
+		"add a argument string for syscall"
+	},	
+	{"get_syscall_from_index", (PyCFunction) get_syscall_from_index, METH_VARARGS,
+		"get the syscall with arguments"
+	},	
+	{"get_syscalls", (PyCFunction) get_syscalls, METH_NOARGS,
+		"get all syscalls"
+	},	
+	
 	{NULL}  /* Sentinel */
 };
 

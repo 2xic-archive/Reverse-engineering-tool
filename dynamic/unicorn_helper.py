@@ -44,13 +44,14 @@ def view_stack(end, string, length=8, count=4):
 
 
 class unicorn_debug():
-	def __init__(self, unicorn, section_virtual_map, section_map, address_space, logging):
+	def __init__(self, unicorn, section_virtual_map, section_map, address_space, logging, non_stop=False):
 		self.section_virtual_map = section_virtual_map
 		self.section_map = section_map
 		self.address_space = address_space
 		self.unicorn = unicorn
 		self.logging = logging
 
+		self.non_stop = non_stop
 
 		self.breakpoints = {
 
@@ -431,7 +432,7 @@ class unicorn_debug():
 
 			self.resolve_break_point()
 			
-			if(self.max_instructions <= self.instruction_count):
+			if(self.max_instructions <= self.instruction_count and not self.non_stop):
 				if not should_continue("hit instruction_count limit, continue?"):
 					self.unicorn.emu_stop()
 				else:

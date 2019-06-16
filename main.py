@@ -6,7 +6,7 @@ from common.web import *
 from common.terminal import *
 
 if __name__ == "__main__":
-	use_web = True
+	use_web = False
 
 	if(1 < len(sys.argv)):
 		if(use_web):

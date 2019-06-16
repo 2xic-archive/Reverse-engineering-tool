@@ -21,6 +21,9 @@ class parser:
 			else:
 				current_token += self.text[self.index]
 			self.index += 1
+		if(len(current_token) == 0):
+			return None
+
 		return current_token
 
 def parse_section(section):
@@ -66,7 +69,11 @@ def parse_commands(parser_obj):
 	if(token == "disas"):
 		dissamble(parser_obj)
 	elif(token == "r"):
-		target.run_emulator(force=True)
+		if(parser_obj.get_token()):
+			target.run_emulator(force=True, non_stop=True)
+		else:
+			target.run_emulator(force=True)
+
 	elif(token == "explore"):
 		'''
 		explore is like break, but without the break. You can ask it what the register values
@@ -76,10 +83,16 @@ def parse_commands(parser_obj):
 			print("you need to run the binary to be able to explore the dynamic side")
 		else:
 			get_register_values(parser_obj)
+	elif(token == "strace"):
+		if not target.ran_emulator:
+			print("you need to run the binary to be able to strace")
+		else:
+			target.dynamic.get_all_syscalls()
 
 def command_input():
+	#	capstone merged unicorn, nicer name than terminal. 
 	while True:
-		print("term>	", end="")
+		print("cmu>	", end="")
 		try:
 			command = input("")
 		except Exception as e:
@@ -90,6 +103,6 @@ def command_input():
 def go_text(binary):
 	global target
 	target = model(elf(sys.argv[1]), None)
-	print("terminal view is like gdb")
+	print("cmu is like gdb")
 
 	command_input()

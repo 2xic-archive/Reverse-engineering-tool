@@ -39,3 +39,22 @@ print("r2 have had thesse values at adress 0x1 (round 1)")
 print(results)
 assert([60] == results)
 
+
+new_syscall = db_object.add_syscall_entry()
+print(new_syscall)
+
+db_object.syscall_argument_string("test_syscall_3", new_syscall)
+db_object.syscall_argument_string("test_syscall_4", new_syscall)
+
+#print(db_object.get_syscall_from_index(new_syscall))
+assert(db_object.get_syscall_from_index(new_syscall) == ["test_syscall_3", "test_syscall_4"])
+
+new_syscall_2 = db_object.add_syscall_entry()
+
+db_object.syscall_argument_string("test_syscall_1", new_syscall_2)
+db_object.syscall_argument_string("test_syscall_2", new_syscall_2)
+
+assert(db_object.get_syscall_from_index(new_syscall_2) == ["test_syscall_1", "test_syscall_2"])
+
+assert(db_object.get_syscalls() == [['test_syscall_3', 'test_syscall_4'], ['test_syscall_1', 'test_syscall_2']])
+

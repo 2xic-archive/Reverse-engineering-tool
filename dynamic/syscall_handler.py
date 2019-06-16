@@ -18,6 +18,8 @@ def hook_syscall64(mu, user_data):
 	rsi = mu.reg_read(UC_X86_REG_RSI)
 	rdx = mu.reg_read(UC_X86_REG_RDX)
 	
+	#	https://filippo.io/linux-syscall-table/
+
 	if(rax == 0x3f):
 		#	http://man7.org/linux/man-pages/man2/uname.2.html 
 		#	http://man7.org/linux/man-pages/man2/syscall.2.html
@@ -35,6 +37,10 @@ def hook_syscall64(mu, user_data):
 		end_index = user_data.stack_insert_at_reverse_index(end_index, user_data.byte_string_with_length("x86_64", 65))
 		end_index = user_data.stack_insert_at_reverse_index(end_index, user_data.byte_string_with_length("(none)", 65))
 
+		print("SUUU")
+		user_data.add_syscall(["uname"])
+		print("FUUU")
+
 	elif(rax == 0xc):
 		old_brk = user_data.brk
 		user_data.brk += mu.reg_read(UC_X86_REG_RBP)
@@ -42,6 +48,11 @@ def hook_syscall64(mu, user_data):
 		mu.reg_write(UC_X86_REG_RAX, user_data.brk)
 		mu.reg_write(UC_X86_REG_RBX, old_brk)	
 		mu.reg_write(UC_X86_REG_RCX, 0x400994)
+
+		print("SUUU")
+		user_data.add_syscall(["brk", hex(mu.reg_read(UC_X86_REG_RBP))])
+		print("FUUU")
+
 
 	elif(rax == 0x9e):
 		#	https://github.com/torvalds/linux/blob/6f0d349d922ba44e4348a17a78ea51b7135965b1/arch/x86/um/syscalls_64.c
@@ -102,7 +113,7 @@ def hook_syscall64(mu, user_data):
 
 			#	https://unix.superglobalmegacorp.com/Net2/newsrc/sys/unistd.h.html
 			mode = {
-				0 	: "F_OK",# test for existence of file
+				0 	: "F_OK",	# test for existence of file
 				0x01: "X_OK",	# test for execute or search permission
 				0x02: "W_OK",	# test for write permission
 				0x04: "R_OK"	# test for read permission
@@ -171,7 +182,10 @@ def hook_syscall64(mu, user_data):
 
 		#	since we are a emulator, how much do we actually need to exit/ clean up?
 		#	currently nothing :=)
+		user_data.add_syscall(["exit", hex(mu.reg_read(UC_X86_REG_RBP))])
+		
 		print("exit 0!")
+
 		mu.emu_stop()
 	else:
 		mu.emu_stop()

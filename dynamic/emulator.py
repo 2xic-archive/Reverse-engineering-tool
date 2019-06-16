@@ -18,6 +18,7 @@ from .syscall_handler import *
 from .memory_mapper import *
 from .stack import *
 from .msr import *
+from .strace import *
 
 import triforce_db
 
@@ -29,7 +30,7 @@ def threaded(function):
 	return wrapper
 
 
-class emulator(stack_handler, memory_mapper, msr_helper):
+class emulator(stack_handler, memory_mapper, msr_helper, strace):
 	def __init__(self, target):
 		self.logging = False
 
@@ -39,6 +40,9 @@ class emulator(stack_handler, memory_mapper, msr_helper):
 		stack_handler.__init__(self)
 		memory_mapper.__init__(self)
 		msr_helper.__init__(self)
+		strace.__init__(self)
+
+
 
 		self.setup_vsdo()
 
@@ -52,6 +56,13 @@ class emulator(stack_handler, memory_mapper, msr_helper):
 		]
 
 		self.db = triforce_db.db_init()
+		self.db.add_new_execution()
+
+#		self.add_syscall(["exit", "sega", "lega"])
+#		self.get_all_syscalls()
+#		new_syscall = self.db.add_syscall_entry()
+#		print(new_syscall)
+#		exit(0)
 
 		for register, unicorn_refrence in self.db_registers:
 			self.db.add_register(register)
@@ -201,7 +212,8 @@ class emulator(stack_handler, memory_mapper, msr_helper):
 		return self.log_text(text, "bold", level)
 	
 #	@threaded
-	def run(self):
+	def run(self, non_stop=False):
+		self.unicorn_debugger.non_stop = non_stop
 		self.address_register = {
 
 		}
