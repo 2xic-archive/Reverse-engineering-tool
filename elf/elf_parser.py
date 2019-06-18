@@ -1,8 +1,10 @@
 import sys
 from static.disassemble import *
+#from elf_parser_key_value import *
 from .elf_parser_key_value import *
 from dynamic.dynamic_linker import *
 from collections import OrderedDict
+import os
 
 def reverse_bytearray(wokring_bytearray):
 	new_byte_array = list(wokring_bytearray)
@@ -104,6 +106,9 @@ class elf:
 		if(program_header_type == 0x00000001 and self.base_address != None):
 			self.base_address = program_header_viritual_address
 #			print(hex(program_header_viritual_address))
+		
+		if(self.static_binary and name == "PT_INTERP"):
+			self.static_binary = False
 
 		return {
 			"type":program_header_type,
@@ -200,6 +205,9 @@ class elf:
 		open("test_patch", "wb").write(self.file)
 		'''
 
+	def is_static(self):
+		return self.static_binary
+
 	def load_relocation(self):
 		for section_key, section_info in self.sections_with_name.items():
 			if(section_info["type"] == 0x4):
@@ -212,6 +220,7 @@ class elf:
 
 	def __init__(self, name):
 		self.file = open(name, "rb").read()
+		self.file_path = os.path.abspath(name)
 
 		self.is_elf = self.file[:4] == b'\x7fELF'
 		assert self.is_elf, "not a elf binary"
@@ -219,6 +228,8 @@ class elf:
 		self.is_64_bit = self.file[0x04] == 2
 		self.extra_offset = 0 if not self.is_64_bit else 4
 		self.base_address = None
+
+		self.static_binary = True
 
 		self.section_headers = OrderedDict()
 		self.program_headers = OrderedDict()
@@ -270,8 +281,10 @@ class elf:
 
 		self.get_section_names()
 
-		self.parse_dynamic_symbol_table()
-		self.load_relocation()
+		if not self.is_static():
+			self.parse_dynamic_symbol_table()
+			self.load_relocation()
+
 
 if __name__ == "__main__":
 	elf(sys.argv[1])

@@ -2,7 +2,7 @@
 # gdb -q -x gdb_helper.py
 
 import gdb
-gdb.execute('file /root/test/test_binaries/static_small')
+gdb.execute('file /root/test/test_binaries/small_c_hello')
 
 output = gdb.execute('break _start', to_string=True)
 

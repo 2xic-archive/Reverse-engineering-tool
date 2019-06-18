@@ -19,7 +19,7 @@ unsigned long long *int_deepcopy(unsigned long long input){
 	return copy;	
 }
 
-
+// we are a object now
 static PyMethodDef methods[] = {
 /*	{"add_new_execution",  add_new_execution, METH_NOARGS,
 	 "start with a fresh table"},
@@ -47,8 +47,11 @@ static struct PyModuleDef module = {
 typedef struct {
 	PyObject_HEAD
 	struct vector_stucture_pointer *execution_time;
-	struct vector_stucture_pointer *syscall_trace; // will add this soon.
+	struct vector_stucture_pointer *syscall_trace;
+	struct vector_stucture_pointer *memory_trace;
+	
 	struct hash_table_structure *register_table;
+	
 	int current_execution;
 	int register_count;
 	int values_added;
@@ -72,22 +75,89 @@ static void clean_object(db_object *self) {
 	free_table(self->register_table);
 	free_vector_pointer(self->syscall_trace);
 	free_vector_pointer(self->execution_time);
-	
 }
+
+
+static PyObject *add_memory_trace(db_object *self, PyObject *args, PyObject *kwargs) {
+	char *address;  // register is a keyword
+	int value;
+	static char *kwlist[] = {"address", "value", NULL};
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "si", kwlist, &address, &value)){
+		return NULL;
+	}
+
+	if(self->memory_trace != NULL){
+		struct hash_table_structure *memory_table = vector_get_pointer(self->memory_trace, self->execution_time->size - 1);
+		if(memory_table == NULL){
+			printf("memory table is null...\n");
+		}else{
+			add_hash_table_value(memory_table, address, int_deepcopy(value), VALUE_INT);	
+		}
+	}else{
+		PyErr_SetString(PyExc_TypeError, "Something is wrong. Register table is NULL");
+		return NULL;
+	}
+	return PyLong_FromLong(19);   
+}
+
+static PyObject *get_memory_trace(db_object *self, PyObject *args, PyObject *kwargs) {
+	char *address;  // register is a keyword
+	int execution_count;
+	static char *kwlist[] = {"address", "execution_count", NULL};
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "si", kwlist, &address, &execution_count)){
+		return NULL;
+	}
+
+	if(self->memory_trace != NULL){
+		struct hash_table_structure *memory_table = vector_get_pointer(self->memory_trace, execution_count);
+		if(memory_table == NULL){
+			printf("memory_table is null....\n");
+		}else{
+			PyObject* results = PyList_New(0);
+			struct vector_stucture_pointer *memory_values = get_hash_table_value(memory_table, address);
+			if(memory_values == NULL){
+				return results;
+			}
+			for(int i = 0; i < memory_values->size; i++){
+				int *value = vector_get_pointer(memory_values, i);
+				PyList_Append(results, PyLong_FromLong(*value));
+			}
+			return results;
+		}
+	}else{
+		PyErr_SetString(PyExc_TypeError, "Something is wrong. Register table is NULL");
+		return NULL;
+	}
+	// usign the same key storage souloution as used for registers
+	self->register_count += 1;
+	return PyLong_FromLong(19);   
+}
+
+
 
 static int *init_object(db_object *self, PyObject *Py_UNUSED(ignored)){
 	self->execution_time = init_vector_pointer("execution track");
 	self->syscall_trace = init_vector_pointer("syscall track");
+	self->memory_trace  = init_vector_pointer("memory track");
 	self->register_table = init_table("registers");	
-	
+
 	struct hash_table_structure *hash_table = init_table("execution");
 	vector_add_pointer(self->execution_time, hash_table);   
+
+	struct hash_table_structure *memory_table = init_table("memory_table");
+	vector_add_pointer(self->memory_trace, memory_table);   
+
+	struct vector_stucture_pointer *syscall_list = init_vector_pointer("syscalls");
+	vector_add_pointer(self->syscall_trace, syscall_list);    
 	return 0;   
 }
 
 static PyObject *add_new_execution(db_object *self, PyObject *args){
 	struct hash_table_structure *hash_table = init_table("execution");
 	vector_add_pointer(self->execution_time, hash_table);    
+
+	struct hash_table_structure *hash_table_memory = init_table("memory_table");
+	vector_add_pointer(self->memory_trace, hash_table_memory);    
 
 	struct vector_stucture_pointer *syscall_list = init_vector_pointer("syscalls");
 	vector_add_pointer(self->syscall_trace, syscall_list);    
@@ -96,15 +166,15 @@ static PyObject *add_new_execution(db_object *self, PyObject *args){
 }
 
 static PyObject *add_register_object(db_object *self, PyObject *args, PyObject *kwargs) {
-	char *register_;  // register is a keyword
+	char *register_name;  // register is a keyword
 	static char *kwlist[] = {"register", NULL};
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s", kwlist, &register_)){
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "s", kwlist, &register_name)){
 		return NULL;
 	}
 
 	if(self->register_table != NULL){
-		add_hash_table_value(self->register_table, register_, int_deepcopy(self->register_count), VALUE_INT);
-		vector_get_pointer(get_hash_table_value(self->register_table, register_), 0);		
+		add_hash_table_value(self->register_table, register_name, int_deepcopy(self->register_count), VALUE_INT);
+//		vector_get_pointer(get_hash_table_value(self->register_table, register_name), 0);		
 	}else{
 		PyErr_SetString(PyExc_TypeError, "Something is wrong. Register table is NULL");
 		return NULL;
@@ -123,12 +193,12 @@ static PyObject *get_added_count(db_object *self, PyObject *args) {
 
 static PyObject *add_register_hit_object(db_object *self, PyObject *args, PyObject *kwargs) {
 	char *address;
-	char *register_; // register is a keyword
+	char *register_name; // register is a keyword
 
 	unsigned long long value; 
 
 	static char *kwlist[] = {"adress", "register", "value" , NULL};
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ssk", kwlist, &address, &register_, &value)){
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ssk", kwlist, &address, &register_name, &value)){
 		return NULL;
 	}
 
@@ -139,7 +209,7 @@ static PyObject *add_register_hit_object(db_object *self, PyObject *args, PyObje
 																address, NULL, VALUE_VECTOR);	
 	struct vector_stucture_pointer *register_value = vector_get_pointer(address_vector, 0);
 	
-	if(!((register_value->size % self->register_table->size) == get_register_index_object(self->register_table, register_))){
+	if(!((register_value->size % self->register_table->size) == get_register_index_object(self->register_table, register_name))){
 		PyErr_SetString(PyExc_TypeError, "Need to call add_register_hit in the same order as add_register");
 		return NULL;
 	}
@@ -152,11 +222,11 @@ static PyObject *add_register_hit_object(db_object *self, PyObject *args, PyObje
 
 static PyObject *get_register_hit_object(db_object *self, PyObject *args, PyObject *kwargs) {
 	char *address;
-	char *register_; // register is a keyword
+	char *register_name; // register is a keyword
 	int execution_count; 
 
 	static char *kwlist[] = {"address", "register", "execution_number", NULL};
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ssi", kwlist, &address, &register_, &execution_count)){
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "ssi", kwlist, &address, &register_name, &execution_count)){
 		return NULL;
 	}
 
@@ -174,7 +244,7 @@ static PyObject *get_register_hit_object(db_object *self, PyObject *args, PyObje
 		}
 
 		struct vector_stucture_pointer *register_value = vector_get_pointer(vector_address, 0);
-		int register_index = get_register_index_object(self->register_table,register_);
+		int register_index = get_register_index_object(self->register_table,register_name);
 
 		//	return results as a list
 		PyObject* results = PyList_New(0);
@@ -315,6 +385,8 @@ static PyObject *get_syscalls(db_object *self, PyObject *args, PyObject *kwargs)
 
 */
 
+
+
 static PyMethodDef Custom_methods[] = {
 	{"add_new_execution", (PyCFunction) add_new_execution, METH_NOARGS,	
 		"add a execution to track"
@@ -347,7 +419,13 @@ static PyMethodDef Custom_methods[] = {
 	{"get_syscalls", (PyCFunction) get_syscalls, METH_NOARGS,
 		"get all syscalls"
 	},	
-	
+	//	memory 
+	{"add_memory_trace", (PyCFunction) add_memory_trace, METH_VARARGS,
+		"want to keep add a memory value?"
+	},		
+	{"get_memory_trace", (PyCFunction) get_memory_trace, METH_VARARGS,
+		"want to keep get a memory value?"
+	},
 	{NULL}  /* Sentinel */
 };
 

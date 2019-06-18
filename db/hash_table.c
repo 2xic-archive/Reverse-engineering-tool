@@ -73,7 +73,7 @@ void *add_hash_table_value(struct hash_table_structure *hash_table, char *keywor
 	int index = hash_function(keyword);
 
 	if(hash_table->max_capacity < index){
-		printf("neeed to resize\n");
+		printf("neeed to resize capacity %i, index %i \n", hash_table->max_capacity, index);
 		exit(0);
 	}
 
@@ -145,6 +145,7 @@ void *add_hash_table_value(struct hash_table_structure *hash_table, char *keywor
 }
 
 
+
 void *get_hash_table_value(struct hash_table_structure *hash_table, char*keyword){
 	int index = hash_function(keyword);
 
@@ -157,7 +158,7 @@ void *get_hash_table_value(struct hash_table_structure *hash_table, char*keyword
 		struct hashtable_item_pointer *address = hash_table->items[index];
 		struct vector_stucture_pointer *vector_table = address->value;
 
-		struct vector_stucture_pointer *found_key = NULL;
+		void *found_key = NULL;
 	
 		for(int i = 0; i < vector_table->size; i++){
 			struct vector_stucture_pointer *vec = vector_get_pointer(address->value, i);

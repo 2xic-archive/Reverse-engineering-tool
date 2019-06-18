@@ -1,6 +1,9 @@
 from unicorn import *
 from unicorn.x86_const import *
 import os
+from collections import OrderedDict 
+from .unicorn_helper import pretty_print_bytes
+import struct
 
 class syscall_exception(Exception):
     pass
@@ -10,15 +13,24 @@ def hook_syscall32(mu, user_data):
 	print(">>> got SYSCALL with EAX = 0x%x" %(eax))
 	mu.emu_stop()
 
-
+def syscall_info(mu):
+	print("Syscall at 0x%x" % (mu.reg_read(UC_X86_REG_RIP)))
 
 def hook_syscall64(mu, user_data):
 	rax = mu.reg_read(UC_X86_REG_RAX)
 	rdi = mu.reg_read(UC_X86_REG_RDI)
 	rsi = mu.reg_read(UC_X86_REG_RSI)
 	rdx = mu.reg_read(UC_X86_REG_RDX)
+
+	r8 = mu.reg_read(UC_X86_REG_R8)
+	r9 = mu.reg_read(UC_X86_REG_R9)
+	r10 = mu.reg_read(UC_X86_REG_R10)
 	
+
+	rsp = mu.reg_read(UC_X86_REG_RSP)
+
 	#	https://filippo.io/linux-syscall-table/
+	syscall_info(mu)
 
 	if(rax == 0x3f):
 		#	http://man7.org/linux/man-pages/man2/uname.2.html 
@@ -37,9 +49,7 @@ def hook_syscall64(mu, user_data):
 		end_index = user_data.stack_insert_at_reverse_index(end_index, user_data.byte_string_with_length("x86_64", 65))
 		end_index = user_data.stack_insert_at_reverse_index(end_index, user_data.byte_string_with_length("(none)", 65))
 
-		print("SUUU")
 		user_data.add_syscall(["uname"])
-		print("FUUU")
 
 	elif(rax == 0xc):
 		old_brk = user_data.brk
@@ -49,10 +59,19 @@ def hook_syscall64(mu, user_data):
 		mu.reg_write(UC_X86_REG_RBX, old_brk)	
 		mu.reg_write(UC_X86_REG_RCX, 0x400994)
 
-		print("SUUU")
 		user_data.add_syscall(["brk", hex(mu.reg_read(UC_X86_REG_RBP))])
-		print("FUUU")
 
+	elif(rax == 0x9):
+		# mmap
+		address = rdi
+		length = rsi
+		protection = rdx
+		flags = r10
+		file_descripor = r8
+		off = r9
+
+		print("implement mmap")
+		mu.emu_stop()
 
 	elif(rax == 0x9e):
 		#	https://github.com/torvalds/linux/blob/6f0d349d922ba44e4348a17a78ea51b7135965b1/arch/x86/um/syscalls_64.c
@@ -93,7 +112,12 @@ def hook_syscall64(mu, user_data):
 		_bytes_, string = user_data.unicorn_debugger.read_2_null(rdi)
 
 		if("/proc/self/exe" in string):
-			location_string = "/root/test/test_binaries/static_small"
+#			import os
+			location_string = user_data.target.file_path
+#			print(user_data.target.file_path)
+#			print(location_string)
+#			print(os.path.abspath(user_data.target.file_path))
+#			mu.emu_stop()
 			end_index = user_data.stack_insert_at_reverse_index(0, user_data.byte_string_with_length(location_string, 45))
 
 			mu.reg_write(UC_X86_REG_RAX, len(location_string))
@@ -108,7 +132,7 @@ def hook_syscall64(mu, user_data):
 
 	elif(rax == 0x15):
 		try:
-			_bytes_, string = user_data.unicorn_debugger.read_2_null(rdi)			
+			_, string = user_data.unicorn_debugger.read_2_null(rdi)			
 			string = string[:-1] # remove \0
 
 			#	https://unix.superglobalmegacorp.com/Net2/newsrc/sys/unistd.h.html
@@ -133,47 +157,105 @@ def hook_syscall64(mu, user_data):
 				mu.reg_write(UC_X86_REG_R11, 0x346)
 			else:
 				raise Exception("not implemented")
-#			user_data.unicorn_debugger.handle_commands(memory_access=True)
 		except Exception as e:
 			mu.emu_stop()
-			print(e)
-			pass	
+			print(e)	
 
 	elif(rax == 0x5):
 		'''
 		from http://man7.org/linux/man-pages/man2/stat.2.html
 
- 			struct stat {
-               dev_t     st_dev;         /* ID of device containing file */		
-               ino_t     st_ino;         /* Inode number */
-               mode_t    st_mode;        /* File type and mode */ 		 
-               nlink_t   st_nlink;       /* Number of hard links */
-               uid_t     st_uid;         /* User ID of owner */
-               gid_t     st_gid;         /* Group ID of owner */
-               dev_t     st_rdev;        /* Device ID (if special file) */
-               off_t     st_size;        /* Total size, in bytes */
-               blksize_t st_blksize;     /* Block size for filesystem I/O */
-               blkcnt_t  st_blocks;      /* Number of 512B blocks allocated */
+			struct stat {
+			   dev_t     st_dev;         /* ID of device containing file */		
+			   ino_t     st_ino;         /* Inode number */
+			   mode_t    st_mode;        /* File type and mode */ 		 
+			   nlink_t   st_nlink;       /* Number of hard links */
+			   uid_t     st_uid;         /* User ID of owner */
+			   gid_t     st_gid;         /* Group ID of owner */
+			   dev_t     st_rdev;        /* Device ID (if special file) */
+			   off_t     st_size;        /* Total size, in bytes */
+			   blksize_t st_blksize;     /* Block size for filesystem I/O */
+			   blkcnt_t  st_blocks;      /* Number of 512B blocks allocated */
 
-               /* Since Linux 2.6, the kernel supports nanosecond
-                  precision for the following timestamp fields.
-                  For the details before Linux 2.6, see NOTES. */
+			   /* Since Linux 2.6, the kernel supports nanosecond
+				  precision for the following timestamp fields.
+				  For the details before Linux 2.6, see NOTES. */
 
-               struct timespec st_atim;  /* Time of last access */
-               struct timespec st_mtim;  /* Time of last modification */
-               struct timespec st_ctim;  /* Time of last status change */
+			   struct timespec st_atim;  /* Time of last access */
+			   struct timespec st_mtim;  /* Time of last modification */
+			   struct timespec st_ctim;  /* Time of last status change */
 
-           #define st_atime st_atim.tv_sec      /* Backward compatibility */
-           #define st_mtime st_mtim.tv_sec
-           #define st_ctime st_ctim.tv_sec
-           };
+		   #define st_atime st_atim.tv_sec      /* Backward compatibility */
+		   #define st_mtime st_mtim.tv_sec
+		   #define st_ctime st_ctim.tv_sec
+		   };
 		'''
-		file_descripor = rdi # fd
-		strcuture = rsi
-		_bytes_, string = user_data.unicorn_debugger.read_2_null(strcuture)		
-		print(string)
 
-		mu.emu_stop()
+		'''
+
+		fstat(3, {st_dev=makedev(254, 1), 
+				st_ino=38776, 
+				st_mode=S_IFREG|0755, 
+				st_nlink=1, st_uid=0, 
+				st_gid=0, 
+				st_blksize=4096, 
+				st_blocks=3304, 
+				st_size=1689360, 
+				st_atime=2019-06-15T21:17:01+0000.080974880, 
+				st_mtime=2019-02-06T21:17:41+0000, 
+				st_ctime=2019-03-29T20:30:59+0000.180000000}) = 0
+			example syscall output from strace
+				-	
+		'''
+
+
+		#	1	Standard output	STDOUT_FILENO	stdout
+		#	this is what i'm calling with when trying Hello world, fd will be one
+		#	fd from 0 to 2 is actually predefined.
+
+		file_descripor = rdi 
+		strcuture = rsi
+
+		fstat_structure = OrderedDict()
+		if(file_descripor == 1):
+			file_stat = os.stat(file_descripor)
+			# the fstat have a given tructure, you need to push in the correct order. Value only.
+			fstat_structure["st_dev"] = file_stat.st_dev
+			fstat_structure["st_ino"] = file_stat.st_ino
+			fstat_structure["st_mode"] = file_stat.st_mode
+			fstat_structure["st_nlink"] = file_stat.st_nlink
+			fstat_structure["st_uid"] = file_stat.st_uid
+			fstat_structure["st_gid"] = file_stat.st_gid
+			fstat_structure["st_rdev"] = file_stat.st_rdev
+			fstat_structure["st_size"] = file_stat.st_size
+			fstat_structure["st_blksize"] = file_stat.st_blksize
+			fstat_structure["st_blocks"] = file_stat.st_blocks
+			fstat_structure["st_atime"] = int(file_stat.st_atime)
+			fstat_structure["st_mtime"] = int(file_stat.st_mtime)
+			fstat_structure["st_ctime"] = int(file_stat.st_ctime)
+			fstat_structure["st_atime_nano"] = int(file_stat.st_atime)
+			fstat_structure["st_mtime_nano"] = int(file_stat.st_mtime)
+			fstat_structure["st_ctime_nano"] = int(file_stat.st_ctime)
+		else:
+			print("unknown file_descripor, not fully implemented yet")
+			mu.emu_stop()
+		
+		#	print(strcuture)
+		#	print(file_descripor)
+		#	print(user_data.emulator.mem_read(strcuture, 128))
+
+#		user_data.unicorn_debugger.view_stack(strcuture, pretty_print_bytes(user_data.emulator.mem_read(strcuture, 100), aschii=False))
+
+#		user_data.unicorn_debugger.view_stack(rsp, pretty_print_bytes(user_data.emulator.mem_read(rsp, len(fstat_structure.items()) * 16), aschii=False))
+		strcuture_index = strcuture
+
+		#	maybe there should be a method to write qwords to the stack... cleaner maybe
+#		print(fstat_structure)
+		for key, value in fstat_structure.items():
+			strcuture_index = user_data.stack_write_at_index(strcuture_index, bytes(bytearray(struct.pack("<Q", value))))
+
+#		user_data.unicorn_debugger.view_stack(rsp, pretty_print_bytes(user_data.emulator.mem_read(rsp, len(fstat_structure.items()) * 16), aschii=False))
+#		mu.emu_stop()
 
 
 	elif(rax == 0xe7):
@@ -183,9 +265,7 @@ def hook_syscall64(mu, user_data):
 		#	since we are a emulator, how much do we actually need to exit/ clean up?
 		#	currently nothing :=)
 		user_data.add_syscall(["exit", hex(mu.reg_read(UC_X86_REG_RBP))])
-		
-		print("exit 0!")
-
+		print("normal exit")
 		mu.emu_stop()
 	else:
 		mu.emu_stop()

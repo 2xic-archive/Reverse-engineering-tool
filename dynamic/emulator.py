@@ -56,7 +56,7 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace):
 		]
 
 		self.db = triforce_db.db_init()
-		self.db.add_new_execution()
+#		self.db.add_new_execution()
 
 #		self.add_syscall(["exit", "sega", "lega"])
 #		self.get_all_syscalls()
@@ -136,70 +136,16 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace):
 			}
 		)
 
+		self.unicorn_debugger.jump_op("xgetbv", {
+				"edx":0,
+				"eax":0x7
+			})
+		self.unicorn_debugger.jump_op("vpbroadcastb ymm0, xmm0", {
 
-		#	will actually hook xgetbv (since ecx will be zero and trying to hook on xgetbv will be to late....)
-		self.unicorn_debugger.add_hook("0x400e01", {
-			0:{
-				"RAX":0x7,
-				"RCX":0x0,
-				"RDX":0x0,
-				"RIP":0x400e06
-			}
-		},
-			{
-				"max_hit_count":0
-			}
-		)
+			})
 
-		self.unicorn_debugger.add_hook("0x431757", {
-			0:{
-				"ymm0":"xmm0",
-				"RIP":0x43175c # unicorn reports wrong size!
-			}
-		},
-			{
-				"max_hit_count":0
-			}
-		)
-		
+		self.unicorn_debugger.add_adress_trace(0x40c030, ["rdi", "cl"])
 
-	def load_binary_sections(self):
-		self.brk = 0x6b6000
-
-		self.section_virtual_map = {
-			
-		}
-
-		self.section_map = {
-			
-		}
-		for name, content in (self.target.sections_with_name).items():
-			self.section_map[name] = [ int(content["virtual_address"],16),  int(content["virtual_address"],16) + content["size"]]
-
-			if(content["type_name"] == "SHT_NOBITS" or not "SHF_ALLOC" in content["flags"]):
-				self.log_text("Skipped section %s (%s)" % (name, content["flags"]))
-				continue
-
-			if("SHF_WRITE" in content["flags"]):
-				new_address = int(content["virtual_address"],16) + int(content["size"])
-		#		if(self.brk < new_address):
-		#			self.brk = new_address
-
-			file_offset = content["file_offset"]
-			file_end = file_offset + int(content["size"])
-			section_bytes = self.target.file[file_offset:file_end]
-
-			start = int(content["virtual_address"],16)
-			end = int(content["virtual_address"],16) + int(content["size"])
-
-
-			self.log_text("Loaded section %s at 0x%x -> 0x%x (%s)" % (name, start, end, content["flags"]))
-
-			self.emulator.mem_write(int(content["virtual_address"],16), section_bytes)
-
-
-			if(content["size"] > 0):
-				self.section_virtual_map[name] = [start, end]		
 
 	def log_text(self, text, style=None, level=0):
 		if(self.logging):
@@ -226,28 +172,37 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace):
 			self.log_bold_text(">>> Address hit {}({}), size {}".format(hex(address), self.unicorn_debugger.determine_location(address), size))
 
 		def hook_code(mu, address, size, user_data):  
-			try:
-				print('>>> (%x) Tracing instruction at 0x%x  [0x%x] (%s), instruction size = 0x%x' % (self.unicorn_debugger.instruction_count, address, address-self.base_program_address, self.unicorn_debugger.determine_location(address), size))
-			#	self.log_text('>>> (%x) Tracing instruction at 0x%x  [0x%x] (%s), instruction size = 0x%x' % (self.unicorn_debugger.instruction_count, address, address-self.base_program_address, self.unicorn_debugger.determine_location(address), size))
+			if(self.unicorn_debugger.next_jump):
+				#	for instance with xgetbv, the size 0xf1f1f1f1 will be returned, this makes the program go bad so panic_patch helps.
+				self.unicorn_debugger.panic_patch(address)
+			else:
+				try:
+				#	print('>>> (%x) Tracing instruction at 0x%x  [0x%x] (%s), instruction size = 0x%x' % (self.unicorn_debugger.instruction_count, address, address-self.base_program_address, self.unicorn_debugger.determine_location(address), size))
+					self.log_text('>>> (%x) Tracing instruction at 0x%x  [0x%x] (%s), instruction size = 0x%x' % (self.unicorn_debugger.instruction_count, address, address-self.base_program_address, self.unicorn_debugger.determine_location(address), size))
 
-				for register_tuple in self.db_registers:
-					self.db.add_register_hit(hex(address), register_tuple[0], mu.reg_read(register_tuple[1]))
+				#	for register_tuple in self.db_registers:
+				#		self.db.add_register_hit(hex(address), register_tuple[0], mu.reg_read(register_tuple[1]))
+					
+					self.unicorn_debugger.tick(address, size)
 				
-				self.unicorn_debugger.tick(address, size)
-			
-			except  Exception as e:
-				print(e)
-				bold_print("exception stop ....")
-				print(e)
-				exc_type, exc_obj, exc_tb = sys.exc_info()
-				fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
-				print(exc_type, fname, exc_tb.tb_lineno)
+				except  Exception as e:
+					print(e)
+					bold_print("exception stop ....")
+					print(e)
+					exc_type, exc_obj, exc_tb = sys.exc_info()
+					fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+					print(exc_type, fname, exc_tb.tb_lineno)
 
-				exit(0)
+					exit(0)
 
 		def hook_mem_access(uc, access, address, size, value, user_data):
 			if access == UC_MEM_WRITE:
-				self.log_bold_text(">>> Memory is being WRITE at 0x%x(%s), data size = %u, data value = 0x%x" %(address, self.unicorn_debugger.determine_location(address) , size, value))
+				self.log_bold_text(">>> Memory is being WRITE at 0x%x(%s), data size = %u, data value = 0x%x" % (address, self.unicorn_debugger.determine_location(address) , size, value))
+				
+				#if((0 < value) and (value < 2 ** 32)):
+				self.db.add_memory_trace(hex(address), self.unicorn_debugger.current_address)
+				self.db.add_memory_trace(hex(address), 10)
+				#print(hex(address))
 			else:
 				if(size > 32):
 					self.log_bold_text(">>> Memory is being READ at 0x%x (%s), data size = %u" %(address, self.unicorn_debugger.determine_location(address),  size))
@@ -295,20 +250,30 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace):
 			self.emulator.emu_start(self.target.program_entry_point, self.target.program_entry_point + 0x50)
 		except Exception as e:
 			print(e)
+			print("Last instruction location 0x%x, size %i" % (self.unicorn_debugger.current_address, self.unicorn_debugger.current_size))
 			self.unicorn_debugger.log_file.close()
-		
-	#	from web -> checking the db
+	#	self.db.add_memory_trace("0xa", 10)
+	#	print(self.db.get_memory_trace("0xa", 0))
+
+	#	from web/terminal -> checking the db
 	def get_register_data(self, address, excecution_round=0):
 		if(type(address) == int):
 			address = hex(address)
 		diconary_map = {
 
 		}
-#		print(address)
 		for register, unicorn_register in self.db_registers:
 			address_values = self.db.get_register_hit(address, register, excecution_round)
 			if(len(address_values) == 0):
 				continue
 			diconary_map[register] = address_values
 		return diconary_map
+
+	def get_memory_data(self, address, excecution_round=0):
+		address_values = self.db.get_memory_trace(address, excecution_round)
+		return address_values
+
+
+
+
 

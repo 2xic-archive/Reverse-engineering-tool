@@ -2,7 +2,10 @@ from unicorn import *
 from unicorn.x86_const import * 
 from keystone import *
 
-CODE = b"vmovd xmm0, esi;"
+#CODE = b"vmovd xmm0, esi;"
+CODE = b"xgetbv;"
+
+
 #CODE = b"push rpi;"
 UNICORN_CODE = None
 try:
@@ -23,7 +26,8 @@ print(bytes(encoding))
 ADDRESS = 0x1000000
 def hook_code(mu, address, size, user_data):  
 	print("unicorn instruction size %i" % (size))
-	mu.emu_stop()
+	print("unicorn instruction size %s" % hex(size))
+#	mu.emu_stop()
 
 try:
 	mu = Uc(UC_ARCH_X86, UC_MODE_64)

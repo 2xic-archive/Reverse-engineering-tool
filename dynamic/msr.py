@@ -11,7 +11,7 @@ class msr_helper(object):
 		self.FSMSR = 0xC0000100
 		self.scratch = 0x0
 
-		self.set_msr(self.emulator, self.FSMSR, 0x100)
+		self.set_msr(self.emulator, self.FSMSR, 0x1000)
 
 	def set_msr(self, uc, msr, value):
 		'''

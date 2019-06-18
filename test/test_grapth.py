@@ -6,38 +6,25 @@ Code for testing Reingold-Tilford Algorithm, based off this tutorial(best place 
 described the algoritm)
 	https://rachel53461.wordpress.com/2014/04/20/algorithm-for-drawing-trees/
 '''
-
 import uuid
 from flask import send_from_directory
 import os
 from flask_socketio import SocketIO
 from flask import Flask, render_template
 from flask_socketio import SocketIO
-
 import os, sys
-sys.path.append(os.path.join(os.path.dirname(__file__), "../../"))
 
-from model import *
-from grapth import *
+path = "/".join(os.path.realpath(__file__).split("/")[:-2]) + "/"
+sys.path.append(path)
 
+from common.model  import *
+from common.grapth  import *
+from elf.elf_parser import *
+import json
 
 if __name__ == "__main__":
-	working_model = model(elf("../../test_binaries/fibonacci"), None)
-	import json
-#	print(json.dumps(list(working_model.decompiled_sections.values())[0]))
-#	print()
-#	exit(0)
-#	grapth_layout = json.dumps(list(working_model.cfg.values())[0])	
-#	print(grapth_layout)
-#	exit(0)
-
-#	print(working_model.cfg.keys())
-#	print(list(working_model.cfg.values())[0])
-#	exit(0)
-	grapth_layout = working_model.cfg[".text"]#list(working_model.cfg.values())[0]
-
-
-	exit(0)
+	working_model = model(elf(path + "/test_binaries/fibonacci"), None)
+	grapth_layout = working_model.cfg[".text"]
 
 	index = 1
 	for index in range(len(grapth_layout.keys())):
@@ -62,6 +49,6 @@ if __name__ == "__main__":
 		
 		grapth_refrence = grapth()
 		grapth_refrence.caclulate_node_positions(root_node)
-		print(grapth_refrence.grapth_layout)
+#		print(grapth_refrence.grapth_layout)
 
 	

@@ -5,12 +5,8 @@ import sys
 import os
 from unicorn.x86_const import *
 from common.interface import *
-
-def bold_print(text):
-	print(bold_text(text))
-
-def bold_text(text):
-	return '\033[1m' + text + '\033[0m'
+from keystone import *
+from common.printer import *
 
 
 def pretty_print_bytes(results, aschii=True, logging=True):
@@ -23,24 +19,6 @@ def pretty_print_bytes(results, aschii=True, logging=True):
 		print("")
 	return ''.join('{:02x}'.format(x) for x in results )
 
-def view_stack(end, string, length=8, count=4):
-	print("stack layout")
-	current_string = ""
-	jump_count = 0
-	for index, char in enumerate(string):
-		current_string += char
-		if(len(current_string) == length):
-			if(jump_count == 0):
-				print("{}".format(hex(end)), end="	")
-
-			print(current_string, end=" ")
-			current_string = ""
-			jump_count += 1
-					
-			if(jump_count % 4 == 0 and jump_count > 0):
-				end += 16
-				print("\n{}".format(hex(end)), end="	")
-	print(current_string)
 
 
 class unicorn_debug():
@@ -77,11 +55,20 @@ class unicorn_debug():
 
 		}
 
-		self.values_2_look_for = set()
+		self.jump_op_list = {
 
+		}
+
+		self.values_2_look_for = set()
+		self.patch_values = {
+
+		}
+		self.print_at_address = {
+
+		}
 
 		self.instruction_count = 0
-		self.max_instructions = 100
+		self.max_instructions = 10000
 
 		self.full_trace = False
 
@@ -92,6 +79,29 @@ class unicorn_debug():
 
 
 		self.next_break = False
+		self.next_jump = False
+		self.next_size = 0
+		self.test = False
+
+	def view_stack(self, end, string, length=8, count=4):
+		print("stack layout")
+		current_string = ""
+		jump_count = 0
+		for index, char in enumerate(string):
+			current_string += char
+			if(len(current_string) == length):
+				if(jump_count == 0):
+					print("{}".format(hex(end)), end="	")
+
+				print(current_string, end=" ")
+				current_string = ""
+				jump_count += 1
+						
+				if(jump_count % 4 == 0 and jump_count > 0):
+					end += 16
+					print("\n{}".format(hex(end)), end="	")
+		print(current_string)
+
 
 	def add_breakpoint(self, address, identity="none"):
 		assert(type(address) == int)
@@ -240,7 +250,6 @@ class unicorn_debug():
 		self.next_break = True
 
 	def memory_handle(self, tokens):
-
 		for index, value in enumerate(tokens):
 			if(value.startswith("0x")):
 				tokens[index] = int(tokens[index], 16)
@@ -387,8 +396,21 @@ class unicorn_debug():
 			self.handle_commands(memory_access=True)
 		return False
 
+	def add_adress_trace(self, address, register):
+		self.print_at_address[address] = register
+
 	def resolve_break_point(self):
-		self.current_breakpoint = self.breakpoints.get(self.unicorn.reg_read(UC_X86_REG_RIP), None)
+		rip = self.unicorn.reg_read(UC_X86_REG_RIP)
+		self.current_breakpoint = self.breakpoints.get(rip, None)
+
+		#for key, value in
+		adress_trace = self.print_at_address.get(rip, [])
+		if(0 < len(adress_trace)):
+			print("Values at 0x%x" % (rip), end="")
+			for register in adress_trace:
+				print("%s == %i" % (register, self.unicorn.reg_read(eval("UC_X86_REG_{}".format(register.upper())))), end=" ")
+			print("")
+
 		if(self.current_breakpoint != None or self.next_break):
 			self.next_break = False
 			if(type(self.current_breakpoint) == str):
@@ -410,6 +432,47 @@ class unicorn_debug():
 			else:
 				self.handle_commands()
 
+	def jump_op(self, string, patch):
+		'''
+			keystone will check for illegal operations!
+
+		'''
+		try:
+			ks = Ks(KS_ARCH_X86, KS_MODE_64)
+			encoding, count = ks.asm(string)
+		except KsError as e:
+			print("ERROR: %s" %e)	
+
+		self.jump_op_list[string] = [encoding, len(encoding), patch]
+
+	def panic_patch(self, address):
+		print("Did a panic_patch at 0x%x , okay ? " % (address))
+
+		for key, value in self.patch_values.items():
+			self.unicorn.reg_write(eval("UC_X86_REG_{}".format(key.upper())), value)
+
+		self.unicorn.reg_write(UC_X86_REG_RIP, address + self.next_size)
+		self.next_size = 0
+		self.next_jump = False
+		self.patch_values = None
+	#	input("")
+
+	def check_illegal_op(self):
+
+		size_blocks = {
+
+		}
+		for key, value in self.jump_op_list.items():
+			if(size_blocks.get(value[1], None) == None):
+				size_blocks[value[1]] = list(self.unicorn.mem_read(self.current_address + self.current_size, value[1]))
+
+			if(value[0] == size_blocks[value[1]]):
+				self.next_jump = True
+				self.next_size = value[1]
+				self.patch_values = value[2]
+#				print("I did a OPSI")
+#				input("wut to do?")
+	
 
 	def tick(self, address, size):
 		try:
@@ -423,6 +486,8 @@ class unicorn_debug():
 
 			self.current_address = address
 			self.current_size = size
+
+			self.check_illegal_op()
 	
 			self.instruction_count += 1
 	
@@ -433,15 +498,10 @@ class unicorn_debug():
 			self.resolve_break_point()
 			
 			if(self.max_instructions <= self.instruction_count and not self.non_stop):
-				if not should_continue("hit instruction_count limit, continue?"):
+				if self.test or not should_continue("hit instruction_count limit, continue?"):
 					self.unicorn.emu_stop()
 				else:
 					self.max_instructions *= 2
-			#	print("hit instruction_count limit. exited")
-			#	self.unicorn.emu_stop()
-
-
-				#exit(0)
 
 		except Exception as e:
 			print(e)

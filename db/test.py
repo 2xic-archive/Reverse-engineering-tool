@@ -15,6 +15,11 @@ db_object.add_register_hit("0x1", "r1", 40)
 db_object.add_register_hit("0x1", "r2", 60)
 db_object.add_register_hit("0x1", "r3",  0)
 
+db_object.add_memory_trace("0x4101", 1128)
+db_object.add_memory_trace("0x4101", 1256)
+
+assert(db_object.get_memory_trace("0x4101", 0) == [1128, 1256])
+
 #db_object.add_register_hit("0x400990", "rax",  0)
 
 results  = db_object.get_register_hit("0x1", "r1", 0)
@@ -58,3 +63,17 @@ assert(db_object.get_syscall_from_index(new_syscall_2) == ["test_syscall_1", "te
 
 assert(db_object.get_syscalls() == [['test_syscall_3', 'test_syscall_4'], ['test_syscall_1', 'test_syscall_2']])
 
+db_object.add_memory_trace("0x4100", 128)
+db_object.add_memory_trace("0x4100", 256)
+
+assert(db_object.get_memory_trace("0x4100", 1) == [128, 256])
+
+db_object.add_memory_trace("0x4101", 1128)
+db_object.add_memory_trace("0x4101", 1256)
+
+assert(db_object.get_memory_trace("0x4101", 1) == [1128, 1256])
+
+assert(db_object.get_memory_trace("0x41012", 1) == [])
+
+
+print("all good")

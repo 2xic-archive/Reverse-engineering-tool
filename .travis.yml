@@ -1,0 +1,19 @@
+
+language: python
+virtualenv:
+  system_site_packages: true
+# from https://docs.travis-ci.com/user/languages/python/
+matrix:
+  include:
+    - name: "Python 3.7.1 on Xenial Linux"
+      python: 3.7           # this works for Linux but is ignored on macOS or Windows
+      dist: xenial          # required for Python >= 3.7
+before_install:
+  - sudo apt-get update
+install: 
+  - pip3 install --upgrade pip 
+  - sudo ./install.sh
+
+script:
+  - python ./test/run.py
+  - python ./db/test.py

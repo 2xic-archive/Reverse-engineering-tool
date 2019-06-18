@@ -1,4 +1,6 @@
-pip3 install -r requirements.txt
+#/usr/bin/env sh
+apt-get install python-setuptools
+python -m pip install -r requirements.txt
 
 apt-get update
 apt-get install git -y
@@ -16,7 +18,7 @@ cd capstone
 
 cd bindings
 cd python
-python3 setup.py install
+python setup.py install
 cd ..
 cd ..
 
@@ -31,7 +33,7 @@ make install
 cd ..
 cd bindings
 cd python
-python3 setup.py install
+python setup.py install
 cd ..
 cd ..
 cd ..
@@ -42,11 +44,15 @@ UNICORN_QEMU_FLAGS="--python=/usr/bin/python2.7" ./make.sh
 ./make.sh install
 cd bindings
 cd python
-python3 setup.py install
+python setup.py install
 cd ..
 cd ..
 
 cd ..
+cd ..
+
+cd db
+python setup.py install
 cd ..
 
 ldconfig

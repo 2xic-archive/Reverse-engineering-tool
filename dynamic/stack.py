@@ -32,6 +32,10 @@ class stack_handler(object):
 		self.emulator.mem_write(self.stack_pointer + index, bytes_data)
 		return (index + len(bytes_data))
 
+	def stack_write_at_index(self, index, bytes_data):
+		self.emulator.mem_write(index, bytes_data)
+		return (index + len(bytes_data))
+
 	def add_zero_byte(self):
 		return self.push_bytes(bytes(bytearray(1)))
 

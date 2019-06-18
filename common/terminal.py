@@ -3,6 +3,7 @@
 from elf.elf_parser import *
 from .model import *
 from .interface import *
+from .printer import *
 
 class parser:
 	def __init__(self, text):
@@ -63,6 +64,20 @@ def get_register_values(parser_obj):
 	else:
 		print("address as hex")
 
+def get_memory_values(parser_obj):
+	address = parser_obj.get_token()
+	if(address[:2] == "0x"):
+		bold_print("Address %s have been written by : " % (address))
+		response = target.dynamic.get_memory_data(address)
+		for i in range(0, len(response), 2):
+			print("Instruction 0x%x	wrote %i" % ((response[i], response[i + 1])))
+		if(len(response) == 0):
+			print("Zero times...")
+
+	else:
+		print("address as hex")
+
+
 def parse_commands(parser_obj):
 	token = parser_obj.get_token()
 
@@ -83,6 +98,12 @@ def parse_commands(parser_obj):
 			print("you need to run the binary to be able to explore the dynamic side")
 		else:
 			get_register_values(parser_obj)
+	elif(token == "memory"):
+		if not target.ran_emulator:
+			print("you need to run the binary to be able to explore the dynamic side")
+		else:
+			get_memory_values(parser_obj)
+
 	elif(token == "strace"):
 		if not target.ran_emulator:
 			print("you need to run the binary to be able to strace")

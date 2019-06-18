@@ -1,6 +1,7 @@
 
 
 # Triforce
+[![Build Status](https://travis-ci.org/2xic/Reverse-engineering-tool.svg?branch=master)](https://travis-ci.org/2xic/Reverse-engineering-tool)
 
 <img src="README/new_version.png"  width="800px" />
 (web interface, click for better resolution)
@@ -33,13 +34,8 @@ It's not about that. I started this project to hopefully see some changes in rev
 
 #	Work in progress / ideas
 -	unicorn support
-	-	see what each instruction has done to the memory and other registers
-		-	basically like gdb break on every instruction
-	-	rewind, go to the previous state just by moving the arrow keys(like QIRA)...
-	-	only see where you have been in a binary with dynamic code grapths!
-	-	custom strace! Since I have to code all the syscalls, I can eaisly monitor them! Monitoring syscalls should make finding bugs like use after free easier!
-		-	will write support for this in the db soon.
-	
+	-	only see where you have been in a binary with dynamic code grapths!	
+	- 	smoother emulation
 -	**integrate dwarf data**
 	-	you don't need a decompiler when you have dwarf!
 		-	I migth try to write parts of a decompiler, would be fun!

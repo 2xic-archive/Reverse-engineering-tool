@@ -73,7 +73,7 @@ class model(model_configs):
 		filehandler = open(self.get_working_dir() + name + ".pickle", "wb") 
 		pickle.dump(self, filehandler)
 
-#	@threaded
+	@threaded
 	def decompile_binary(self):
 		import time
 		code_sections = self.static.get_sections_parsed()
