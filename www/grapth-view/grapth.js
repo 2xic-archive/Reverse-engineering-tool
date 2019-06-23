@@ -170,7 +170,16 @@ function draw(msg){
 	        var y1 = (edge_xy.top) - delta.top;
 
 	        ctx.beginPath();
-	        ctx.strokeStyle = "red";
+	        
+	        var color = "black";
+			if(msg["type"][working_head][j] == "followed"){
+				color = "red";
+			}else if(msg["type"][working_head][j] == "jumpted"){
+				color = "green";
+			}
+			ctx.strokeStyle = color;
+
+	     //   ctx.strokeStyle = "red";
 	        ctx.moveTo(x0, y0);
 
 	        if (x0 == x1) {

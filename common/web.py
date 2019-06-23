@@ -96,6 +96,7 @@ def event_code(json_data, methods=["GET", "POST"]):
 				"layout":grapth_layout,
 				"code":grapth_data["code"],
 				"edges":grapth_data["edges"],
+				"type":grapth_data["type"],
 				"section_name":json_data["section"],
 				"boundary":[int(grapth_data["start"], 16), int(grapth_data["end"], 16)]
 			}

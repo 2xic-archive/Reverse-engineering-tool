@@ -157,7 +157,7 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace):
 	def log_bold_text(self, text, level=0):
 		return self.log_text(text, "bold", level)
 	
-#	@threaded
+	@threaded
 	def run(self, non_stop=False):
 		self.unicorn_debugger.non_stop = non_stop
 		self.address_register = {
@@ -180,8 +180,8 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace):
 				#	print('>>> (%x) Tracing instruction at 0x%x  [0x%x] (%s), instruction size = 0x%x' % (self.unicorn_debugger.instruction_count, address, address-self.base_program_address, self.unicorn_debugger.determine_location(address), size))
 					self.log_text('>>> (%x) Tracing instruction at 0x%x  [0x%x] (%s), instruction size = 0x%x' % (self.unicorn_debugger.instruction_count, address, address-self.base_program_address, self.unicorn_debugger.determine_location(address), size))
 
-				#	for register_tuple in self.db_registers:
-				#		self.db.add_register_hit(hex(address), register_tuple[0], mu.reg_read(register_tuple[1]))
+					for register_tuple in self.db_registers:
+						self.db.add_register_hit(hex(address), register_tuple[0], mu.reg_read(register_tuple[1]))
 					
 					self.unicorn_debugger.tick(address, size)
 				

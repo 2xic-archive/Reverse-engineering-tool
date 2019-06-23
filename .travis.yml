@@ -1,19 +1,37 @@
 
 language: python
-virtualenv:
-  system_site_packages: true
+#cache: pip
+#virtualenv:
+#  system_site_packages: true
 # from https://docs.travis-ci.com/user/languages/python/
-matrix:
-  include:
-    - name: "Python 3.7.1 on Xenial Linux"
-      python: 3.7           # this works for Linux but is ignored on macOS or Windows
-      dist: xenial          # required for Python >= 3.7
-before_install:
-  - sudo apt-get update
-install: 
-  - pip3 install --upgrade pip 
-  - sudo ./install.sh
+python:
+  - "3.5"
 
-script:
-  - python ./test/run.py
-  - python ./db/test.py
+compiler:
+        - clang
+        - gcc
+#cache:
+#  directories:
+#    - setup
+
+#before_install:
+#  - sudo apt-get update
+script: 
+  - python -m pip install --upgrade pip setuptools
+#  - python3.7 --version
+  - sudo ./install.sh
+#script:
+#  - ./test.sh
+#after_success:
+#  — coveralls
+
+# dosent work. Travis will not get the installed files. GR
+#script:
+#  - python --version
+#  - python simple.py
+#  - python3.5 ./test/run.py
+#  - python2.7 ./test/run.py
+#  - pwd
+#  - python ./test/run.py
+#  - python ./db/test.py
+#  - python --version

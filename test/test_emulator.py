@@ -12,7 +12,10 @@ import sys
 # Add the ptdraft folder path to the sys.path list
 
 path = "/".join(os.path.realpath(__file__).split("/")[:-2]) + "/"
+print(path)
 sys.path.append(path)
+sys.path.append("../")
+
 
 from common.model  import *
 from elf.elf_parser import *

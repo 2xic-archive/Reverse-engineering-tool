@@ -1,0 +1,2 @@
+import capstone
+print("OK?")

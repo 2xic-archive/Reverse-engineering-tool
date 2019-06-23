@@ -7,11 +7,7 @@ described the algoritm)
 	https://rachel53461.wordpress.com/2014/04/20/algorithm-for-drawing-trees/
 '''
 import uuid
-from flask import send_from_directory
 import os
-from flask_socketio import SocketIO
-from flask import Flask, render_template
-from flask_socketio import SocketIO
 import os, sys
 
 path = "/".join(os.path.realpath(__file__).split("/")[:-2]) + "/"

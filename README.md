@@ -2,6 +2,7 @@
 
 # Triforce
 [![Build Status](https://travis-ci.org/2xic/Reverse-engineering-tool.svg?branch=master)](https://travis-ci.org/2xic/Reverse-engineering-tool)
+[![Coverage Status](https://coveralls.io/repos/github/2xic/Reverse-engineering-tool/badge.svg?branch=master)](https://coveralls.io/github/2xic/Reverse-engineering-tool?branch=master)
 
 <img src="README/new_version.png"  width="800px" />
 (web interface, click for better resolution)
