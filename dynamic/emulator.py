@@ -77,7 +77,8 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace):
 
 		#	used to follow the same path as gdb
 		#	I don't think this hook actually is needed to make the binary run "correctly"
-		
+		#	BUT it IS needed for keeping up with gdb.
+			#	do I have to write my own code to fix this? Unicorn SHOULD support this.
 		self.unicorn_debugger.add_hook("cpuid", {
 			0:{
 				"RAX":0xd,
@@ -135,16 +136,18 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace):
 				"max_hit_count":7
 			}
 		)
-
+	
 		self.unicorn_debugger.jump_op("xgetbv", {
 				"edx":0,
 				"eax":0x7
 			})
 		self.unicorn_debugger.jump_op("vpbroadcastb ymm0, xmm0", {
 
-			})
+		})
 
-		self.unicorn_debugger.add_adress_trace(0x40c030, ["rdi", "cl"])
+		self.unicorn_debugger.add_breakpoint(0x401459)
+
+#		self.unicorn_debugger.add_adress_trace(0x40c030, ["rdi", "cl"])
 
 
 	def log_text(self, text, style=None, level=0):
@@ -158,6 +161,9 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace):
 		return self.log_text(text, "bold", level)
 	
 	@threaded
+	def run_thread(self, non_stop=False):
+		self.run(non_stop)
+
 	def run(self, non_stop=False):
 		self.unicorn_debugger.non_stop = non_stop
 		self.address_register = {

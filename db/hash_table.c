@@ -93,7 +93,7 @@ void *add_hash_table_value(struct hash_table_structure *hash_table, char *keywor
 		char *keyword_copy = (char*) malloc((n+1)*sizeof(char));
 		strncpy(keyword_copy, keyword, n);
 
-		if(type == VALUE_INT){
+		if(type == VALUE_INT || type == VALUE_MEMORY){
 			value_vector = vector_add_pointer(hash_table_entry->value, init_vector_pointer(keyword_copy));
 			value_vector->malloc_keyword = 1;
 			vector_add_pointer(value_vector, value);
@@ -122,7 +122,7 @@ void *add_hash_table_value(struct hash_table_structure *hash_table, char *keywor
 		strncpy(keyword_copy, keyword, n);
 		
 		if(found_entry == NULL){
-			if(type == VALUE_INT){
+			if(type == VALUE_INT || type == VALUE_MEMORY){
 				value_vector = vector_add_pointer(address->value, init_vector_pointer(keyword_copy));
 				value_vector->malloc_keyword = 1;
 				vector_add_pointer(value_vector, value);
@@ -133,7 +133,7 @@ void *add_hash_table_value(struct hash_table_structure *hash_table, char *keywor
 			}
 		}else{
 			value_vector = found_entry;
-			if(type == VALUE_INT){
+			if(type == VALUE_INT || type == VALUE_MEMORY){
 				vector_add_pointer(found_entry, value);				
 			}else if(type == VALUE_VECTOR){
 				vector_add_pointer(found_entry, init_vector_pointer(value));

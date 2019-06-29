@@ -99,7 +99,7 @@ class elf:
 		if(0x60000000 < program_header_type < 0x7FFFFFFF):
 			name = "reserved for os"
 		else:
-			name = program_header_type_name.get(program_header_type, "NULL")
+			name = program_header_type_name.get(program_header_type, "UNKOWN")
 
 
 #		print(program_header_type)
@@ -115,7 +115,8 @@ class elf:
 			"type_name":name,
 			"virtual_address":program_header_viritual_address,
 			"file_offset":program_header_offset,
-			"file_size":program_header_size_file
+			"file_size":program_header_size_file,
+			"location":start
 		}
 
 

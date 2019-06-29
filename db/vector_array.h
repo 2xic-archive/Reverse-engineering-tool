@@ -4,6 +4,7 @@
 #define VALUE_INT 0 
 #define VALUE_VECTOR 1
 #define VALUE_VECTOR_INT 2
+#define VALUE_MEMORY 3
 
 #define VECTOR_SIZE 12
 

@@ -18,9 +18,40 @@ db_object.add_register_hit("0x1", "r3",  0)
 db_object.add_memory_trace("0x4101", 1128)
 db_object.add_memory_trace("0x4101", 1256)
 
+print(db_object.rebuild_memory("0x4101", 0, -1))
+
+assert(db_object.rebuild_memory("0x4101", 0, -1) == None)
+assert(db_object.rebuild_memory("0x4101", 0, 0) == 1128)
+assert(db_object.rebuild_memory("0x4101", 0, 1) == 1256)
 assert(db_object.get_memory_trace("0x4101", 0) == [1128, 1256])
 
-#db_object.add_register_hit("0x400990", "rax",  0)
+db_object.add_memory_trace("0x4101", 414141)
+
+assert(db_object.rebuild_memory("0x4101", 0, 0) == 1128)
+assert(db_object.rebuild_memory("0x4101", 0, 1) == 1256)
+assert(db_object.rebuild_memory("0x4101", 0, 2) == 414141)
+
+db_object.add_memory_trace("0x4101", 0xbeef)
+
+assert(db_object.rebuild_memory("0x4101", 0, 0) == 1128)
+assert(db_object.rebuild_memory("0x4101", 0, 1) == 1256)
+assert(db_object.rebuild_memory("0x4101", 0, 2) == 414141)
+assert(db_object.rebuild_memory("0x4101", 0, 3) == 0xbeef)
+
+db_object.add_memory_trace("0x4104", 1)
+db_object.add_memory_trace("0x4104", 2)
+db_object.add_memory_trace("0x4105", 3)
+db_object.add_memory_trace("0x4105", 4)
+db_object.add_memory_trace("0x4104", 5)
+
+
+assert(db_object.rebuild_memory("0x4104", 0, 4) == 1)
+assert(db_object.rebuild_memory("0x4104", 0, 5) == 2)
+assert(db_object.rebuild_memory("0x4104", 0, 8) == 5)
+
+assert(db_object.rebuild_memory("0x4105", 0, 6) == 3)
+assert(db_object.rebuild_memory("0x4105", 0, 7) == 4)
+
 
 results  = db_object.get_register_hit("0x1", "r1", 0)
 print("r1 have had thesse values at adress 0x1 (round 0)")
@@ -77,3 +108,5 @@ assert(db_object.get_memory_trace("0x41012", 1) == [])
 
 
 print("all good")
+
+

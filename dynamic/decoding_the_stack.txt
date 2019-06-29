@@ -1067,4 +1067,34 @@ After fstat
 0x7fffffffea08:	0x00000000	0x00000000	0x006b2300	0x00000000
 
 
+okay so we are at 
+	0000000000401450         add        rax, 0x38                                   ; CODE XREF=__libc_setup_tls+76
+	0000000000401454         cmp        rax, rdx
+	0000000000401457         jae        loc_401480
+	0000000000401459         cmp        dword [rax], 0x7                            ; CODE XREF=__libc_setup_tls+54
+	000000000040145c         jne        loc_401450
+
+it jumps 0x38, which is the size of a section header for 64 bit computer. Remember 
+
+000000000040142d         mov        rcx, qword [_dl_phnum]                      ; _dl_phnum
+
+was execued a few lines above, so we are in the program header of the binary(rcx).	So the first byte of a section should be 0x7, that is what the code seems to be looking for....
+	-	okay so I can find the soloution to this very quickly and at the same time write some coool tests.
+	-	sooo, parse the elf binary with the elf parser.
+		-	now check all sections, find the one starting with 0x7, don't find any ? cheat and look at where gdb is located and patch the bug.
+				000000000040145e         mov        r12, qword [rax+0x30]
+				0000000000401462         mov        rcx, qword [rax+0x20]
+				0000000000401466         mov        rbp, qword [rax+0x28]
+				000000000040146a         mov        r13, qword [rax+0x10]
+			-	you can also see where the registers above are pointing, they should make it possible to cross-cehck qucikly.
+
+		-	win win!
+
+	-	okay so it does have the offset at 0xb1eb8
+		-	no, I used wrong the offset is 232 or e8, same as gbd.
+		- 	so maybe the real problem is that the stack is not correctly aligned?
+		
+
+
+
 

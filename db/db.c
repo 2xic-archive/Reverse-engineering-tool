@@ -3,32 +3,30 @@
 
 #include "vector_array.h"
 
+#include "memory.c"
 #include "hash_table.c"
 #include "vector_array.c"
 #include "structmember.h"
-
 
 int get_register_index_object(struct hash_table_structure *real_register_table, char *regsiter){
 	int *index = vector_get_pointer(get_hash_table_value(real_register_table, regsiter), 0);
 	return *index;	
 }
 
-unsigned long long *int_deepcopy(unsigned long long input){
+unsigned long long *unsinged_deep_copy(unsigned long long input){
 	unsigned long long*copy = malloc(sizeof(unsigned long long));
+	*copy = input;	
+	return copy;	
+}
+
+int *int_deepcopy(int input){
+	int*copy = malloc(sizeof(int));
 	*copy = input;	
 	return copy;	
 }
 
 // we are a object now
 static PyMethodDef methods[] = {
-/*	{"add_new_execution",  add_new_execution, METH_NOARGS,
-	 "start with a fresh table"},
-	 {"add_register", (PyCFunction)add_register_track, METH_VARARGS,
-	  "add a register to track"},
-	{"add_register_hit",  (PyCFunction)add_register_hit_python, METH_VARARGS,
-	 "add a register hit value"},
-	 {"get_register_hit",  (PyCFunction)get_register_hit_python, METH_VARARGS,
-	 "get the register values at a certain execution"},*/
 	{NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
@@ -47,11 +45,12 @@ static struct PyModuleDef module = {
 typedef struct {
 	PyObject_HEAD
 	struct vector_stucture_pointer *execution_time;
+	struct vector_stucture_pointer *op_count;
+	
 	struct vector_stucture_pointer *syscall_trace;
 	struct vector_stucture_pointer *memory_trace;
-	
 	struct hash_table_structure *register_table;
-	
+
 	int current_execution;
 	int register_count;
 	int values_added;
@@ -86,12 +85,20 @@ static PyObject *add_memory_trace(db_object *self, PyObject *args, PyObject *kwa
 		return NULL;
 	}
 
+	//	increment the op_count, that way we can easily rebuild the memory	
+	int *current_op_count = vector_get_pointer(self->op_count, self->execution_time->size - 1);
 	if(self->memory_trace != NULL){
 		struct hash_table_structure *memory_table = vector_get_pointer(self->memory_trace, self->execution_time->size - 1);
 		if(memory_table == NULL){
 			printf("memory table is null...\n");
 		}else{
-			add_hash_table_value(memory_table, address, int_deepcopy(value), VALUE_INT);	
+
+			struct memory *memory_cell = malloc(sizeof(struct memory));
+			memory_cell->value = int_deepcopy(value);
+			memory_cell->op_count = int_deepcopy(*current_op_count);
+
+			add_hash_table_value(memory_table, address, memory_cell, VALUE_MEMORY);	
+			(*current_op_count)++;
 		}
 	}else{
 		PyErr_SetString(PyExc_TypeError, "Something is wrong. Register table is NULL");
@@ -100,6 +107,40 @@ static PyObject *add_memory_trace(db_object *self, PyObject *args, PyObject *kwa
 	return PyLong_FromLong(19);   
 }
 
+//	(in the future this will check all adress keys and then rebuild the entire memory at that given opcount state.)
+static PyObject *rebuild_memory(db_object *self, PyObject *args, PyObject *kwargs) {
+	char *address;  // register is a keyword
+	int execution_count;
+	int op_count;
+	static char *kwlist[] = {"address", "execution_count", "op_count" , NULL};
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "sii", kwlist, &address, &execution_count, &op_count)){
+		return NULL;
+	}
+
+	if(self->memory_trace != NULL){
+		struct hash_table_structure *memory_table = vector_get_pointer(self->memory_trace, execution_count);
+		if(memory_table == NULL){
+			printf("memory_table is null....\n");
+		}else{
+			struct vector_stucture_pointer *memory_values = get_hash_table_value(memory_table, address);
+			if(memory_values == NULL){
+				PyErr_SetString(PyExc_TypeError, "Something is wrong. No memory cells.");
+				return NULL;
+			}
+			//	the memory cell value at that given op_count state.
+			int *state_value = findClosest(memory_values, op_count);
+			if(state_value == NULL){
+				Py_RETURN_NONE;
+			}
+			return PyLong_FromLong(*state_value);
+		}
+	}
+
+	PyErr_SetString(PyExc_TypeError, "Something is wrong. Memory table is NULL");
+	return NULL;
+}
+
+
 static PyObject *get_memory_trace(db_object *self, PyObject *args, PyObject *kwargs) {
 	char *address;  // register is a keyword
 	int execution_count;
@@ -107,6 +148,7 @@ static PyObject *get_memory_trace(db_object *self, PyObject *args, PyObject *kwa
 	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "si", kwlist, &address, &execution_count)){
 		return NULL;
 	}
+
 
 	if(self->memory_trace != NULL){
 		struct hash_table_structure *memory_table = vector_get_pointer(self->memory_trace, execution_count);
@@ -119,8 +161,8 @@ static PyObject *get_memory_trace(db_object *self, PyObject *args, PyObject *kwa
 				return results;
 			}
 			for(int i = 0; i < memory_values->size; i++){
-				int *value = vector_get_pointer(memory_values, i);
-				PyList_Append(results, PyLong_FromLong(*value));
+				struct memory *memory_cell = vector_get_pointer(memory_values, i);
+				PyList_Append(results, PyLong_FromLong(*memory_cell->value));
 			}
 			return results;
 		}
@@ -128,21 +170,21 @@ static PyObject *get_memory_trace(db_object *self, PyObject *args, PyObject *kwa
 		PyErr_SetString(PyExc_TypeError, "Something is wrong. Register table is NULL");
 		return NULL;
 	}
-	// usign the same key storage souloution as used for registers
-	self->register_count += 1;
 	return PyLong_FromLong(19);   
 }
 
 
-
 static int *init_object(db_object *self, PyObject *Py_UNUSED(ignored)){
 	self->execution_time = init_vector_pointer("execution track");
+	self->op_count = init_vector_pointer("op_count track");
 	self->syscall_trace = init_vector_pointer("syscall track");
 	self->memory_trace  = init_vector_pointer("memory track");
 	self->register_table = init_table("registers");	
 
 	struct hash_table_structure *hash_table = init_table("execution");
 	vector_add_pointer(self->execution_time, hash_table);   
+
+	vector_add_pointer(self->op_count, unsinged_deep_copy(0));
 
 	struct hash_table_structure *memory_table = init_table("memory_table");
 	vector_add_pointer(self->memory_trace, memory_table);   
@@ -155,6 +197,8 @@ static int *init_object(db_object *self, PyObject *Py_UNUSED(ignored)){
 static PyObject *add_new_execution(db_object *self, PyObject *args){
 	struct hash_table_structure *hash_table = init_table("execution");
 	vector_add_pointer(self->execution_time, hash_table);    
+
+	vector_add_pointer(self->op_count, unsinged_deep_copy(0));
 
 	struct hash_table_structure *hash_table_memory = init_table("memory_table");
 	vector_add_pointer(self->memory_trace, hash_table_memory);    
@@ -173,7 +217,7 @@ static PyObject *add_register_object(db_object *self, PyObject *args, PyObject *
 	}
 
 	if(self->register_table != NULL){
-		add_hash_table_value(self->register_table, register_name, int_deepcopy(self->register_count), VALUE_INT);
+		add_hash_table_value(self->register_table, register_name, unsinged_deep_copy(self->register_count), VALUE_INT);
 //		vector_get_pointer(get_hash_table_value(self->register_table, register_name), 0);		
 	}else{
 		PyErr_SetString(PyExc_TypeError, "Something is wrong. Register table is NULL");
@@ -214,7 +258,7 @@ static PyObject *add_register_hit_object(db_object *self, PyObject *args, PyObje
 		return NULL;
 	}
 	
-	vector_add_pointer(register_value, int_deepcopy(value));
+	vector_add_pointer(register_value, unsinged_deep_copy(value));
 	self->values_added++;	
 	return PyLong_FromLong(0);
 }
@@ -366,27 +410,6 @@ static PyObject *get_syscalls(db_object *self, PyObject *args, PyObject *kwargs)
 	return results;
 }
 
-/*
-	memory controller
-	-	best way to keep track of changes to memory ? 
-		-	proably key value store. 
-			-	can easily look up each address...
-			-	probably nice to keep storage low, handles collisions nice also.
-
-		-	however I want a easy way to see the entire memory.
-			-	so I want to take the orginal memory mapping
-				each instruction usage can commit a change, and then you can rebuild it.
-
-				maybe a tree is nice, an address will have multiple leafs depending on changes.
-				OR just keep the same structure as the db for registers...
-	
-
-	-	how about delta one memory layout from the next?
-
-*/
-
-
-
 static PyMethodDef Custom_methods[] = {
 	{"add_new_execution", (PyCFunction) add_new_execution, METH_NOARGS,	
 		"add a execution to track"
@@ -425,6 +448,9 @@ static PyMethodDef Custom_methods[] = {
 	},		
 	{"get_memory_trace", (PyCFunction) get_memory_trace, METH_VARARGS,
 		"want to keep get a memory value?"
+	},
+	{"rebuild_memory", (PyCFunction) rebuild_memory, METH_VARARGS,
+		"want to see the memory at a given state?"
 	},
 	{NULL}  /* Sentinel */
 };

@@ -51,9 +51,12 @@ class model(model_configs):
 	#	self.cfg = self.create_CFG()
 		self.hex = self.parse_hex()
 
-	def run_emulator(self, force=False, non_stop=False):
+	def run_emulator(self, force=False, non_stop=False, thread=True):
 		if not self.socket_io == None or force:
-			self.dynamic.run(non_stop)
+			if(thread):
+				self.dynamic.run_thread(non_stop)
+			else:
+				self.dynamic.run(non_stop)
 			self.ran_emulator = True
 
 	def add_comment(self, address, content):

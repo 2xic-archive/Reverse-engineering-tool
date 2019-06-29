@@ -59,7 +59,7 @@ int vector_get(struct vector_stucture *vector, int index){
 	if ((0 <= index) && (index < vector->size)){
 		return vector->items[index];
 	}
-	//	registers only store posetive numbers!
+	//	registers only store posetive numbersz
 	return -1; 
 }
 

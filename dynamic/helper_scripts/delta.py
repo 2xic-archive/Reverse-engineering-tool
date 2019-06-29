@@ -22,6 +22,9 @@ hit_count = {
 }
 
 disagreement_count = 0
+
+
+can_catch_up = True
 trace_register = False
 
 
@@ -44,56 +47,56 @@ while i < len(unicorn) and j < len(gdb):
 	else:
 		if("=>" in gdb[j]):
 			if(unicorn[i].strip() != gdb[j]):
-				#j += 3 * 2
-				#while not "0x4142e0" in gdb[j]:
-				#	j += 1
 				unicorn_val = int(unicorn[i].strip(), 16)
 				gdb_val =  int(gdb[j].strip().split(" ")[1].strip(), 16)
 
 				print(((unicorn[i].strip(), gdb[j].strip().split(" ")[1] )))
 				old_i, old_j = i, j
+
 				if(unicorn_val < gdb_val):
-
-				#	if(len(unicorn) < len(gdb)):
-				
-					for index_unicorn, m in enumerate(unicorn[i:]):
-						found_agreement = False
-						for index_gdb, n in enumerate(gdb[j:]):
-							if(("=>" in n) and m == n.strip().split(" ")[1]):
-								print("next agreement is at {}".format(m))
-								found_agreement = True
-								j += index_gdb
+					if not can_catch_up:
+						for index_unicorn, m in enumerate(unicorn[i:]):
+							found_agreement = False
+							for index_gdb, n in enumerate(gdb[j:]):
+								if(("=>" in n) and m == n.strip().split(" ")[1]):
+									print("next agreement is at {}".format(m))
+									found_agreement = True
+									j += index_gdb
+									break
+							if(found_agreement):
+								i += index_unicorn
 								break
-						if(found_agreement):
-							i += index_unicorn
-							break
-					print(((unicorn[i].strip(), gdb[j].strip().split(" ")[1] )))
-				
-#					while i < len(unicorn) and unicorn[i] != gdb[j].strip().split(" ")[1]:
-#						i += 1
+						print(((unicorn[i].strip(), gdb[j].strip().split(" ")[1] )))
+					else:				
+						while i < len(unicorn) and unicorn[i] != gdb[j].strip().split(" ")[1]:
+							i += 1
 
-#					if not (i < len(unicorn)):
-#						bold_print("Could not resolve... unicorn")
+						if not (i < len(unicorn)):
+							bold_print("Could not resolve... unicorn")
+							exit(0)
 				else:
-					found_agreement = False
-					for index_unicorn, m in enumerate(unicorn[i:]):
-						for index_gdb, n in enumerate(gdb[j:]):
-							if(("=>" in n) and m == n.strip().split(" ")[1]):
-								print("next agreement is at {}".format(m))
-								found_agreement = True
-								j += index_gdb
+					if not can_catch_up:
+						found_agreement = False
+						for index_unicorn, m in enumerate(unicorn[i:]):
+							for index_gdb, n in enumerate(gdb[j:]):
+								if(("=>" in n) and m == n.strip().split(" ")[1]):
+									print("next agreement is at {}".format(m))
+									found_agreement = True
+									j += index_gdb
+									break
+							if(found_agreement):
+								i += index_unicorn
 								break
-						if(found_agreement):
-							i += index_unicorn
-							break
+					else:
+						while j < len(gdb) and unicorn[i] != gdb[j].strip().split(" ")[1]:
+							j += 1
+						if not (j < len(gdb)):
+							bold_print("Could not resolve... gdb")
+
 				if(i == old_i and j == old_j):
 					bold_print("Could not resolve...")
+					exit(0)
 					break
-
-			#		while j < len(gdb) and unicorn[i] != gdb[j].strip().split(" ")[1]:
-			#			j += 1
-			#		if not (j < len(gdb)):
-			#			bold_print("Could not resolve... gdb")
 
 				disagreement_count += 1
 				print("stuck in loop? (blame %s )" % ("gdb" if(gdb_val < unicorn_val) else "unicorn"))
