@@ -17,14 +17,18 @@ from common.model  import *
 from common.grapth  import *
 from elf.elf_parser import *
 import json
+import time
 
-if __name__ == "__main__":
-	working_model = model(elf(path + "/test_binaries/fibonacci"), None)
+def test_grapth():
+	working_model = model(elf("./test_binaries/fibonacci"), None)
+
+	while not working_model.done_decompile:
+		time.sleep(1)
+
 	grapth_layout = working_model.cfg[".text"]
 
 	index = 1
 	for index in range(len(grapth_layout.keys())):
-	#if(True):
 		nodes = {
 
 		}
@@ -45,6 +49,4 @@ if __name__ == "__main__":
 		
 		grapth_refrence = grapth()
 		grapth_refrence.caclulate_node_positions(root_node)
-#		print(grapth_refrence.grapth_layout)
-
-	
+	assert(True)

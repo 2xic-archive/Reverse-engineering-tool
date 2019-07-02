@@ -129,17 +129,6 @@ def event_code(json_data, methods=["GET", "POST"]):
 	#print(target.custom_comments)
 	#socketio.emit("control", target.get_cfg())
 
-@socketio.on("give_me_dynamic_data")
-def event_code(methods=["GET", "POST"]):
-#	print("im happy")
-	socketio.emit('dynamic_view', {"data":target.dynamic.address_register})
-
-#	print(json_data)
-#	print(json_data)
-#	target.save_model(json_data["data"]["file_name"])
-
-
-
 @app.after_request
 def add_header(request):
 	request.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"

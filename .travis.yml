@@ -19,7 +19,7 @@ compiler:
 script: 
   - python -m pip install --upgrade pip setuptools
 #  - python3.7 --version
-  - sudo ./install.sh
+  - sudo ./install.sh travis
 #script:
 #  - ./test.sh
 #after_success:

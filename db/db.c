@@ -79,9 +79,12 @@ static void clean_object(db_object *self) {
 
 static PyObject *add_memory_trace(db_object *self, PyObject *args, PyObject *kwargs) {
 	char *address;  // register is a keyword
-	int value;
-	static char *kwlist[] = {"address", "value", NULL};
-	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "si", kwlist, &address, &value)){
+	unsigned long value;
+	unsigned long address_exectuion;
+	int add_unique_only = 1;
+	int increment_op = 1;
+	static char *kwlist[] = {"address", "value", "address_exectuion", "increment_op", "add_unique_only", NULL};
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "sKK|ii", kwlist, &address, &value, &address_exectuion, &increment_op, &add_unique_only)){
 		return NULL;
 	}
 
@@ -92,19 +95,40 @@ static PyObject *add_memory_trace(db_object *self, PyObject *args, PyObject *kwa
 		if(memory_table == NULL){
 			printf("memory table is null...\n");
 		}else{
+			int add = 1;
 
-			struct memory *memory_cell = malloc(sizeof(struct memory));
-			memory_cell->value = int_deepcopy(value);
-			memory_cell->op_count = int_deepcopy(*current_op_count);
+			if(add_unique_only == 1){
+				struct vector_stucture_pointer *memory_values = get_hash_table_value(memory_table, address);
+				if(!(memory_values == NULL)){
+					if(*latest_cell_value(memory_values) == value){
+						add = 0;				
+					}
+				}
+			}
 
-			add_hash_table_value(memory_table, address, memory_cell, VALUE_MEMORY);	
-			(*current_op_count)++;
+			if(add == 1){
+				struct memory *memory_cell = malloc(sizeof(struct memory));
+				memory_cell->value = unsinged_deep_copy(value);
+				memory_cell->op_count = int_deepcopy(*current_op_count);
+				memory_cell->adress_execution = unsinged_deep_copy(address_exectuion);
+
+				add_hash_table_value(memory_table, address, memory_cell, VALUE_MEMORY);	
+				if(increment_op == 1){
+					(*current_op_count)++;
+				}
+			}
 		}
 	}else{
 		PyErr_SetString(PyExc_TypeError, "Something is wrong. Register table is NULL");
 		return NULL;
 	}
 	return PyLong_FromLong(19);   
+}
+
+static PyObject *force_increment_op(db_object *self, PyObject *Py_UNUSED(ignored)){
+	int *current_op_count = vector_get_pointer(self->op_count, self->execution_time->size - 1);
+	(*current_op_count)++;
+	Py_RETURN_NONE;
 }
 
 //	(in the future this will check all adress keys and then rebuild the entire memory at that given opcount state.)
@@ -127,8 +151,10 @@ static PyObject *rebuild_memory(db_object *self, PyObject *args, PyObject *kwarg
 				PyErr_SetString(PyExc_TypeError, "Something is wrong. No memory cells.");
 				return NULL;
 			}
+
+
 			//	the memory cell value at that given op_count state.
-			int *state_value = findClosest(memory_values, op_count);
+			unsigned long long *state_value = find_closest(memory_values, op_count, MEMORY_VALUE);
 			if(state_value == NULL){
 				Py_RETURN_NONE;
 			}
@@ -136,6 +162,134 @@ static PyObject *rebuild_memory(db_object *self, PyObject *args, PyObject *kwarg
 		}
 	}
 
+	PyErr_SetString(PyExc_TypeError, "Something is wrong. Memory table is NULL");
+	return NULL;
+}
+
+static PyObject *rebuild_memory_full(db_object *self, PyObject *args, PyObject *kwargs) {
+	char *address;  // register is a keyword
+	int execution_count;
+	int op_count;
+	int hit_count;
+	static char *kwlist[] = {"address", "execution_count", "hit_count" , NULL};
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "sii", kwlist, &address, &execution_count, &hit_count)){
+		return NULL;
+	}
+
+	if(self->memory_trace != NULL){
+		struct hash_table_structure *memory_table = vector_get_pointer(self->memory_trace, execution_count);
+
+		if(memory_table == NULL){
+			PyErr_SetString(PyExc_TypeError, "Something is wrong. Memory table is NULL");
+			return NULL;
+		}
+
+		struct vector_stucture_pointer *based_off_memory_state = get_hash_table_value(memory_table, address);
+		if(based_off_memory_state == NULL){
+			PyErr_SetString(PyExc_TypeError, "Did not find address, have it been added?");
+			return NULL;
+		}
+
+		if(based_off_memory_state->size < hit_count || hit_count < 0){
+			PyErr_SetString(PyExc_TypeError, "Hit count exceeds the actual hit count. (overflow)");
+			return NULL;			
+		}
+
+		struct memory *target_cell_state = vector_get_pointer(based_off_memory_state, hit_count);
+		if(target_cell_state == NULL){
+			PyErr_SetString(PyExc_TypeError, "Something is wrong with the cell state.");
+			return NULL;		
+		}
+		op_count = *target_cell_state->op_count;
+
+		struct vector_stucture_pointer *keys = memory_table->keys;
+		PyObject *results = PyDict_New();
+		if(keys != NULL){
+			for(int i = 0; i < keys->size; i++){
+				
+				struct vector_stucture_pointer *memory_values = get_hash_table_value(memory_table, vector_get_pointer(keys, i));
+				if(memory_values == NULL){
+					PyErr_SetString(PyExc_TypeError, "Something is wrong. No memory cells.");
+					return NULL;
+				}
+				//	the memory cell value at that given op_count state.
+				unsigned long long *state_value = find_closest(memory_values, op_count, MEMORY_VALUE);
+				if(state_value == NULL){
+					continue;
+				}else{
+//					printf("hit == %s, state value == %i\n", (char*)vector_get_pointer(keys, i), *state_value);
+					PyDict_SetItem(results, PyUnicode_FromString(vector_get_pointer(keys, i)) , PyLong_FromLong(*state_value));
+				}
+			}
+		}
+		return results;
+	}
+	PyErr_SetString(PyExc_TypeError, "Something is wrong. Memory table is NULL");
+	return NULL;
+}
+
+static PyObject *latest_memory_commit(db_object *self, PyObject *args, PyObject *kwargs) {
+	char *address;  // register is a keyword
+	int execution_count;
+	int op_count;
+
+	static char *kwlist[] = {"address", "execution_count", "op_count", NULL};
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "sii", kwlist, &address, &execution_count, &op_count)){
+		return NULL;
+	}
+
+	if(self->memory_trace != NULL){
+		struct hash_table_structure *memory_table = vector_get_pointer(self->memory_trace, execution_count);
+
+		if(memory_table == NULL){
+			PyErr_SetString(PyExc_TypeError, "Something is wrong. Memory table is NULL");
+			return NULL;
+		}
+
+		struct vector_stucture_pointer *based_off_memory_state = get_hash_table_value(memory_table, address);
+		if(based_off_memory_state == NULL){
+			PyErr_SetString(PyExc_TypeError, "Did not find address, have it been added?");
+			return NULL;
+		}
+
+//		unsigned long long *address_exectuion = latest_state_adress(based_off_memory_state);
+		unsigned long long *address_exectuion = find_closest(based_off_memory_state, op_count, MEMORY_EXECUTION);
+		if(address_exectuion == NULL){
+			Py_RETURN_NONE;
+		}else{
+			return PyLong_FromLong(*address_exectuion);
+		}
+	}
+	PyErr_SetString(PyExc_TypeError, "Something is wrong. Memory table is NULL");
+	return NULL;
+}
+
+
+static PyObject *view_memory_commits(db_object *self, PyObject *args, PyObject *kwargs) {
+	char *address;  // register is a keyword
+	int execution_count;
+
+	static char *kwlist[] = {"address", "execution_count", NULL};
+	if (!PyArg_ParseTupleAndKeywords(args, kwargs, "si", kwlist, &address, &execution_count)){
+		return NULL;
+	}
+
+	if(self->memory_trace != NULL){
+		struct hash_table_structure *memory_table = vector_get_pointer(self->memory_trace, execution_count);
+
+		if(memory_table == NULL){
+			PyErr_SetString(PyExc_TypeError, "Something is wrong. Memory table is NULL");
+			return NULL;
+		}
+
+		struct vector_stucture_pointer *based_off_memory_state = get_hash_table_value(memory_table, address);
+		if(based_off_memory_state == NULL){
+			PyErr_SetString(PyExc_TypeError, "Did not find address, have it been added?");
+			return NULL;
+		}
+		pretty_print(based_off_memory_state);
+		Py_RETURN_NONE;
+	}
 	PyErr_SetString(PyExc_TypeError, "Something is wrong. Memory table is NULL");
 	return NULL;
 }
@@ -452,6 +606,18 @@ static PyMethodDef Custom_methods[] = {
 	{"rebuild_memory", (PyCFunction) rebuild_memory, METH_VARARGS,
 		"want to see the memory at a given state?"
 	},
+	{"rebuild_memory_full", (PyCFunction) rebuild_memory_full, METH_VARARGS,
+		"want to see the full memory at a given state?"
+	},
+	{"latest_memory_commit", (PyCFunction) latest_memory_commit, METH_VARARGS,
+		"what was the last instruction that comitted to a part of memory?"
+	},
+	{"view_memory_commits", (PyCFunction) view_memory_commits, METH_VARARGS,
+		"easy to debug"
+	},
+	{"force_increment_op", (PyCFunction) force_increment_op, METH_NOARGS,
+		"easy to debug"
+	},
 	{NULL}  /* Sentinel */
 };
 
@@ -479,8 +645,6 @@ static PyTypeObject CustomType = {
 
 
 PyMODINIT_FUNC PyInit_triforce_db(void){
-//	init();
-
 	PyObject *m;
 	if (PyType_Ready(&CustomType) < 0){
 		return NULL;
@@ -493,10 +657,7 @@ PyMODINIT_FUNC PyInit_triforce_db(void){
 	
 	Py_INCREF(&CustomType);
 	PyModule_AddObject(m, "db_init", (PyObject *) &CustomType);
-	/*
-	if (Py_AtExit(clean)) {
-		return NULL;
-	}*/
 	return m;
 }
+
 

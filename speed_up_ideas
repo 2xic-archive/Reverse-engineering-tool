@@ -2,8 +2,7 @@
 
 
 
-Hopper uses 10 seconds (9739ms) to load the big binary I am working on, we also need speed.
-
+Hopper uses 10 seconds (9739ms) to load the big binary I am working on, we also need speed. Bottleneck to reach this goal is the loading of the web elements, not backend.
 
 Speed up
 	[Frontend]
@@ -31,8 +30,9 @@ Speed up
 			
 	-	(write some benchmark code like I did for javascript)
 
-
-
+	[Both]
+		-	cleaver algorithms and data structures
+			-	Some places I can write better data structures and algorithms because of new knowledge on the way to design the system.
 
 QA:
 	why not just switch from web to qt? 

@@ -1094,6 +1094,21 @@ was execued a few lines above, so we are in the program header of the binary(rcx
 		-	no, I used wrong the offset is 232 or e8, same as gbd.
 		- 	so maybe the real problem is that the stack is not correctly aligned?
 		
+		-	no the problem was that i havent mapped the memory for the program headers.
+			-	still not 100% sure if I should map the entire binary or not.
+
+
+loc_406cd0:
+	0000000000406cd0         add        rbp, 0x8                                    ; CODE XREF=getenv+177, getenv+196, getenv+203
+	0000000000406cd4         mov        rbx, qword [rbp]
+	0000000000406cd8         test       rbx, rbx
+	0000000000406cdb         je         loc_406c96
+
+	-	write some nice tools to dbeug what is happening here....
+
+
+
+
 
 
 

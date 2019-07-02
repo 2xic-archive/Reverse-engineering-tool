@@ -72,17 +72,54 @@ class stack_handler(object):
 	def init_stack(self):
 		start = self.stack_pointer
 
+		envp = list(reversed([
+				"SSH_CONNECTION=127.0.01 49940 127.0.01 22",
+				"_=/usr/bin/gdb",
+				"XDG_SESSION_ID=1369",
+				"USER=root",
+				"PWD=/root",
+				"LINES=24",
+				"HOME=/root",
+				"SSH_CLIENT=127.0.01 49940 22",
+				"SSH_TTY=/dev/pts/1",
+				"COLUMNS=75",
+				"MAIL=/var/mail/root",
+				"SHELL=/bin/bash",
+				"TERM=xterm-256color",
+				"SHLVL=1",
+				"LOGNAME=root",
+				"XDG_RUNTIME_DIR=/run/user/0",
+				"PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+				"padding=true"]))
+		envp_location = [
+
+		]
+
 		self.actual_location_exec = self.push_string("/root/test/test_binaries/static_small")
+
+		for envp_varaible in envp:
+			envp_location.append(self.push_string(envp_varaible))
+
 		self.actual_platform_location = self.push_string("x86_64")
+
 		self.actual_location_prng = self.push_bytes(self.random_prng_bytes())
 
+
+#		self.align_stack()
 		self.setup_aux_vector()
+#		self.push_bytes(struct.pack("<Q", 0))
+#		self.push_bytes(struct.pack("<Q", 0))
+
 		
+
 		argc = 0
 		envp = 1
 		items = (argc + 1) + (envp + 1) + 1
 
 		self.push_bytes(struct.pack("<Q", 0)) # null envp
+
+		for envp_var_location in envp_location:
+			self.push_bytes(struct.pack("<Q", envp_var_location)) 
 
 		self.push_bytes(struct.pack("<Q", 0)) # null arg
 		self.push_bytes(struct.pack("<Q", self.actual_location_exec)) # argc
@@ -90,7 +127,7 @@ class stack_handler(object):
 
 		end = self.stack_pointer
 		delta = (start - end)
-			
+		
 		return start, end, delta
 
 	@property

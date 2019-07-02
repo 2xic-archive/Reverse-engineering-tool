@@ -27,6 +27,7 @@ def hook_syscall64(mu, user_data):
 	r10 = mu.reg_read(UC_X86_REG_R10)
 	
 
+	rip = mu.reg_read(UC_X86_REG_RIP)
 	rsp = mu.reg_read(UC_X86_REG_RSP)
 
 	#	https://filippo.io/linux-syscall-table/
@@ -70,6 +71,7 @@ def hook_syscall64(mu, user_data):
 		file_descripor = r8
 		off = r9
 
+		print("0x%x" % (rip))
 		print("implement mmap")
 		mu.emu_stop()
 

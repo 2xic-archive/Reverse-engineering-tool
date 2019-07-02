@@ -25,6 +25,10 @@ test_leak_hash:
 			--verbose \
 			--log-file=valgrind-out.txt \
 			./test_bin/hash_table 
+test_leak_script:
+	PYTHONMALLOC=debug valgrind --tool=memcheck --suppressions=valgrind-python.supp \
+		python3 -tt test.py -u bsddb,network
+
 all:
 	make vector
 	make hash

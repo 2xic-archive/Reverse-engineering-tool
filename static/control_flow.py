@@ -282,6 +282,7 @@ class cfg:
 
 
 #	helps for debugging :=)
+'''
 def test_graphviz(input_cfg):
 	from graphviz import Digraph	
 	grapth = Digraph()
@@ -298,6 +299,7 @@ def test_graphviz(input_cfg):
 			print("{}->{}".format(node_key, edges))
 	grapth.view()
 	exit(0)
+'''
 
 def make_cfg(code):
 	#   based on some code from 

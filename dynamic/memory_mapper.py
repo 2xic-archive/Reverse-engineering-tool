@@ -55,6 +55,23 @@ class memory_mapper(object):
 		low_address = 0x0
 		high_address = 0x0
 
+		for name, content in (self.target.program_headers).items():
+			if(content["type_name"] == "PT_NULL"):
+				continue
+			
+			file_offset = content["location"]
+			file_end = file_offset + int(content["size"])
+			section_bytes = self.target.file[file_offset:file_end]
+
+			start = int(content["virtual_address"], 16)
+			end = int(content["virtual_address"], 16) + int(content["size"])
+
+			low_address = min(low_address, start)
+			high_address = max(high_address, end)
+		
+			mappings.append([self.base_program_address + content["location"], section_bytes])
+
+
 		for name, content in (self.target.sections_with_name).items():
 			self.section_map[name] = [ int(content["virtual_address"],16),  int(content["virtual_address"],16) + content["size"]]
 
@@ -87,6 +104,9 @@ class memory_mapper(object):
 	def map_binary(self):
 		mappings, low_address, high_address = self.load_binary_sections_small()
 		self.program_size = self.round_memory(high_address - low_address)
+
+		print(hex(self.base_program_address))
+		print(hex(self.program_size))
 
 		self.map_target(self.base_program_address, self.program_size, None, "program")
 

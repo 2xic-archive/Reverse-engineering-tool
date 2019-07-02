@@ -7,11 +7,11 @@
 <img src="README/new_version.png"  width="800px" />
 (web interface, click for better resolution)
 
-# 	status
+# 	Status
 There is now a branch called version 0.1, it shows the idea and part of the vision. Master is maybe already version 0.2, it's web component is a lot faster than the previous version(still some left to do). However, I want more work done on the emulator before I do a version bump. I feel I had a bit too much focus on the web interface for version 0.1. Now a big focus will be on extending the dynamic side, this is key for making this software good. That is why I have made a gdb like interface for the terminal, features will come to the terminal before the web interface to make design iterations faster.
 
 #   Note
-Mostly tested on CTF (elf)binaries + some glibc binary, I'm sure you can make the program do weird things if you try it on something big and complicated. *This program is still under construction*.
+Mostly tested on CTF (elf)binaries, I'm sure you can make the program do weird things if you try it on something big and complicated. *This program is still under construction*.
 
 #	Features
 -	flat view (see all the sections with code)
@@ -23,11 +23,13 @@ Mostly tested on CTF (elf)binaries + some glibc binary, I'm sure you can make th
 
 
 # Design philosophy
-What do you expect from a reverse engineering tool? You want quick insight into a program. How do you get insight? The best way is to get static data with the aid of dynamic information. The dynamic data show you where you have been, the static can help you get where you want to be. If the binary has been obfuscated the dynamic part will guide the static part. You want to be able to move around in the program flawlessly. This tool will have focus on speed, you want to do things like root cause analysis fast and this tool should work fast in environments like CTFs. 
+What do you expect from a reverse engineering tool? You want quick insight into a program. How do you get insight? The best way is to combine static data with the dynamic data. The dynamic data show you where you have been, the static can help you get where you want to be. If the binary has been obfuscated the dynamic part will guide the static part. You want to be able to move around in the program flawlessly. This tool will have focus on speed, you want to do things like root cause analysis fast and this tool should work fast in environments like CTFs. 
 
 
 #  Status with unicorn (dynamic side)
-Finally got a static binary with glibc to run from start to finish! I will continue to improve the emulator, still many syscalls and other funconality to implement, the future is bright. However, first I want to take some time to better integrate the emulator into the software before extending it's functionality. Like doing some root cause analysis on the debugging hooks to figure if and how to remove them and improve things like memory mapping and the stack handler for the emulator.
+Finally got a static binary with glibc to run from start to finish! I will continue to improve the emulator, still many syscalls and other functionality to implement, the future is bright. However, first I want to take some time to better integrate the emulator into the software before extending it's functionality. Like doing some root cause analysis on the debugging hooks to figure if and how to remove them and improve things like memory mapping and the stack handler for the emulator.
+
+Lately there has been a big focus on making tools to speed up development on the emulator, like how to quickly determine why unicorn and gdb disagree on something. This is key to get the emulator good. Having to re-run the binary and cross-check unicorn and gdb many times to resolve a bug does not scale. That is also why the emulator haven't gotten more syscalls implemented.
 
 
 #  Do I think I can make a better tool than IDA? 

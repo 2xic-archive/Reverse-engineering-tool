@@ -12,6 +12,7 @@ from capstone import *
 
 from .dynamic_linker import *
 from elf.elf_parser import *
+from static.disassemble import instruction_info
 from .unicorn_helper import *
 from .syscall_handler import *
 #from .instruction_handling import *
@@ -19,6 +20,7 @@ from .memory_mapper import *
 from .stack import *
 from .msr import *
 from .strace import *
+from .registers import *
 
 import triforce_db
 
@@ -30,7 +32,7 @@ def threaded(function):
 	return wrapper
 
 
-class emulator(stack_handler, memory_mapper, msr_helper, strace):
+class emulator(stack_handler, memory_mapper, msr_helper, strace, registers):
 	def __init__(self, target):
 		self.logging = False
 
@@ -41,7 +43,7 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace):
 		memory_mapper.__init__(self)
 		msr_helper.__init__(self)
 		strace.__init__(self)
-
+		registers.__init__(self)
 
 
 		self.setup_vsdo()
@@ -56,21 +58,12 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace):
 		]
 
 		self.db = triforce_db.db_init()
-#		self.db.add_new_execution()
-
-#		self.add_syscall(["exit", "sega", "lega"])
-#		self.get_all_syscalls()
-#		new_syscall = self.db.add_syscall_entry()
-#		print(new_syscall)
-#		exit(0)
-
 		for register, unicorn_refrence in self.db_registers:
 			self.db.add_register(register)
 
 		'''
 			Program memory
 		'''
-
 		self.unicorn_debugger = unicorn_debug(self.emulator, self.section_virtual_map, self.section_map, self.address_space, self.logging)
 		self.unicorn_debugger.full_trace = True
 
@@ -136,19 +129,31 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace):
 				"max_hit_count":7
 			}
 		)
-	
+		
 		self.unicorn_debugger.jump_op("xgetbv", {
 				"edx":0,
 				"eax":0x7
-			})
+		})
+		
 		self.unicorn_debugger.jump_op("vpbroadcastb ymm0, xmm0", {
 
 		})
 
-		self.unicorn_debugger.add_breakpoint(0x401459)
+		self.unicorn_debugger.trace_registers("rdi")
+#		print(self.emulator.mem_read(0x400000 + 0xb1eb8, 16))
+#		print(self.emulator.mem_read(0x400000 + 0xe8, 16))
+#		print(self.target.file[0xe8:0xe8+4])
+#		exit(0)
+#		print(self.tar)
+#		print(self.target.file[232:232+32])#[:4])
+#		print(self.target.program_headers)
+#		exit(0)
 
-#		self.unicorn_debugger.add_adress_trace(0x40c030, ["rdi", "cl"])
 
+#		self.unicorn_debugger.print_at("0x401449")
+#		self.unicorn_debugger.add_breakpoint(0x4541c0)
+#		self.unicorn_debugger.add_adress_trace(0x4541cf, ["eflags"])
+#		self.unicorn_debugger.add_adress_trace(0x4541b4, ["rdi"])
 
 	def log_text(self, text, style=None, level=0):
 		if(self.logging):
@@ -166,13 +171,16 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace):
 
 	def run(self, non_stop=False):
 		self.unicorn_debugger.non_stop = non_stop
-		self.address_register = {
+
+		self.address_instruction_lookup = {
 
 		}
+
 		# callback for tracing basic blocks
 		def hook_block(uc, address, size, user_data):
-		    self.log_bold_text(">>> Tracing call block at 0x%x(%s), block size = 0x%x" % (address, self.unicorn_debugger.determine_location(address)  , size))
-		    self.log_text(uc.reg_read(UC_X86_REG_RBP))
+			#self.log_bold_text(">>> Tracing call block at 0x%x(%s), block size = 0x%x" % (address, self.unicorn_debugger.determine_location(address)  , size))
+			print(">>> Tracing call block at 0x%x(%s), block size = 0x%x" % (address, self.unicorn_debugger.determine_location(address)  , size))
+			self.log_text(uc.reg_read(UC_X86_REG_RBP))
 
 		def hook_mem_invalid(uc, access, address, size, value, user_data):
 			self.log_bold_text(">>> Address hit {}({}), size {}".format(hex(address), self.unicorn_debugger.determine_location(address), size))
@@ -186,9 +194,19 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace):
 				#	print('>>> (%x) Tracing instruction at 0x%x  [0x%x] (%s), instruction size = 0x%x' % (self.unicorn_debugger.instruction_count, address, address-self.base_program_address, self.unicorn_debugger.determine_location(address), size))
 					self.log_text('>>> (%x) Tracing instruction at 0x%x  [0x%x] (%s), instruction size = 0x%x' % (self.unicorn_debugger.instruction_count, address, address-self.base_program_address, self.unicorn_debugger.determine_location(address), size))
 
-					for register_tuple in self.db_registers:
-						self.db.add_register_hit(hex(address), register_tuple[0], mu.reg_read(register_tuple[1]))
-					
+
+					if(self.address_instruction_lookup.get(hex(address), None) == None):
+						self.address_instruction_lookup[hex(address)] = instruction_info(bytes(mu.mem_read(address, size)))
+
+			#		for index, register_tuple in enumerate(self.db_registers):
+			#			self.db.add_register_hit(hex(address), register_tuple[0], mu.reg_read(register_tuple[1]))
+			#			self.db.add_memory_trace(register_tuple[0], mu.reg_read(register_tuple[1]), address, int(index < 1))
+					register_tuple = self.db_registers[2]
+
+
+					self.db.add_memory_trace(register_tuple[0], mu.reg_read(register_tuple[1]), self.unicorn_debugger.current_address, 0)
+					self.db.force_increment_op()
+
 					self.unicorn_debugger.tick(address, size)
 				
 				except  Exception as e:
@@ -205,10 +223,8 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace):
 			if access == UC_MEM_WRITE:
 				self.log_bold_text(">>> Memory is being WRITE at 0x%x(%s), data size = %u, data value = 0x%x" % (address, self.unicorn_debugger.determine_location(address) , size, value))
 				
-				#if((0 < value) and (value < 2 ** 32)):
-				self.db.add_memory_trace(hex(address), self.unicorn_debugger.current_address)
-				self.db.add_memory_trace(hex(address), 10)
-				#print(hex(address))
+			#	self.db.add_memory_trace(hex(address), self.unicorn_debugger.current_address, address)
+			#	self.db.add_memory_trace(hex(address), 10, address)
 			else:
 				if(size > 32):
 					self.log_bold_text(">>> Memory is being READ at 0x%x (%s), data size = %u" %(address, self.unicorn_debugger.determine_location(address),  size))
@@ -235,7 +251,8 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace):
 
 		start, end, delta = self.init_stack()
 
-#		view_stack(end, pretty_print_bytes(self.emulator.mem_read(end, delta), aschii=False))
+#		self.unicorn_debugger.view_stack(end, pretty_print_bytes(self.emulator.mem_read(end, delta), aschii=False))
+#		exit(0)
 
 		self.emulator.hook_add(UC_HOOK_INSN, hook_syscall64, self, 1, 0, UC_X86_INS_SYSCALL)
 		self.emulator.reg_write(UC_X86_REG_RSP, end)
@@ -258,8 +275,8 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace):
 			print(e)
 			print("Last instruction location 0x%x, size %i" % (self.unicorn_debugger.current_address, self.unicorn_debugger.current_size))
 			self.unicorn_debugger.log_file.close()
-	#	self.db.add_memory_trace("0xa", 10)
-	#	print(self.db.get_memory_trace("0xa", 0))
+
+
 
 	#	from web/terminal -> checking the db
 	def get_register_data(self, address, excecution_round=0):
@@ -280,6 +297,7 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace):
 		return address_values
 
 
-
+	def get_latest_register_write(self, register, op_count, excecution_round=0):
+		return self.db.latest_memory_commit(register, excecution_round, op_count)
 
 

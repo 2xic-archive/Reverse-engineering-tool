@@ -8,9 +8,13 @@ apt-get install python3-pip -y
 apt-get install python3-pytest-cov -y
 
 python3 -m pip install -r requirements.txt
-python3 -m pip install -r requirements_dev.txt
 
-
+if [ "$#" -eq  "0" ]
+  then
+     echo "No arguments supplied, so no need for travis requirements"
+  else
+     python3 -m pip install -r requirements_dev.txt
+fi
 
 mkdir setup
 cd setup
@@ -61,7 +65,6 @@ cd ..
 # out of setup
 cd ..
 pwd
-echo "does it work here?"
 python3 simple.py
 
 
@@ -69,9 +72,12 @@ cd db
 python3 setup.py install
 cd ..
 python3 ./db/test.py
-python3 ./test/run.py
 
-
-#pytest --cov=test test/test_coveralls.py
-python3 -m pytest --cov=test test/test_coveralls.py
-python3 -m coveralls
+if [ "$#" -eq  "0" ]
+  then
+     echo "No arguments supplied, so no need for travis requirements"
+  else
+    #python3 -m pytest --cov=test test/test_coveralls.py
+    python3 -m pytest --cov=. test/test_coveralls.py test/test_elf.py test/test_emulator.py test/test_grapth.py
+    python3 -m coveralls
+fi

@@ -15,7 +15,6 @@ def give_time(f):
 def test(sleep_duration=5):
 	time.sleep(sleep_duration)
 
-
 if __name__ == "__main__":
 	test()
 	

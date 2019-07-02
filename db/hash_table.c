@@ -26,7 +26,7 @@ struct hashtable_item_pointer{
 struct hash_table_structure {
 	char *keyword;
 	void **items;
-	struct vector_stucture *keys;
+	struct vector_stucture_pointer *keys;
 	int max_capacity;
 	int size;
 };
@@ -56,12 +56,21 @@ void debug_print(char *string){
 	}
 }
 
+void *deepcopy_char(char *input){
+	void *copy = malloc(sizeof(char) * (strlen(input) + 1));
+	strncpy(copy, input, strlen(input));
+	return copy;
+}
+
 struct hash_table_structure *init_table(char *keyword){
 	struct hash_table_structure *hash_table = malloc(sizeof(struct hash_table_structure));
 	hash_table->max_capacity = TABLE_SIZE;
 
 	hash_table->items = malloc(sizeof(void *) * hash_table->max_capacity);
 	memset(hash_table->items, 0, sizeof(void *) * hash_table->max_capacity);
+
+	hash_table->keys = init_vector_pointer("keys");
+	//init_vector_pointer(hash_table->keys);
 
 	hash_table->size = 0;
 	hash_table->keyword = keyword;
@@ -76,6 +85,9 @@ void *add_hash_table_value(struct hash_table_structure *hash_table, char *keywor
 		printf("neeed to resize capacity %i, index %i \n", hash_table->max_capacity, index);
 		exit(0);
 	}
+//	printf("%s\n", deepcopy_char(keyword));
+//	printf("%p\n", hash_table->keys);
+//	printf("%i\n", hash_table->keys->size);
 
 	struct vector_stucture_pointer *value_vector = NULL;
 	if(hash_table->items[index] == NULL){
@@ -103,6 +115,7 @@ void *add_hash_table_value(struct hash_table_structure *hash_table, char *keywor
 			value_vector->malloc_keyword = 1;
 			vector_add_pointer(value_vector, init_vector_pointer(value));
 		}
+		vector_add_pointer(hash_table->keys, deepcopy_char(keyword));	
 	}else{
 		struct hashtable_item_pointer *address = hash_table->items[index];
 		struct vector_stucture_pointer *vector_table = address->value;
@@ -131,6 +144,7 @@ void *add_hash_table_value(struct hash_table_structure *hash_table, char *keywor
 				value_vector->malloc_keyword = 1;
 				vector_add_pointer(value_vector, init_vector_pointer(value));
 			}
+			vector_add_pointer(hash_table->keys, deepcopy_char(keyword));	
 		}else{
 			value_vector = found_entry;
 			if(type == VALUE_INT || type == VALUE_MEMORY){

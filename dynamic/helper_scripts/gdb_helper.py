@@ -1,13 +1,10 @@
-
-# gdb -q -x gdb_helper.py
-
 import gdb
-
-gdb.execute('file /root/test/test_binaries/small_c_hello')
+#gdb.execute('file /root/test/test_binaries/small_c_hello')
 #gdb.execute('file /root/test/test_binaries/static_small')
 
-output = gdb.execute('break _start', to_string=True)
+# gdb -q -x gdb_helper.py /root/test/test_binaries/small_c_hello
 
+output = gdb.execute('break _start', to_string=True)
 output = gdb.execute('display/i $pc', to_string=True)
 
 output = gdb.execute('run', to_string=True)
@@ -19,8 +16,9 @@ for i in range(10000):
 		break
 	debug_file.write(output.split("\n")[1].split(":")[0] + "\n")
 #	debug_file.write(gdb.execute('info registers eflags', to_string=True))
-	debug_file.write(gdb.execute('info registers rax', to_string=True))
+	debug_file.write(gdb.execute('info registers eflags', to_string=True))
 
 debug_file.write("finish")
 debug_file.close()
 
+gdb.execute('quit', to_string=True)

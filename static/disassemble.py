@@ -29,6 +29,27 @@ def get_all_registers(CsInsn):
 			break
 	return registers
 
+def instruction_info(input_bytes):
+	info = [
+
+	]
+	mode = Cs(CS_ARCH_X86, CS_MODE_64)
+	mode.detail = True
+	for dissably in mode.disasm(input_bytes, 0x00):	
+		reads = []
+		writes = []
+
+		(regsister_read, regsister_write) = dissably.regs_access()
+		if len(regsister_read) > 0:
+			for r in regsister_read:
+				reads.append(dissably.reg_name(r))
+	
+		if len(regsister_write) > 0:
+			for r in regsister_write:
+				writes.append(dissably.reg_name(r))
+		info.append([[dissably.mnemonic + "\t" + dissably.op_str], reads, writes])
+	return info
+
 def decompile(input_bytes, start_address, mode, qword):
 	decompiled = OrderedDict()
 	target_registers_ids = set()

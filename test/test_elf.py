@@ -1,22 +1,14 @@
-
-
 import sys
 import os
-import sys
-# Add the ptdraft folder path to the sys.path list
-
-path = "/".join(os.path.realpath(__file__).split("/")[:-2]) + "/"
-print(path)
-sys.path.append(path)
-sys.path.append("../")
-
 
 from elf.elf_parser import *
 
+def test_headers():
+	path = "/".join(os.path.realpath(__file__).split("/")[:-2]) + "/"
+	sys.path.append(path)
+	sys.path.append("../")
 
+	static = elf("./test_binaries/static_small")
 
-static = elf("../test_binaries/small_c_hello")
-
-
-for i in static.program_headers.items():
-	print(i)
+	assert(len(static.program_headers.items()) > 0)
+	assert(len(static.section_headers.items()) > 0)

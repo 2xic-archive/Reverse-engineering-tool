@@ -82,14 +82,14 @@ class elf:
 		if(self.is_64_bit):
 			program_header_flags = int_from_bytearray(self.read_with_offset(start + 0x04, 4))
 			program_header_offset = int_from_bytearray(self.read_with_offset(start + 0x08, 8))
-			program_header_viritual_address = int_from_bytearray(self.read_with_offset(start + 0x10, 8))
+			program_header_viritual_address = hex(int_from_bytearray(self.read_with_offset(start + 0x10, 8)))
 			program_header_physcial_address = int_from_bytearray(self.read_with_offset(start + 0x18, 8))
 			program_header_size_file = int_from_bytearray(self.read_with_offset(start + 0x20, 8))
 			program_header_size_memory = int_from_bytearray(self.read_with_offset(start + 0x20, 8))
 			program_header_align = int_from_bytearray(self.read_with_offset(start + 0x30, 8))
 		else:		
 			program_header_offset = int_from_bytearray(self.read_with_offset(start + 0x04, 4))
-			program_header_viritual_address = int_from_bytearray(self.read_with_offset(start + 0x08, 4))
+			program_header_viritual_address = hex(int_from_bytearray(self.read_with_offset(start + 0x08, 4)))
 			program_header_physcial_address = int_from_bytearray(self.read_with_offset(start + 0x0C, 4))
 			program_header_size_file = int_from_bytearray(self.read_with_offset(start + 0x10, 4))
 			program_header_size_memory = int_from_bytearray(self.read_with_offset(start + 0x14, 4))
@@ -116,7 +116,8 @@ class elf:
 			"virtual_address":program_header_viritual_address,
 			"file_offset":program_header_offset,
 			"file_size":program_header_size_file,
-			"location":start
+			"location":start,
+			"size":program_header_size_memory
 		}
 
 

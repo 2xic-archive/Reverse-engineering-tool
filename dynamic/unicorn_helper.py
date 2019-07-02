@@ -83,6 +83,8 @@ class unicorn_debug():
 		self.next_size = 0
 		self.test = False
 
+		self.current_address = 0x41414141
+
 	def view_stack(self, end, string, length=8, count=4):
 		print("stack layout")
 		current_string = ""
@@ -135,7 +137,10 @@ class unicorn_debug():
 	def log_2_file(self):
 		if(self.instruction_count > 0 and self.logging_enabled):
 			self.log_file.write(hex(self.unicorn.reg_read(UC_X86_REG_RIP)) + "\n")
-			self.log_file.write(hex(self.unicorn.reg_read(UC_X86_REG_RAX)) + "\n")
+			self.log_file.write(hex(self.unicorn.reg_read(UC_X86_REG_EFLAGS)) + "\n")
+
+			#self.log_file.write(self.readable_eflags(self.unicorn.reg_read(UC_X86_REG_EFLAGS)) + "\n")
+			#self.log_file.write(hex(self.unicorn.reg_read(UC_X86_REG_RAX)) + "\n")
 
 	def readable_eflags(self, current_state):
 		flags =	[
@@ -313,9 +318,9 @@ class unicorn_debug():
 			current_state =  self.unicorn.reg_read(unicorn_refrence[0])
 			if(self.register_state[name] != current_state):
 				if(name == "eflags".upper()):
-					bold_print("\tlast instruction changed %s	[%s -> %s]" % (name, self.readable_eflags(self.register_state[name]), self.readable_eflags(current_state)))
+					bold_print("\tlast instruction[0x%x] changed %s	[%s -> %s]" % (self.current_address, name, self.readable_eflags(self.register_state[name]), self.readable_eflags(current_state)))
 				else:
-					bold_print("\tlast instruction changed %s	[0x%x 0x%x]" % (name, self.register_state[name], current_state))
+					bold_print("\tlast instruction[0x%x] changed %s	[0x%x 0x%x]" % (self.current_address, name, self.register_state[name], current_state))
 
 				if(unicorn_refrence[1] == True):
 					input("Paused exec because of changed state\n")
@@ -406,9 +411,15 @@ class unicorn_debug():
 		#for key, value in
 		adress_trace = self.print_at_address.get(rip, [])
 		if(0 < len(adress_trace)):
-			print("Values at 0x%x" % (rip), end="")
+			print("Values at 0x%x" % (rip), end=": ")
 			for register in adress_trace:
-				print("%s == %i" % (register, self.unicorn.reg_read(eval("UC_X86_REG_{}".format(register.upper())))), end=" ")
+				print("%s == 0x%x" % (register, self.unicorn.reg_read(eval("UC_X86_REG_{}".format(register.upper())))), end=" ")
+				try:
+					print("[%x]", self.unicorn.mem_read(self.unicorn.reg_read(eval("UC_X86_REG_{}".format(register.upper()))), 8), end=" ")
+					print("[%x]", self.unicorn.mem_read(self.unicorn.reg_read(eval("UC_X86_REG_{}".format(register.upper())))-8, 8), end=" ")
+				except Exception as e:
+#					print(e)
+					pass
 			print("")
 
 		if(self.current_breakpoint != None or self.next_break):
