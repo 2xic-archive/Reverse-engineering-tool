@@ -72,9 +72,15 @@ class stack_handler(object):
 	def init_stack(self):
 		start = self.stack_pointer
 
+		'''
+		i'm testing over ssh, so having ssh on the stack makes it easier
+		to debug with gdb.
+		'''
 		envp = list(reversed([
-				"SSH_CONNECTION=127.0.01 49940 127.0.01 22",
+
+				"SSH_CONNECTION=127.0.01 49940 127.0.01 22",	
 				"_=/usr/bin/gdb",
+				"OLDP",
 				"XDG_SESSION_ID=1369",
 				"USER=root",
 				"PWD=/root",
@@ -90,7 +96,9 @@ class stack_handler(object):
 				"LOGNAME=root",
 				"XDG_RUNTIME_DIR=/run/user/0",
 				"PATH=/root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-				"padding=true"]))
+			]))
+
+
 		envp_location = [
 
 		]

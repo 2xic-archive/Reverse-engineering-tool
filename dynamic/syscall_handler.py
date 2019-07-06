@@ -60,6 +60,10 @@ def hook_syscall64(mu, user_data):
 		mu.reg_write(UC_X86_REG_RBX, old_brk)	
 		mu.reg_write(UC_X86_REG_RCX, 0x400994)
 
+#		mu.emu_stop()
+#		user_data.set_msr(mu, user_data.FSMSR , user_data.brk )
+#		mu.emu_start(rip + user_data.unicorn_debugger.current_size, 0xdeadbeef)
+
 		user_data.add_syscall(["brk", hex(mu.reg_read(UC_X86_REG_RBP))])
 
 	elif(rax == 0x9):

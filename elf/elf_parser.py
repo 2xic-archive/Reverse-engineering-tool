@@ -61,6 +61,11 @@ class elf:
 		else:
 			type_name = "OS-specific."
 
+
+		if(int_from_bytearray(section_type) == 0x2):
+			self.symbol_table_offset = start
+
+
 		section = {
 			"section_location":start,
 			"orginal_size":self.read_with_offset(start + 0x20, 8),
@@ -171,17 +176,43 @@ class elf:
 		return range_bytes
 
 	def get_sections_parsed(self):
+		real_index = 0			
+
 		code_sections = OrderedDict()
+		symbol_lookup = OrderedDict()
+
 		for index, key in self.sections_with_name_index.items(): #enumerate(self.sections_with_name.keys()):
 			text_seciton = self.sections_with_name[key]
 			
 			if(text_seciton["type"] == 0x1 and text_seciton["flags_int"] == 0x6):
 				code_sections[index] = key
+			elif(text_seciton["type"] == 0x2):
+			
+				symbol_offset = self.sections_with_name[".strtab"]["file_offset"]
+
+				table_star = text_seciton["file_offset"]
+				table_entry_size = text_seciton["entries_size"]
+				table_end = text_seciton["file_offset"] + text_seciton["size"]
+
+				for offset in range(table_star, table_end, table_entry_size):
+					struct_format = "IBBHQQ" if(self.is_64_bit) else "IIIBBH"
+
+					st_name, st_info, st_other, st_shndx, st_value, st_size = struct.unpack(struct_format, self.file[offset:offset+table_entry_size])
+					if(st_name == 0x0):
+						continue
+
+					st_name = self.read_zero_terminated_string(symbol_offset + st_name)
+					#print("%x\t%04d%10d%10d%10s%10s%10s%10d\t%s" % (offset, real_index, st_value, st_size, STT_TYPE[ELF_ST_TYPE(st_info)],
+					#				STB_BIND[ELF_ST_BIND(st_info)], STV_VISIBILITY[ELF_ST_VISIBILITY(st_other)], st_shndx, st_name))
+					real_index += 1
+					symbol_lookup[st_value] = st_name
 			else:
 				pass
+		self.symbol_lookup = OrderedDict(sorted(symbol_lookup.items(), key=lambda t: t[0]))
+		#print(symbol_lookup.keys())
+
 		self.code_sections = code_sections
 		return code_sections
-
 
 	
 	def reconstruct_small(self, section, input_bytes):
@@ -216,9 +247,14 @@ class elf:
 				parse_relocation(self, section_key)
 
 	def parse_dynamic_symbol_table(self):
+		self.dynamic_symbols = {
+
+		}
 		for section_key, section_info in self.sections_with_name.items():
 			if(section_info["type"] == 0x0B):
-				get_dynamic_symbols(self, section_key)
+				self.dynamic_symbols.update(get_dynamic_symbols(self, section_key))
+
+
 
 	def __init__(self, name):
 		self.file = open(name, "rb").read()
@@ -240,6 +276,8 @@ class elf:
 
 		self.target_architecture_int = int_from_bytearray(self.read_with_offset(0x12, 2))
 		self.target_architecture = target_architecture_lookup[self.target_architecture_int]
+
+		self.symbol_table_offset = None
 
 		if(self.is_64_bit):
 			self.program_entry_point = int_from_bytearray(self.read_with_offset(0x18, 8))
@@ -280,9 +318,9 @@ class elf:
 
 		assert self.program_header_start < self.section_headers_start
 
-
 		self.get_section_names()
-
+		self.get_sections_parsed()
+		
 		if not self.is_static():
 			self.parse_dynamic_symbol_table()
 			self.load_relocation()

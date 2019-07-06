@@ -1,9 +1,5 @@
 
-
-
-
-
-import	struct
+import struct
 def	hex_2_string(input_stirng,	big=False):
 	if(":"	in	input_stirng):
 		input_stirng = input_stirng.split(":")[1]
@@ -27,8 +23,8 @@ def	hex_2_string(input_stirng,	big=False):
 			print("".join(results), end="")
 		except Exception as e:
 			print("*ERROR* : ".format(input_stirng))
+#	print("")
 
-
-hex_2_string("0x6f6f722f")
-print("\n")
+if __name__ == "__main__":
+	hex_2_string("0x7fffffffee43:	0x6f6f722f")
 

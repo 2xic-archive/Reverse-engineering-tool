@@ -1,5 +1,6 @@
 
 
+from common.printer import *
 
 class strace(object):
 	def __init__(self):
@@ -15,3 +16,5 @@ class strace(object):
 		new_syscall = self.db.add_syscall_entry()
 		for syscall_entry_element in name_with_arguments:
 			self.db.syscall_argument_string(str(syscall_entry_element), new_syscall)
+
+		bold_print("syscall %s" % (" ".join(name_with_arguments)))

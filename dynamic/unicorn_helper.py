@@ -7,7 +7,7 @@ from unicorn.x86_const import *
 from common.interface import *
 from keystone import *
 from common.printer import *
-
+from inspect import isfunction
 
 def pretty_print_bytes(results, aschii=True, logging=True):
 	if(logging):
@@ -134,9 +134,12 @@ class unicorn_debug():
 		for name, unicorn_refrence in self.registers_2_trace.items():
 			self.register_state[name] = self.unicorn.reg_read(unicorn_refrence[0])
 
-	def log_2_file(self):
-		if(self.instruction_count > 0 and self.logging_enabled):
-			self.log_file.write(hex(self.unicorn.reg_read(UC_X86_REG_RIP)) + "\n")
+	def log_2_file(self, address=None):
+		if(not self.log_file.closed and 0 < self.instruction_count and self.logging_enabled):
+			if(address == None):
+				self.log_file.write(hex(self.unicorn.reg_read(UC_X86_REG_RIP)) + "\n")
+			else:
+				self.log_file.write(hex(address) + "\n")	
 			self.log_file.write(hex(self.unicorn.reg_read(UC_X86_REG_EFLAGS)) + "\n")
 
 			#self.log_file.write(self.readable_eflags(self.unicorn.reg_read(UC_X86_REG_EFLAGS)) + "\n")
@@ -298,7 +301,7 @@ class unicorn_debug():
 		commands = {
 			"view":self.get_register,
 			"stepi":self.step,
-			"memory":self.memory_handle,
+			"x":self.memory_handle,
 			"read_2_null":self.read_null_terminated,
 			"stack_peek":self.peek_stack
 		}
@@ -440,6 +443,8 @@ class unicorn_debug():
 					self.handle_commands()
 				else:
 					self.breakpoints_hits[self.unicorn.reg_read(UC_X86_REG_RIP)] = hit_score + 1
+			elif(isfunction(self.current_breakpoint)):
+				self.current_breakpoint(self.unicorn)
 			else:
 				self.handle_commands()
 
@@ -458,7 +463,7 @@ class unicorn_debug():
 
 	def panic_patch(self, address):
 		print("Did a panic_patch at 0x%x , okay ? " % (address))
-
+		self.log_2_file(address)
 		for key, value in self.patch_values.items():
 			self.unicorn.reg_write(eval("UC_X86_REG_{}".format(key.upper())), value)
 

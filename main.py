@@ -31,8 +31,7 @@ if __name__ == "__main__":
 
 		delta_compatibility.run_check(target.dynamic)
 
-
-	if(1 < len(sys.argv)):
+	elif(1 < len(sys.argv)):
 		if(use_web):
 			go_online(sys.argv[1])
 		else:
