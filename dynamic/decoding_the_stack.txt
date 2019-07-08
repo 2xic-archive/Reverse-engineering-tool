@@ -1106,7 +1106,67 @@ loc_406cd0:
 
 	-	write some nice tools to dbeug what is happening here....
 
+0000000000408000         lea        rdi, qword [rdx]                            ; argument #1 for method __lll_unlock_wake_private, CODE XREF=_IO_puts+312
+0000000000408003         sub        rsp, 0x80
+000000000040800a         call       __lll_unlock_wake_private                   ; __lll_unlock_wake_private
+000000000040800f         add        rsp, 0x80
 
+	-	new challange!
+		-	is the tool good enougth now?
+
+	-	okay so unicorn calls __lll_unlock_wake_private
+		-	gdb does not.
+	-	problem happens at 
+		-	cmp        r8, qword [rdx+8]
+
+
+		-	I have a feeling the problem happens at 
+			0000000000407ef0         mov        r8, qword [fs:0x10]
+
+			Error in function _IO_puts
+			Last agreement 0x407efd (hit 1)
+			Unicorn : 0x408040, GDB : 0x407f03
+			Could not resolve linearly... gdb
+			Could catch up non linear!!! Next agreement 0x407f46 <3 (_IO_puts)
+
+			-	if you look at rdx and r8, both seems to point to the heap.
+				-	will try to reset the sbrk.
+					-	don't think that is the prolem. Hm.
+
+
+		-	taking a new look at rindex
+			-	ja jumps if CF = 0 and ZF = 0 (unsigned Above: no carry and not equal)
+			-	0x4543ef
+			-	so you see that eflags         0x283	[ CF SF IF ] in gdb
+			-	remeber the  cmp        rax, 0xfc0
+			- 	form old nodes
+				-	okay, so the deal is that both point to the same memory, but since we are comparing 
+					addresses something goes wrong. 
+
+			===UNICORN
+				0x6
+				0x202	IF
+				0xfd9
+				0x202	IF
+				0xfd9
+				0x202	IF
+			===GDB
+				rax            0x6	6
+				eflags         0x206	[ PF IF ]
+
+				rax            0xe1b	3611
+				eflags         0x206	[ PF IF ]
+
+				rax            0xe1b	3611
+				eflags         0x283	[ CF SF IF ]
+			== DELTA
+				both agree on 
+					-	4543d4         mov        rax, rdi
+				-	disagreemnet happend because of diffrent addresses
+					-	0xeb4fd9		-	unicorn
+					-	0x7fffffffee1b - gdb
+
+				
 
 
 

@@ -15,12 +15,14 @@ if __name__ == "__main__":
 			run this tool vs gdb and cross check compatablity, 
 			makes analyzing for bugs easier.
 		'''
+		target = "/root/test/test_binaries/small_c_input"
 #		target = "/root/test/test_binaries/small_c_hello"
-		target = "/root/test/test_binaries/static_small"
+#		target = "/root/test/test_binaries/static_small"
 
 		last_run = ""
 		if(os.path.isfile("/root/test/test_binaries/last_run.txt")):
 			last_run = open("/root/test/test_binaries/last_run.txt", "r").read()
+		
 		if(last_run != target or "--gdb" in sys.argv):
 			#	re run gdb and save output.
 			os.system("gdb -q -x /root/test/dynamic/helper_scripts/gdb_helper.py {}".format(target))

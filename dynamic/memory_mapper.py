@@ -42,7 +42,7 @@ class memory_mapper(object):
 		self.address_space[name] = [location, location + size]
 
 	def load_binary_sections_small(self):
-		self.brk = 0x6b6000
+		self.brk = 0 # 0x6b6000
 
 		self.section_virtual_map = {
 			
@@ -81,8 +81,8 @@ class memory_mapper(object):
 
 			if("SHF_WRITE" in content["flags"]):
 				new_address = int(content["virtual_address"],16) + int(content["size"])
-		#		if(self.brk < new_address):
-		#			self.brk = new_address
+				if(self.brk < new_address):
+					self.brk = new_address
 
 			file_offset = content["file_offset"]
 			file_end = file_offset + int(content["size"])

@@ -4,6 +4,10 @@ import os
 from collections import OrderedDict 
 from .unicorn_helper import pretty_print_bytes
 import struct
+import sys
+PATH = (os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(PATH + "/syscalls/")
+from futex import *
 
 class syscall_exception(Exception):
     pass
@@ -33,7 +37,34 @@ def hook_syscall64(mu, user_data):
 	#	https://filippo.io/linux-syscall-table/
 	syscall_info(mu)
 
-	if(rax == 0x3f):
+	if(rax == 0x0):
+		fd = rdi 
+		buf = rsi
+		size = rdx
+		inputd = input("send input stdin")
+		if(size < len(inputd)):
+			'''
+				how does normal linux deal with this?
+			'''
+			raise Exception("overflow is illegal!")
+		
+		print("WRITING! FROM 0x%x , size : %i" % (buf, size))
+		mu.mem_write(buf, user_data.byte_string_with_length(inputd, length=size, filler=ord("B")))#inputd.encode())
+
+	elif(rax == 0x1):
+		fd = rdi 
+		buf = rsi
+		size = rdx
+
+		if(fd == 1):
+			print("READING FROM 0x%x, size : %i" % (buf, size))
+			#	.decode("utf-8")
+			print(mu.mem_read(buf, size), end="")
+		else:
+			print("unkown file_descripor... input not aviable yet")
+			mu.emu_stop()
+
+	elif(rax == 0x3f):
 		#	http://man7.org/linux/man-pages/man2/uname.2.html 
 		#	http://man7.org/linux/man-pages/man2/syscall.2.html
 
@@ -60,6 +91,9 @@ def hook_syscall64(mu, user_data):
 		mu.reg_write(UC_X86_REG_RBX, old_brk)	
 		mu.reg_write(UC_X86_REG_RCX, 0x400994)
 
+		'''
+			try to move brk.
+		'''
 #		mu.emu_stop()
 #		user_data.set_msr(mu, user_data.FSMSR , user_data.brk )
 #		mu.emu_start(rip + user_data.unicorn_debugger.current_size, 0xdeadbeef)
@@ -223,7 +257,7 @@ def hook_syscall64(mu, user_data):
 		strcuture = rsi
 
 		fstat_structure = OrderedDict()
-		if(file_descripor == 1):
+		if(file_descripor == 0 or file_descripor == 1):
 			file_stat = os.stat(file_descripor)
 			# the fstat have a given tructure, you need to push in the correct order. Value only.
 			fstat_structure["st_dev"] = file_stat.st_dev
@@ -273,7 +307,92 @@ def hook_syscall64(mu, user_data):
 		user_data.add_syscall(["exit", hex(mu.reg_read(UC_X86_REG_RBP))])
 		print("normal exit")
 		mu.emu_stop()
+
+	elif(rax == 0xca):
+		#	http://man7.org/linux/man-pages/man2/futex.2.html
+		pass
+		'''
+		uaddr = rdi
+		futex_op = rsi
+		val = rdx
+		utime = r10
+		uaddr2 = r8
+		val3 = r9
+
+
+		#	https://elixir.bootlin.com/linux/latest/source/kernel/futex.c#L3612
+
+		cmd = futex_op & FUTEX_CMD_MASK
+		flags = 0
+
+		if (not (futex_op & FUTEX_PRIVATE_FLAG)):
+			flags |= FLAGS_SHARED
+
+		if (futex_op & FUTEX_CLOCK_REALTIME):
+			flags |= FLAGS_CLOCKRT;
+			if (cmd != FUTEX_WAIT and cmd != FUTEX_WAIT_BITSET and \
+				cmd != FUTEX_WAIT_REQUEUE_PI):
+				raise Exception("Function not implemented. Error from linux (ENOSYS)")
+	
+		if(cmd == FUTEX_LOCK_PI):
+			print("-ENOSYS")
+			raise Exception("not fully implemented syscall")
+		if(cmd == FUTEX_UNLOCK_PI):
+			print("-ENOSYS")
+			raise Exception("not fully implemented syscall")
+		if(cmd == FUTEX_TRYLOCK_PI):
+			print("-ENOSYS")
+			raise Exception("not fully implemented syscall")
+		if(cmd == FUTEX_WAIT_REQUEUE_PI):
+			print("-ENOSYS")
+			raise Exception("not fully implemented syscall")
+		if(cmd == FUTEX_CMP_REQUEUE_PI):
+			print("-ENOSYS")
+			raise Exception("not fully implemented syscall")
+
+	
+		if(cmd == FUTEX_WAIT):
+			val3 = FUTEX_BITSET_MATCH_ANY;
+		#	/* fall through */
+		if(cmd == FUTEX_WAIT_BITSET):
+			raise Exception("Not fully implemented : futex_wait")
+			#return futex_wait(uaddr, flags, val, timeout, val3);
+		if(cmd == FUTEX_WAKE):
+			val3 = FUTEX_BITSET_MATCH_ANY;
+		#	/* fall through */
+		if(cmd == FUTEX_WAKE_BITSET):
+			raise Exception("Not fully implemented : futex_wake")
+			#return futex_wake(uaddr, flags, val, val3);
+		if(cmd == FUTEX_REQUEUE):
+			raise Exception("Not fully implemented : futex_requeue")
+			#return futex_requeue(uaddr, flags, uaddr2, val, val2, NULL, 0);
+		if(cmd == FUTEX_CMP_REQUEUE):
+			raise Exception("Not fully implemented : futex_requeue")
+			#return futex_requeue(uaddr, flags, uaddr2, val, val2, &val3, 0);
+		if(cmd == FUTEX_WAKE_OP):
+			raise Exception("Not fully implemented : futex_wake_op")
+			#return futex_wake_op(uaddr, flags, uaddr2, val, val2, val3);
+		if(cmd == FUTEX_LOCK_PI):
+			raise Exception("Not fully implemented : futex_lock_pi")
+			#return futex_lock_pi(uaddr, flags, timeout, 0);
+		if(cmd == FUTEX_UNLOCK_PI):
+			raise Exception("Not fully implemented : futex_unlock_pi")
+			#return futex_unlock_pi(uaddr, flags);
+		if(cmd == FUTEX_TRYLOCK_PI):
+			raise Exception("Not fully implemented : futex_lock_pi")
+			#return futex_lock_pi(uaddr, flags, NULL, 1);
+		if(cmd == FUTEX_WAIT_REQUEUE_PI):
+			val3 = FUTEX_BITSET_MATCH_ANY;
+			raise Exception("Not fully implemented : futex_wait_requeue_pi")
+			#return futex_wait_requeue_pi(uaddr, flags, val, timeout, val3, uaddr2);
+		if(cmd == FUTEX_CMP_REQUEUE_PI):
+			raise Exception("Not fully implemented : futex_requeue")
+			#return futex_requeue(uaddr, flags, uaddr2, val, val2, &val3, 1);
+		
+		raise Exception("not fully implemented. Error from linux (ENOSYS)")
+		'''
 	else:
 		mu.emu_stop()
-		raise syscall_exception("unknown syscall(0x%x, %i). Fix!" % (rax, rax))
+		print("unknown syscall(0x%x, %i). Fix! 0x%x" % (rax, rax, rip))
+#		raise syscall_exception("unknown syscall(0x%x, %i). Fix!" % (rax, rax))
 

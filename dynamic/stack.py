@@ -11,13 +11,17 @@ class stack_handler(object):
 		for string in string_list:
 			self.push_bytes(string + "\x00")
 
-	def byte_string_with_length(self, input_string, length=0):
+	def byte_string_with_length(self, input_string, length=0, filler=0):
 		start = bytearray(input_string.encode())
 		# padding
 		for i in range(len(input_string), length):
-			start.append(0)
+			start.append(filler)
+
 		if(start[length - 1] != 0):
-			raise Exception("not null terminated string")
+			if(filler != 0):
+				start[-1] = 0
+			else:
+				raise Exception("not null terminated string")
 		return bytes(start)
 
 	def push_bytes(self, bytes_array):

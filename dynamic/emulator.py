@@ -195,7 +195,8 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers):
 						self.address_instruction_lookup[hex(address)] = instruction_info(bytes(mu.mem_read(address, size)))
 
 					for index, register_tuple in enumerate(self.db_registers):
-						self.db.add_register_hit(hex(address), register_tuple[0], mu.reg_read(register_tuple[1]))
+#						self.db.add_memory_trace(hex(address), register_tuple[0], mu.reg_read(register_tuple[1]), 0)
+						self.db.add_memory_trace(register_tuple[0], mu.reg_read(register_tuple[1]), self.unicorn_debugger.current_address, 0)
 					self.db.force_increment_op()
 
 					self.unicorn_debugger.tick(address, size)
