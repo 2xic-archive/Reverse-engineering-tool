@@ -38,31 +38,103 @@ def hook_syscall64(mu, user_data):
 	syscall_info(mu)
 
 	if(rax == 0x0):
+		#	http://man7.org/linux/man-pages/man2/read.2.html
 		fd = rdi 
 		buf = rsi
 		size = rdx
-		inputd = input("send input stdin")
+		inputd = input("UNICORN : (send input stdin)\n")
 		if(size < len(inputd)):
 			'''
 				how does normal linux deal with this?
 			'''
 			raise Exception("overflow is illegal!")
 		
-		print("WRITING! FROM 0x%x , size : %i" % (buf, size))
-		mu.mem_write(buf, user_data.byte_string_with_length(inputd, length=size, filler=ord("B")))#inputd.encode())
+	#	print("WRITING! FROM 0x%x , size : %i" % (buf, size))
+		inputd += "\n"
+		mu.mem_write(buf, inputd.encode())
+		
+		'''
+			return value
+
+		'''
+		mu.reg_write(UC_X86_REG_RAX, len(inputd.encode()))
+		mu.reg_write(UC_X86_REG_RCX, 0x400994)
+		mu.reg_write(UC_X86_REG_R11, 0x346)
 
 	elif(rax == 0x1):
+		#	http://man7.org/linux/man-pages/man2/write.2.html
 		fd = rdi 
 		buf = rsi
 		size = rdx
 
 		if(fd == 1):
-			print("READING FROM 0x%x, size : %i" % (buf, size))
-			#	.decode("utf-8")
-			print(mu.mem_read(buf, size), end="")
+		#	print("READING FROM 0x%x, size : %i" % (buf, size))
+			print("UNICORN : (sent output stdout)")
+			try:
+				print(mu.mem_read(buf, size).decode("utf-8"), end="")
+			except Exception as e:
+				print(mu.mem_read(buf, size))#, end="")
+			'''
+				return value
+					-	should verify the size by using reading 2 null terminated.
+			'''		
+			mu.reg_write(UC_X86_REG_RAX, size)
+			mu.reg_write(UC_X86_REG_RCX, 0x400994)
+			mu.reg_write(UC_X86_REG_R11, 0x346)
 		else:
 			print("unkown file_descripor... input not aviable yet")
 			mu.emu_stop()
+	elif(rax == 0x8):
+		#	http://man7.org/linux/man-pages/man2/lseek.2.html
+		fd = rdi
+		offset = rsi 
+		whence = rdx
+
+		#	https://elixir.bootlin.com/linux/v3.18/source/include/uapi/linux/fs.h#L31
+		SEEK_SET =	0	#/* seek relative to beginning of file */
+		SEEK_CUR =	1	#/* seek relative to current file position */
+		SEEK_END =	2	#/* seek relative to end of file */
+		SEEK_DATA = 3	#/* seek to the next data */
+		SEEK_HOLE = 4	#/* seek to the next hole */
+		SEEK_MAX	 = SEEK_HOLE
+
+		#	https://elixir.bootlin.com/linux/v3.18/source/include/uapi/asm-generic/errno-base.h#L12
+		EINVAL	 =	22 #	/* Invalid argument */
+		ENFILE	 =	23 #	/* File table overflow */
+		EMFILE	 =	24 #	/* Too many open files */
+		ENOTTY	 =	25 #	/* Not a typewriter */
+		ETXTBSY  =	26 #	/* Text file busy */
+		EFBIG	 = 	27 #	/* File too large */
+		ENOSPC	 =	28 #	/* No space left on device */
+		ESPIPE	 =	29 #	/* Illegal seek */
+		if(fd == 0):
+			if(whence == SEEK_CUR):
+				'''
+					should have a way keep track of stdin.
+					How do I know the current positon?
+				'''
+				mu.reg_write(UC_X86_REG_RAX, 0xffffffffffffffff ^~ ESPIPE)
+				mu.reg_write(UC_X86_REG_RCX, 0x400994)
+				mu.reg_write(UC_X86_REG_R11, 0x346)
+			else:
+				print("lseek problem {}, {}, {}".format(fd, offset, whence))
+				mu.emu_stop()
+		else:
+			print("lseek problem {}, {}, {}".format(fd, offset, whence))
+			mu.emu_stop()
+
+	elif(rax == 0x9):
+		# mmap
+		address = rdi
+		length = rsi
+		protection = rdx
+		flags = r10
+		file_descripor = r8
+		off = r9
+
+		print("0x%x" % (rip))
+		print("implement mmap")
+#		mu.emu_stop()
 
 	elif(rax == 0x3f):
 		#	http://man7.org/linux/man-pages/man2/uname.2.html 
@@ -87,31 +159,29 @@ def hook_syscall64(mu, user_data):
 		old_brk = user_data.brk
 		user_data.brk += mu.reg_read(UC_X86_REG_RBP)
 
-		mu.reg_write(UC_X86_REG_RAX, user_data.brk)
-		mu.reg_write(UC_X86_REG_RBX, old_brk)	
-		mu.reg_write(UC_X86_REG_RCX, 0x400994)
-
 		'''
 			try to move brk.
 		'''
+
+#		mu.emu_stop()
+	#	print(hex(user_data.brk))
+		if not user_data.is_memory_mapped(user_data.brk):
+			print("Brk has unalloced memory.")
+			mu.emu_stop()
+#		print(user_data.is_memory_mapped(user_data.brk))
+
 #		mu.emu_stop()
 #		user_data.set_msr(mu, user_data.FSMSR , user_data.brk )
 #		mu.emu_start(rip + user_data.unicorn_debugger.current_size, 0xdeadbeef)
 
-		user_data.add_syscall(["brk", hex(mu.reg_read(UC_X86_REG_RBP))])
+		mu.reg_write(UC_X86_REG_RAX, user_data.brk)
+		mu.reg_write(UC_X86_REG_RBX, old_brk)	
+		mu.reg_write(UC_X86_REG_RCX, 0x400994)
 
-	elif(rax == 0x9):
-		# mmap
-		address = rdi
-		length = rsi
-		protection = rdx
-		flags = r10
-		file_descripor = r8
-		off = r9
+#		mu.emu_start(rip + user_data.unicorn_debugger.current_size, 0xdeadbeef)
+#		print("BRK SUCESSS")
 
-		print("0x%x" % (rip))
-		print("implement mmap")
-		mu.emu_stop()
+#		user_data.add_syscall(["brk", hex(mu.reg_read(UC_X86_REG_RBP))])
 
 	elif(rax == 0x9e):
 		#	https://github.com/torvalds/linux/blob/6f0d349d922ba44e4348a17a78ea51b7135965b1/arch/x86/um/syscalls_64.c
@@ -202,56 +272,7 @@ def hook_syscall64(mu, user_data):
 			print(e)	
 
 	elif(rax == 0x5):
-		'''
-		from http://man7.org/linux/man-pages/man2/stat.2.html
-
-			struct stat {
-			   dev_t     st_dev;         /* ID of device containing file */		
-			   ino_t     st_ino;         /* Inode number */
-			   mode_t    st_mode;        /* File type and mode */ 		 
-			   nlink_t   st_nlink;       /* Number of hard links */
-			   uid_t     st_uid;         /* User ID of owner */
-			   gid_t     st_gid;         /* Group ID of owner */
-			   dev_t     st_rdev;        /* Device ID (if special file) */
-			   off_t     st_size;        /* Total size, in bytes */
-			   blksize_t st_blksize;     /* Block size for filesystem I/O */
-			   blkcnt_t  st_blocks;      /* Number of 512B blocks allocated */
-
-			   /* Since Linux 2.6, the kernel supports nanosecond
-				  precision for the following timestamp fields.
-				  For the details before Linux 2.6, see NOTES. */
-
-			   struct timespec st_atim;  /* Time of last access */
-			   struct timespec st_mtim;  /* Time of last modification */
-			   struct timespec st_ctim;  /* Time of last status change */
-
-		   #define st_atime st_atim.tv_sec      /* Backward compatibility */
-		   #define st_mtime st_mtim.tv_sec
-		   #define st_ctime st_ctim.tv_sec
-		   };
-		'''
-
-		'''
-
-		fstat(3, {st_dev=makedev(254, 1), 
-				st_ino=38776, 
-				st_mode=S_IFREG|0755, 
-				st_nlink=1, st_uid=0, 
-				st_gid=0, 
-				st_blksize=4096, 
-				st_blocks=3304, 
-				st_size=1689360, 
-				st_atime=2019-06-15T21:17:01+0000.080974880, 
-				st_mtime=2019-02-06T21:17:41+0000, 
-				st_ctime=2019-03-29T20:30:59+0000.180000000}) = 0
-			example syscall output from strace
-				-	
-		'''
-
-
-		#	1	Standard output	STDOUT_FILENO	stdout
-		#	this is what i'm calling with when trying Hello world, fd will be one
-		#	fd from 0 to 2 is actually predefined.
+		# http://man7.org/linux/man-pages/man2/stat.2.html
 
 		file_descripor = rdi 
 		strcuture = rsi
@@ -280,23 +301,41 @@ def hook_syscall64(mu, user_data):
 			print("unknown file_descripor, not fully implemented yet")
 			mu.emu_stop()
 		
-		#	print(strcuture)
-		#	print(file_descripor)
-		#	print(user_data.emulator.mem_read(strcuture, 128))
-
-#		user_data.unicorn_debugger.view_stack(strcuture, pretty_print_bytes(user_data.emulator.mem_read(strcuture, 100), aschii=False))
-
-#		user_data.unicorn_debugger.view_stack(rsp, pretty_print_bytes(user_data.emulator.mem_read(rsp, len(fstat_structure.items()) * 16), aschii=False))
 		strcuture_index = strcuture
-
-		#	maybe there should be a method to write qwords to the stack... cleaner maybe
-#		print(fstat_structure)
 		for key, value in fstat_structure.items():
 			strcuture_index = user_data.stack_write_at_index(strcuture_index, bytes(bytearray(struct.pack("<Q", value))))
 
-#		user_data.unicorn_debugger.view_stack(rsp, pretty_print_bytes(user_data.emulator.mem_read(rsp, len(fstat_structure.items()) * 16), aschii=False))
-#		mu.emu_stop()
+	elif(rax == 0x66):
+		mu.reg_write(UC_X86_REG_RAX, user_data.uid)
+		mu.reg_write(UC_X86_REG_RCX, 0x400994)		
 
+	elif(rax == 0x67 and False):
+		# syslog
+		pass
+	elif(rax == 0x68):
+		# http://man7.org/linux/man-pages/man2/getgid.2.html
+		mu.reg_write(UC_X86_REG_RAX, user_data.gid)
+		mu.reg_write(UC_X86_REG_RCX, 0x400994)		
+
+	elif(rax == 0x69):
+		# http://man7.org/linux/man-pages/man2/setuid.2.html
+		mu.uid = rdi
+
+		mu.reg_write(UC_X86_REG_RAX, 0)
+		mu.reg_write(UC_X86_REG_RCX, 0x400994)
+		mu.reg_write(UC_X86_REG_R11, 0x346)
+
+	elif(rax == 0x6a):
+		# http://man7.org/linux/man-pages/man2/setgid.2.html
+		mu.gid = rdi
+		mu.reg_write(UC_X86_REG_RAX, 0)
+		mu.reg_write(UC_X86_REG_RCX, 0x400994)
+		mu.reg_write(UC_X86_REG_R11, 0x346)
+
+	elif(rax == 0x6b):
+		# http://man7.org/linux/man-pages/man2/getuid.2.html
+		mu.reg_write(UC_X86_REG_RAX, user_data.euid)
+		mu.reg_write(UC_X86_REG_RCX, 0x400994)		
 
 	elif(rax == 0xe7):
 		#	http://man7.org/linux/man-pages/man2/exit_group.2.html
@@ -395,4 +434,3 @@ def hook_syscall64(mu, user_data):
 		mu.emu_stop()
 		print("unknown syscall(0x%x, %i). Fix! 0x%x" % (rax, rax, rip))
 #		raise syscall_exception("unknown syscall(0x%x, %i). Fix!" % (rax, rax))
-

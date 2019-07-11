@@ -68,7 +68,7 @@ class unicorn_debug():
 		}
 
 		self.instruction_count = 0
-		self.max_instructions = 10000
+		self.max_instructions = 100
 
 		self.full_trace = False
 
@@ -257,12 +257,45 @@ class unicorn_debug():
 		print("one instruction step")
 		self.next_break = True
 
+	def parse_math(self, stream):
+		look_a_side_buffer = ""
+		results = 0
+
+		sign = 1 
+		for i in stream:
+			if(i == "+" or i == "-"):
+				if(look_a_side_buffer.startswith("0x")):
+					results += (sign * int(look_a_side_buffer, 16))
+				elif(look_a_side_buffer.isdigit()):
+					results += (sign * int(look_a_side_buffer))
+				else:
+					results += (sign * self.unicorn.reg_read(eval("UC_X86_REG_{}".format(look_a_side_buffer.upper()))))
+				if(i == "+"):
+					sign = 1
+				elif(i == "-"):
+					sign = -1
+				else:
+					raise Exception("non supported arithmetic")
+				look_a_side_buffer = ""
+			else:
+				look_a_side_buffer += i
+
+		if(look_a_side_buffer.startswith("0x")):
+			results += (sign * int(look_a_side_buffer, 16))
+		elif(look_a_side_buffer.isdigit()):
+			results += (sign * int(look_a_side_buffer))
+		else:
+			results += (sign * self.unicorn.reg_read(eval("UC_X86_REG_{}".format(look_a_side_buffer.upper()))))
+				
+		return results
+
 	def memory_handle(self, tokens):
 		for index, value in enumerate(tokens):
-			if(value.startswith("0x")):
-				tokens[index] = int(tokens[index], 16)
-			elif not value.isdigit():
-				tokens[index] = self.unicorn.reg_read(eval("UC_X86_REG_{}".format(value.upper())))
+			tokens[index] = self.parse_math(tokens[index])
+#			if(value.startswith("0x")):
+#				tokens[index] = int(tokens[index], 16)
+#			elif not value.isdigit():
+#				tokens[index] = self.unicorn.reg_read(eval("UC_X86_REG_{}".format(value.upper())))
 
 		if(len(tokens) == 2):
 			print("Reading from 0x%x[%s] with size %i" % (tokens[0], self.determine_location(tokens[0]), tokens[1]))

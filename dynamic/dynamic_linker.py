@@ -38,7 +38,7 @@ def get_dynamic_symbols(elf_target, name, debug=False):
 						STB_BIND[ELF_ST_BIND(st_info)], STV_VISIBILITY[ELF_ST_VISIBILITY(st_other)], st_shndx, st_name))
 
 		if(len(st_name) > 0):
-			lookup_table[st_name] = hex(st_value)
+			lookup_table[st_name] = [hex(st_value), st_size]
 
 
 		elf_target.symbol_table[index] = st_name

@@ -66,3 +66,5 @@ class msr_helper(object):
 
 		return (edx << 32) | (eax & 0xFFFFFFFF)
 
+
+

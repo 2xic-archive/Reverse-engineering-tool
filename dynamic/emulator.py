@@ -21,7 +21,7 @@ from .stack import *
 from .msr import *
 from .strace import *
 from .registers import *
-
+from .configs import *
 import triforce_db
 
 def threaded(function):
@@ -32,7 +32,7 @@ def threaded(function):
 	return wrapper
 
 
-class emulator(stack_handler, memory_mapper, msr_helper, strace, registers):
+class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, configs):
 	def __init__(self, target):
 		self.logging = False
 
@@ -52,6 +52,7 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers):
 		#	need to set register first or bugs happen.
 		registers.__init__(self)
 		msr_helper.__init__(self)
+		configs.__init__(self)
 	
 
 		self.setup_vsdo()
@@ -148,6 +149,9 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers):
 		})
 
 
+		self.unicorn_debugger.add_breakpoint(0x900000 + 0x20209)
+
+
 #		self.unicorn_debugger.trace_registers("rdi")
 #		self.unicorn_debugger.trace_registers("rax")
 
@@ -175,10 +179,11 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers):
 		# callback for tracing basic blocks
 		def hook_block(uc, address, size, user_data):
 			#self.log_bold_text(">>> Tracing call block at 0x%x(%s), block size = 0x%x" % (address, self.unicorn_debugger.determine_location(address)  , size))
-			#print(">>> Tracing call block at 0x%x(%s), block size = 0x%x" % (address, self.unicorn_debugger.determine_location(address)  , size))
+			print(">>> Tracing call block at 0x%x(%s), block size = 0x%x" % (address, self.unicorn_debugger.determine_location(address)  , size))
 			self.log_text(uc.reg_read(UC_X86_REG_RBP))
 
 		def hook_mem_invalid(uc, access, address, size, value, user_data):
+#			print(hex(address))
 			self.log_bold_text(">>> Address hit {}({}), size {}".format(hex(address), self.unicorn_debugger.determine_location(address), size))
 
 		def hook_code(mu, address, size, user_data):  
@@ -187,6 +192,8 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers):
 				self.unicorn_debugger.panic_patch(address)
 			else:
 				try:
+					instruction_name, hook_instruction, hook_name = self.unicorn_debugger.get_instruction(address, size)
+					print("0x%x, %s" % (address, instruction_name))
 				#	print('>>> (%x) Tracing instruction at 0x%x  [0x%x] (%s), instruction size = 0x%x' % (self.unicorn_debugger.instruction_count, address, address-self.base_program_address, self.unicorn_debugger.determine_location(address), size))
 					self.log_text('>>> (%x) Tracing instruction at 0x%x  [0x%x] (%s), instruction size = 0x%x' % (self.unicorn_debugger.instruction_count, address, address-self.base_program_address, self.unicorn_debugger.determine_location(address), size))
 
@@ -261,7 +268,9 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers):
 		self.emulator.hook_add(UC_HOOK_CODE, hook_code)
 
 		self.unicorn_debugger.setup()
+
 		try:
+#			print("Starting from offset 0x%x" % (self.target.program_entry_point))
 			self.emulator.emu_start(self.target.program_entry_point, self.target.program_entry_point + 0x50)
 		except Exception as e:
 			print(e)

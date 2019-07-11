@@ -107,10 +107,8 @@ class elf:
 			name = program_header_type_name.get(program_header_type, "UNKOWN")
 
 
-#		print(program_header_type)
-		if(program_header_type == 0x00000001 and self.base_address != None):
-			self.base_address = program_header_viritual_address
-#			print(hex(program_header_viritual_address))
+		if(program_header_type == 0x00000001 and self.base_address == None):
+			self.base_address = int(program_header_viritual_address, 16)
 		
 		if(self.static_binary and name == "PT_INTERP"):
 			self.static_binary = False
@@ -180,7 +178,9 @@ class elf:
 
 		code_sections = OrderedDict()
 		symbol_lookup = OrderedDict()
+		symbol_size = {
 
+		}
 		for index, key in self.sections_with_name_index.items(): #enumerate(self.sections_with_name.keys()):
 			text_seciton = self.sections_with_name[key]
 			
@@ -206,9 +206,11 @@ class elf:
 					#				STB_BIND[ELF_ST_BIND(st_info)], STV_VISIBILITY[ELF_ST_VISIBILITY(st_other)], st_shndx, st_name))
 					real_index += 1
 					symbol_lookup[st_value] = st_name
+					symbol_size[st_name] = st_size
 			else:
 				pass
 		self.symbol_lookup = OrderedDict(sorted(symbol_lookup.items(), key=lambda t: t[0]))
+		self.symbol_size = symbol_size
 		#print(symbol_lookup.keys())
 
 		self.code_sections = code_sections
