@@ -68,30 +68,40 @@ def parse_relocation(elf_target, target, debug=False):
 				elf_target.qword_helper[hex(address)] = elf_target.symbol_table[ELF64_R_SYM(info)]
 				if(debug):
 					print((hex(address), info, addend), elf_target.symbol_table[ELF64_R_SYM(info)])
-					if(len(elf_target.symbol_table[ELF64_R_SYM(info)]) > 0):
-						lookup[elf_target.symbol_table[ELF64_R_SYM(info)]] = address
+				if(len(elf_target.symbol_table[ELF64_R_SYM(info)]) > 0):
+					lookup[elf_target.symbol_table[ELF64_R_SYM(info)]] = address
 			except Exception as e:
 				print("erorr in parse_relocation")
 	return lookup
 
 
-def parse_dynamic(elf_target):
+def parse_dynamic(elf_target, lookup=None, debug=False):
 	dynamic_section_str_start = elf_target.sections_with_name[".dynstr"]["file_offset"]
 
 	dynamic_section_start = elf_target.sections_with_name[".dynamic"]["file_offset"]
 	dynamic_section_size_entry = (elf_target.sections_with_name[".dynamic"]["entries_size"])
 	dynamic_section_end = dynamic_section_start + elf_target.sections_with_name[".dynamic"]["size"]
 
+	response = []
+
 	for offset in range(dynamic_section_start, dynamic_section_end, dynamic_section_size_entry):
 		tag, identity = struct.unpack("QQ", (elf_target.file[offset:offset+dynamic_section_size_entry]))
 		if tag in TAG:
 			if tag == 1 or tag == 15:
-				print("0x%018x %20s [%s]" %(tag, TAG[tag], elf_target.read_zero_terminated_string(dynamic_section_str_start + identity)))
+				if(debug):
+					print("0x%018x %20s [%s]" %(tag, TAG[tag], elf_target.read_zero_terminated_string(dynamic_section_str_start + identity)))
+				if(lookup == "needed_libraries"):
+					response.append(elf_target.read_zero_terminated_string(dynamic_section_str_start + identity))
 			else:
-				print("0x%018x %20s [0x%x]" %(tag, TAG[tag], identity))
+				if(debug):
+					print("0x%018x %20s [0x%x]" %(tag, TAG[tag], identity))
 		else:
-			print("0x%018x %20s [0x%x]" %(tag, tag, identity))
+			if(debug):
+				print("0x%018x %20s [0x%x]" %(tag, tag, identity))
+	return response
 
+def get_needed_libraries(elf_target):
+	return parse_dynamic(elf_target, "needed_libraries")
 
 def link_lib_and_binary(binary, library):
 	binary_map_functions = {
@@ -99,10 +109,10 @@ def link_lib_and_binary(binary, library):
 	}
 	for section_key, section_info in binary.sections_with_name.items():
 		if(section_info["type"] == 0x4):
-			for key, item in parse_relocation(binary, section_key, True).items():
+			for key, item in parse_relocation(binary, section_key).items():
 				binary_map_functions[key] = item
 
-	print(binary_map_functions)
+	#print(binary_map_functions)
 
 	look_up_libary_function = {
 

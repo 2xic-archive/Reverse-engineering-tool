@@ -54,7 +54,7 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 		msr_helper.__init__(self)
 		configs.__init__(self)
 	
-
+		self.resolve_dynamic_setup()
 		self.setup_vsdo()
 
 

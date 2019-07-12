@@ -256,11 +256,16 @@ class elf:
 			if(section_info["type"] == 0x0B):
 				self.dynamic_symbols.update(get_dynamic_symbols(self, section_key))
 
+	def __eq__(self, other):
+		return self.file_path == other
 
+	def __str__(self):
+		return "elf class - {}".format(self.file_path)
 
 	def __init__(self, name):
 		self.file = open(name, "rb").read()
 		self.file_path = os.path.abspath(name)
+		self.file_name = name.split("/")[-1]
 
 		self.is_elf = self.file[:4] == b'\x7fELF'
 		assert self.is_elf, "not a elf binary"

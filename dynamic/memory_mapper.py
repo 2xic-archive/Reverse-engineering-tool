@@ -27,24 +27,28 @@ class memory_mapper(object):
 		'''
 
 	def map_library(self):
-		'''
-			PSA : just realized that libc is depended on ld. I thought the binary would list ld
-			as a consequence, but when I ran readelf -d /lib/x86_64-linux-gnu/libc-2.24.so | grep NEEDED
-			and now I understand!
+		self.look_up_library = {
 
-			-	will have to redo the structure below....
-			for each library get the needed parrent libraries.
-		'''
-		libraries = [elf("/lib/x86_64-linux-gnu/libc.so.6"),
-					 elf("/lib/x86_64-linux-gnu/ld-2.24.so")]
+		}
 
-#		link_lib_and_binary(libraries[0], libraries[1])
-#		exit(0)
+		'''
+			reading in all libraries used by the binary and the libs.
+		'''
+		libraries = []
+		for i in get_needed_libraries(self.target):
+			libraries.append(elf("/lib/x86_64-linux-gnu/" + i))
+
+		index = 0
+		while(index < len(libraries)):
+			lib = libraries[index]
+			for j in get_needed_libraries(lib):
+				if not "/lib/x86_64-linux-gnu/" + j in libraries:
+					libraries.append(elf("/lib/x86_64-linux-gnu/" + j))
+			index += 1
 
 		for library in libraries:
-			print("round two")
 			mappings, low_address, high_address = self.load_binary_sections_small(library, self.current_library_address)
-			library_size = self.round_memory((high_address - low_address) + 1)
+			library_size = self.round_memory((high_address - library.base_address) + 1)
 			self.map_target(self.current_library_address, library_size, None, "library")
 
 			for secition in mappings:
@@ -54,16 +58,48 @@ class memory_mapper(object):
 					start = self.round_memory(secition[0])
 					self.map_target(start,  self.round_memory(len(secition[1])), secition[1], "section ?")
 			
+			self.look_up_library[library.file_name] = self.current_library_address
+
 			for i in link_lib_and_binary(self.target, library):
-				unicorn_base = int(i[0], 16)
+				binary = int(i[0], 16)
+				binary += (self.base_program_address)
+
 				library_map, library_map_size = i[1]
 				library_map = int(library_map, 16)
 				library_map += self.current_library_address
 
-				new_address = bytes(bytearray(struct.pack("<Q", library_map)))
-				self.emulator.mem_write(unicorn_base, new_address)
+				xref = bytes(bytearray(struct.pack("<Q", library_map)))
+				self.emulator.mem_write(binary, xref)
+			
 
 			self.current_library_address +=  self.round_memory((library_size) + 1)
+
+
+		for lib in libraries:
+			for needed_lib in get_needed_libraries(lib):
+				dependent_library = libraries[libraries.index("/lib/x86_64-linux-gnu/" + needed_lib)]
+				for i in link_lib_and_binary(lib, dependent_library):
+					parrent_library = int(i[0], 16)
+					parrent_library += self.look_up_library[lib.file_name]
+
+					children_library, library_map_size = i[1]
+					children_library = int(children_library, 16)
+					children_library += self.look_up_library[dependent_library.file_name]
+
+					xref = bytes(bytearray(struct.pack("<Q", children_library)))
+					self.emulator.mem_write(parrent_library, xref)
+
+
+	def resolve_dynamic_setup(self):
+		# this is only for a dynamic binary
+		if self.target.static_binary:
+			return None
+		'''
+		based on some looks in gdb and hopper rdx should point to
+		lib_ld + 0xfba0 (_dl_fini), not sure why it is not named in the binary tho.
+		'''
+#		self.emulator.reg_write(UC_X86_REG_RDX, self.look_up_library["ld-linux-x86-64.so.2"] + 0xfba0)
+		pass
 
 	# unicorn want size adn adress to be 4KB aligned
 	def round_memory(self, offset):
@@ -104,6 +140,8 @@ class memory_mapper(object):
 
 		for name, content in (binary.program_headers).items():
 			if(content["type_name"] == "PT_NULL"):
+				start = int(content["virtual_address"],16)
+				end = int(content["virtual_address"],16) + int(content["size"])
 				continue
 			
 			file_offset = content["location"]
@@ -111,7 +149,7 @@ class memory_mapper(object):
 			section_bytes = binary.file[file_offset:file_end]
 
 			start = int(content["virtual_address"], 16)
-			end = int(content["virtual_address"], 16) + int(content["size"])
+			end = start + int(content["size"])
 
 			low_address = min(low_address, start)
 			high_address = max(high_address, end)
@@ -122,10 +160,21 @@ class memory_mapper(object):
 		for name, content in (binary.sections_with_name).items():
 			self.section_map[name] = [ int(content["virtual_address"],16),  int(content["virtual_address"],16) + content["size"]]
 
-			if(content["type_name"] == "SHT_NOBITS" or not "SHF_ALLOC" in content["flags"]):
+			'''
+				what is the deal with this?
+				seeems strange. debug this.
+			'''
+			if("lib" in binary.file_path and (content["type_name"] == "SHT_NOBITS" and not "SHF_ALLOC" in content["flags"])):
+				self.log_text("Skipped section %s (%s)" % (name, content["flags"]))
+				continue
+			elif("lib" not in binary.file_path and (content["type_name"] == "SHT_NOBITS" or not "SHF_ALLOC" in content["flags"])):
 				self.log_text("Skipped section %s (%s)" % (name, content["flags"]))
 				continue
 
+			'''
+				brk should only get adjusted on the target binary ?
+				- not sure about the libs.
+			'''
 			if("SHF_WRITE" in content["flags"]):
 				new_address = int(content["virtual_address"],16) + int(content["size"])
 				if(self.brk < new_address):
@@ -136,10 +185,11 @@ class memory_mapper(object):
 			section_bytes = binary.file[file_offset:file_end]
 
 			start = int(content["virtual_address"],16)
-			end = int(content["virtual_address"],16) + int(content["size"])
+			end = start + int(content["size"])
 
 			low_address = min(low_address, start)
 			high_address = max(high_address, end)
+			
 			self.log_text("Loaded section %s at 0x%x -> 0x%x (%s)" % (name, start, end, content["flags"]))
 
 			mappings.append([offset + int(content["virtual_address"],16), section_bytes])
