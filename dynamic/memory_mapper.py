@@ -2,6 +2,7 @@
 from unicorn.x86_const import *
 from .dynamic_linker import *
 from elf.elf_parser import *
+
 class memory_mapper(object):
 	def __init__(self):
 		self.base_program_address = self.target.base_address #0x400000
@@ -20,11 +21,14 @@ class memory_mapper(object):
 		if not self.target.static_binary:
 			self.map_library()
 
-		'''
-			* Dynamic mapping will happen here *
-				-	already coded part of the linker
-				-	will have a static binary running before more work on dynamic (done, sonn dynamic)
-		'''
+	'''
+		should help with detecting bugs in linker.
+	'''
+	def write_illegal_library(self, location):
+		current_written_address = self.emulator.mem_read(location, 8)
+		if(int.from_bytes(current_written_address, byteorder='little') == 0):
+			#self.emulator.mem_write(location, bytes(bytearray(struct.pack("<Q", 0xf00dbeef))))
+			pass
 
 	def map_library(self):
 		self.look_up_library = {
@@ -52,13 +56,9 @@ class memory_mapper(object):
 			self.map_target(self.current_library_address, library_size, None, "library")
 
 			for secition in mappings:
-				if(self.is_memory_mapped(secition[0] + len(secition[1]))):
-					self.emulator.mem_write(secition[0], secition[1])
-				else:
-					start = self.round_memory(secition[0])
-					self.map_target(start,  self.round_memory(len(secition[1])), secition[1], "section ?")
-			
-			self.look_up_library[library.file_name] = self.current_library_address
+				self.emulator.mem_write(secition[0], secition[1])
+
+			self.look_up_library[library.file_name] = [self.current_library_address, library_size]
 
 			for i in link_lib_and_binary(self.target, library):
 				binary = int(i[0], 16)
@@ -69,37 +69,54 @@ class memory_mapper(object):
 				library_map += self.current_library_address
 
 				xref = bytes(bytearray(struct.pack("<Q", library_map)))
-				self.emulator.mem_write(binary, xref)
-			
 
-			self.current_library_address +=  self.round_memory((library_size) + 1)
+				if(i[1][0] == "0xf00dbeef"):
+					self.write_illegal_library(binary)
+				else:
+					self.emulator.mem_write(binary, xref)
 
+
+			self.current_library_address += self.round_memory((library_size) + 1)
 
 		for lib in libraries:
 			for needed_lib in get_needed_libraries(lib):
 				dependent_library = libraries[libraries.index("/lib/x86_64-linux-gnu/" + needed_lib)]
 				for i in link_lib_and_binary(lib, dependent_library):
 					parrent_library = int(i[0], 16)
-					parrent_library += self.look_up_library[lib.file_name]
+					parrent_library += self.look_up_library[lib.file_name][0]
 
 					children_library, library_map_size = i[1]
 					children_library = int(children_library, 16)
-					children_library += self.look_up_library[dependent_library.file_name]
+					children_library += self.look_up_library[dependent_library.file_name][0]
 
-					xref = bytes(bytearray(struct.pack("<Q", children_library)))
-					self.emulator.mem_write(parrent_library, xref)
-
+					if(i[1][0] == "0xf00dbeef"):
+						self.write_illegal_library(binary)
+					else:
+						xref = bytes(bytearray(struct.pack("<Q", children_library)))
+						self.emulator.mem_write(parrent_library, xref)
 
 	def resolve_dynamic_setup(self):
 		# this is only for a dynamic binary
 		if self.target.static_binary:
 			return None
 		'''
-		based on some looks in gdb and hopper rdx should point to
-		lib_ld + 0xfba0 (_dl_fini), not sure why it is not named in the binary tho.
+			based on some looks in gdb and hopper rdx should point to
+			lib_ld + 0xfba0 (_dl_fini), not sure why it is not named in the binary tho.
 		'''
-#		self.emulator.reg_write(UC_X86_REG_RDX, self.look_up_library["ld-linux-x86-64.so.2"] + 0xfba0)
-		pass
+		
+		self.emulator.reg_write(UC_X86_REG_RDX, self.look_up_library["ld-linux-x86-64.so.2"][0] + 0xfba0)
+
+		'''	
+			-	this should be fixed with a linker update?
+		'''
+		self.emulator.mem_write(self.look_up_library["libc.so.6"][0] + 0x399000, 
+			bytes(bytearray(struct.pack("<Q", self.look_up_library["ld-linux-x86-64.so.2"][0] + 0x224040))))
+
+		self.emulator.mem_write(self.look_up_library["libc.so.6"][0] + 0x398df1, 
+			bytes(bytearray(struct.pack("<Q", self.look_up_library["ld-linux-x86-64.so.2"][0] + 0x224040))))
+
+		self.emulator.mem_write(self.look_up_library["libc.so.6"][0] + 0x398df8, 
+			bytes(bytearray(struct.pack("<Q", self.look_up_library["ld-linux-x86-64.so.2"][0] + 0x224040))))
 
 	# unicorn want size adn adress to be 4KB aligned
 	def round_memory(self, offset):
@@ -124,6 +141,11 @@ class memory_mapper(object):
 
 		self.address_space[name] = [location, location + size]
 
+	def extend_bytearray(self, array_input, size):
+		while(len(array_input) < size):
+			array_input.append(0)
+		return array_input
+
 	def load_binary_sections_small(self, binary, offset):
 		self.brk = 0 # 0x6b6000
 
@@ -140,8 +162,6 @@ class memory_mapper(object):
 
 		for name, content in (binary.program_headers).items():
 			if(content["type_name"] == "PT_NULL"):
-				start = int(content["virtual_address"],16)
-				end = int(content["virtual_address"],16) + int(content["size"])
 				continue
 			
 			file_offset = content["location"]
@@ -154,20 +174,16 @@ class memory_mapper(object):
 			low_address = min(low_address, start)
 			high_address = max(high_address, end)
 		
-			mappings.append([offset + content["location"], section_bytes])
+			assert(len(section_bytes) == int(content["size"]))
+
+			mappings.append([offset + content["location"], section_bytes, name])
 
 
 		for name, content in (binary.sections_with_name).items():
 			self.section_map[name] = [ int(content["virtual_address"],16),  int(content["virtual_address"],16) + content["size"]]
 
-			'''
-				what is the deal with this?
-				seeems strange. debug this.
-			'''
-			if("lib" in binary.file_path and (content["type_name"] == "SHT_NOBITS" and not "SHF_ALLOC" in content["flags"])):
-				self.log_text("Skipped section %s (%s)" % (name, content["flags"]))
-				continue
-			elif("lib" not in binary.file_path and (content["type_name"] == "SHT_NOBITS" or not "SHF_ALLOC" in content["flags"])):
+
+			if not "SHF_ALLOC" in content["flags"]:
 				self.log_text("Skipped section %s (%s)" % (name, content["flags"]))
 				continue
 
@@ -180,9 +196,14 @@ class memory_mapper(object):
 				if(self.brk < new_address):
 					self.brk = new_address
 
+		#		continue
+
 			file_offset = content["file_offset"]
 			file_end = file_offset + int(content["size"])
-			section_bytes = binary.file[file_offset:file_end]
+			
+			section_bytes = bytes()
+			if not (content["type_name"] == "SHT_NOBITS"):
+				section_bytes = binary.file[file_offset:file_end]
 
 			start = int(content["virtual_address"],16)
 			end = start + int(content["size"])
@@ -192,7 +213,10 @@ class memory_mapper(object):
 			
 			self.log_text("Loaded section %s at 0x%x -> 0x%x (%s)" % (name, start, end, content["flags"]))
 
-			mappings.append([offset + int(content["virtual_address"],16), section_bytes])
+			section_bytes = bytes(self.extend_bytearray(bytearray(section_bytes), int(content["size"])))
+
+			assert(len(section_bytes) == int(content["size"]))
+			mappings.append([offset + start, section_bytes, name])
 
 			if(content["size"] > 0):
 				self.section_virtual_map[name] = [start, end]	
@@ -204,11 +228,7 @@ class memory_mapper(object):
 		self.map_target(self.base_program_address, self.program_size, None, "program")
 
 		for secition in mappings:
-			if(self.is_memory_mapped(secition[0] + len(secition[1]))):
-				self.emulator.mem_write(secition[0], secition[1])
-			else:
-				start = self.round_memory(secition[0])
-				self.map_target(start,  self.round_memory(len(secition[1])), secition[1], "section ? ")
+			self.emulator.mem_write(secition[0], secition[1])
 
 
 	def map_stack(self):
@@ -220,6 +240,9 @@ class memory_mapper(object):
 		self.emulator.reg_write(UC_X86_REG_RSP, self.stack_address + self.stack_size - 1)
 
 	def is_memory_mapped(self, address):
+		'''
+			TODO : binary search here
+		'''
 		for memory_name in self.address_space.keys():
 			memory_window = self.address_space[memory_name]
 #			print(memory_name)

@@ -1,6 +1,9 @@
 
 #	from https://elixir.bootlin.com/linux/latest/source/include/uapi/linux/futex.h#L25
 
+ENOSYS = 78
+
+
 FUTEX_BITSET_MATCH_ANY = 0xffffffff
 
 FUTEX_WAIT = 0

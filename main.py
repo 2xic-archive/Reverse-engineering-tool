@@ -30,6 +30,10 @@ if __name__ == "__main__":
 			open("/root/test/test_binaries/last_run.txt", "w").write(target)
 
 		target = model(elf(target), None)
+
+		if("--auto-stop" in sys.argv):
+			target.dynamic.unicorn_debugger.test = True
+
 		target.run_emulator(force=True, thread=False)
 
 		if not "--no-delta" in sys.argv:

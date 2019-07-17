@@ -549,6 +549,7 @@ class unicorn_debug():
 			if(self.max_instructions <= self.instruction_count and not self.non_stop):
 				if self.test or not should_continue("hit instruction_count limit, continue?"):
 					self.unicorn.emu_stop()
+					self.log_file.close()
 				else:
 					self.max_instructions *= 2
 

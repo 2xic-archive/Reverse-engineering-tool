@@ -58,12 +58,18 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 		self.setup_vsdo()
 
 
+
+#		exit(0)
+
+
 		self.db_registers = [
 			("rax", UC_X86_REG_RAX),
 			("rsi", UC_X86_REG_RSI),
 			("rdi", UC_X86_REG_RDI),
 			("rip", UC_X86_REG_RIP),
-			("rsp", UC_X86_REG_RSP)
+			("rsp", UC_X86_REG_RSP),
+			("r9", UC_X86_REG_R9),
+			
 		]
 
 		self.db = triforce_db.db_init()
@@ -148,12 +154,15 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 
 		})
 
+#		for i in self.future_breaks:
+#			self.unicorn_debugger.add_breakpoint(i)
 
-		self.unicorn_debugger.add_breakpoint(0x900000 + 0x20209)
+		# self.unicorn_debugger.add_breakpoint(0x900000 + 0x20209)
+#		self.unicorn_debugger.add_breakpoint(0xa1ef5c)
 
 
 #		self.unicorn_debugger.trace_registers("rdi")
-#		self.unicorn_debugger.trace_registers("rax")
+#		self.unicorn_debugger.trace_registers("rdx")
 
 	def log_text(self, text, style=None, level=0):
 		if(self.logging):
@@ -217,6 +226,10 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 					print(exc_type, fname, exc_tb.tb_lineno)
 
 					exit(0)
+			if(address == 0x0):
+				bold_print("hit address zero, something went wrong? will stop...")
+				self.unicorn_debugger.log_file.close()
+				mu.emu_stop()
 
 		def hook_mem_access(uc, access, address, size, value, user_data):
 			if access == UC_MEM_WRITE:

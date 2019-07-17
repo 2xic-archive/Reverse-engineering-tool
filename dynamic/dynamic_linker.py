@@ -39,7 +39,8 @@ def get_dynamic_symbols(elf_target, name, debug=False):
 
 		if(len(st_name) > 0):
 			lookup_table[st_name] = [hex(st_value), st_size]
-
+		elif(index == 0):
+			lookup_table["0"] = [hex(st_value), st_size]
 
 		elf_target.symbol_table[index] = st_name
 		index += 1
@@ -59,7 +60,7 @@ def parse_relocation(elf_target, target, debug=False):
 	lookup = {
 
 	}
-
+	close = False
 	for offset in range(dynamic_section_sym_start, dynamic_section_sym_end, dynamic_section_sym_entry_size):
 		if(elf_target.is_64_bit):
 			struct_format = "QQQ"
@@ -70,8 +71,20 @@ def parse_relocation(elf_target, target, debug=False):
 					print((hex(address), info, addend), elf_target.symbol_table[ELF64_R_SYM(info)])
 				if(len(elf_target.symbol_table[ELF64_R_SYM(info)]) > 0):
 					lookup[elf_target.symbol_table[ELF64_R_SYM(info)]] = address
+					assert(addend == 0)
+				else:
+					if("lib" in elf_target.file_path):
+						#print([ELF64_R_SYM(info), info])
+						#print([
+						#		hex(address),
+						#		ELF64_R_SYM(info) == 0,
+						#		addend
+						#	])
+						'''
+								python3 main.py --test | grep 0x398d80
+						'''	
 			except Exception as e:
-				print("erorr in parse_relocation")
+				print("erorr in parse_relocation", e)
 	return lookup
 
 
@@ -107,26 +120,35 @@ def link_lib_and_binary(binary, library):
 	binary_map_functions = {
 
 	}
-	for section_key, section_info in binary.sections_with_name.items():
-		if(section_info["type"] == 0x4):
-			for key, item in parse_relocation(binary, section_key).items():
-				binary_map_functions[key] = item
-
-	#print(binary_map_functions)
 
 	look_up_libary_function = {
 
 	}
+
+	for section_key, section_info in binary.sections_with_name.items():
+		if(section_info["type"] == 0x4):
+			for key, item in parse_relocation(binary, section_key).items():
+				binary_map_functions[key] = item
 
 	for section_key, section_info in library.sections_with_name.items():
 		if(section_info["type"] == 0x0B):
 			for key, item in get_dynamic_symbols(library, section_key).items():
 				look_up_libary_function[key] = item
 
+	'''
+		resolve binary -> library
+	'''
 	mappings = []
+
 	for key, item in binary_map_functions.items():
 		if(look_up_libary_function.get(key, None) != None):
 			mappings.append([hex(item), look_up_libary_function[key]])
+			binary_map_functions[key] = None
+	
+	for key, item in binary_map_functions.items():
+		if(binary_map_functions[key] != None):
+			mappings.append([hex(item), ["0xf00dbeef", 8]])
+
 	'''
 		return a mapping between binary -> library function
 	'''

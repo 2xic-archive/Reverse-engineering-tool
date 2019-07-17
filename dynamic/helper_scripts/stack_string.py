@@ -26,7 +26,9 @@ def	hex_2_string(input_stirng,	big=False):
 #	print("")
 
 if __name__ == "__main__":
-	hex_2_string("0x7fffffffee43:	0xe5894855")
+#	hex_2_string("0x7fffffffee43:	0xf7ffcca0")
+	
+
 
 #	python3 ./dynamic/helper_scripts/stack_string.py
 

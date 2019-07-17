@@ -240,5 +240,9 @@ def ELF64_R_SYM(i):
 def ELF32_R_SYM(i):
 	return i >> 8
 
+def ELF32_R_TYPE(i):
+	return ((i) & 0xff)
 
+def ELF64_R_TYPE(i):
+	return ((i) & 0xffffffff)
 

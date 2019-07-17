@@ -6,6 +6,80 @@ sys.path.insert(0, "../../")
 from common.printer import *
 from elf.utils import get_symbol_name as elf_get_symbol_name
 
+
+gdb_mappings = [
+	[0x555555554000, 0x555555555000],
+	[0x555555754000, 0x555555755000],
+	[0x555555755000, 0x555555756000],
+	
+	[0x7ffff7a3a000, 0x7ffff7dd5000],
+	[0x7ffff7dd9000, 0x7ffff7dfc000],
+	[0x7ffff7ffc000, 0x7ffff7ffe000]
+]
+
+gdb_mappings_name = [
+	"binary",
+	"binary",
+	"binary",
+
+	"libc",
+	"ld",
+	"ld"
+]
+
+gdb_resolve_mappings = [
+	0x555555554000,
+	0x555555554000,
+	0x555555554000,
+
+	0x7ffff7a3a000,
+	0x7ffff7dd9000,
+	0x7ffff7dd9000
+]
+
+gdb_add_offset = [
+	0,
+	0,
+	0
+]
+
+unicorn_mappings = [
+
+]
+
+unicorn_mappings_names = [
+
+]
+
+def mapping_range(address, start, end):
+	return  start <= address <= end
+	#((address - start) <= (end - start))
+
+def resolve_mapping(address, gdb=True):
+	if gdb:
+		for index, item in enumerate(gdb_mappings):
+			if(mapping_range(address, item[0], item[1])):
+				return gdb_mappings_name[index], ((address - gdb_resolve_mappings[index]) + gdb_add_offset[index]), address - gdb_resolve_mappings[index]
+	elif not gdb:
+		for index, item in enumerate(unicorn_mappings):
+		#	print(item)
+			if(mapping_range(address, item[0], item[0] + item[1])):
+				return unicorn_mappings_names[index], item[0], (address - item[0])
+
+	print("did not find ??? 0x%x" % (address))
+	assert(False)
+
+def valid_dynamic(unicorn_item, gdb_item):
+	if(gdb_item == None or len(gdb_item) == 0 or len(unicorn_item) == 0):
+		return False
+
+	new_unicorn_val = int(unicorn_item.strip(), 16)
+	new_gdb_val = int(gdb_item, 16)
+	_, new_gdb_val, _ = resolve_mapping(new_gdb_val)
+	if(new_gdb_val == new_unicorn_val):
+		return True
+	return False
+
 def split_safe(input_list, index):
 	if(index < len(input_list)):
 		return input_list[index]
@@ -28,24 +102,53 @@ def unicorn_report(refrence, op_count, last_address):
 	same path. However, because of things like different memory addresses this is not
 	necessarily the case. 
 '''
-def check_for_new_consensus(gdb, unicorn, i, j):
+def check_for_new_consensus(gdb, unicorn, i, j, static=True):
 	new_i = i
 	new_j = j
+
+	unicorn_look_up_hash = {
+
+	}
+	gdb_look_up_hash = {
+
+	}
 	for index_unicorn, m in enumerate(unicorn[new_i:]):
-		found_agreement = False
-		for index_gdb, n in enumerate(gdb[new_j:]):
-			if(("=>" in n) and m == n.strip().split(" ")[1]):
-			#	print("next agreement is at {}".format(m))
-				found_agreement = True
-				new_j += index_gdb
-				break
-		if(found_agreement):
-			new_i += index_unicorn
-#			print(((unicorn[new_i].strip(), gdb[new_j].strip().split(" ")[1] )))
-			return (new_i, new_j)
+		unicorn_look_up_hash[m] = index_unicorn
+	
+	for index_gdb, n in enumerate(gdb[new_j:]):
+		if static and ("=>" in n):
+			gdb_look_up_hash[n.strip().split(" ")[1]] = index_gdb
+		if not static and ("=>" in n):
+			gdb_val = int(n.strip().split(" ")[1], 16)
+			_, gdb_val, _ = resolve_mapping(gdb_val)
+			gdb_look_up_hash[hex(gdb_val)] = index_gdb
+			
+	minimum_change_i = None
+	minimum_change_j = None
+	total_cost = float('inf')
 
-	return (None, None)
+	for index_unicorn, m in enumerate(unicorn[new_i:]):
+		return_gdb = gdb_look_up_hash.get(m, None)
+		if(return_gdb != None):
+			new_total_cost = (index_unicorn + return_gdb)
+			if(new_total_cost < total_cost):
+				minimum_change_i = index_unicorn
+				minimum_change_j = return_gdb
+				total_cost = new_total_cost
 
+	for index_gdb, n in enumerate(gdb[new_j:]):
+		return_unicorn = unicorn_look_up_hash.get(n, None)
+		if(return_unicorn != None):
+			new_total_cost = (return_unicorn + index_gdb)
+			if(new_total_cost < total_cost):
+				minimum_change_i = return_unicorn
+				minimum_change_j = index_gdb
+				total_cost = new_total_cost
+
+	if(minimum_change_i == None or minimum_change_j == None):
+		return (None, None)
+
+	return (new_i + minimum_change_i, new_j + minimum_change_j)
 
 #	not perfect, but usally you want to higher up in memory.
 def linear_loop(gdb_val, unicorn_val):
@@ -56,11 +159,23 @@ def linear_loop(gdb_val, unicorn_val):
 #	state = refrence.address_instruction_lookup[last_address][0]
 #	bold_print("Latest instruction with consensus : %s" % ("".join(state[0])))
 
-
 def run_check(unicorn_refrence=None):
+	global unicorn_mappings_names
+	global unicorn_mappings
+	global gdb_add_offset
+
 	print("\n")
 	unicorn = open("/root/test/test_binaries/unicorn.log").read().split("\n")
 	gdb = open("/root/test/test_binaries/gdb.log").read().split("\n")
+
+	if not(unicorn_refrence.target.static_binary):
+		unicorn_mappings_names = list(unicorn_refrence.look_up_library.keys())
+		unicorn_mappings = list(unicorn_refrence.look_up_library.values())
+
+		for i in gdb_mappings_name:
+			for index, j in enumerate(unicorn_mappings_names):
+				if(i in j):
+					gdb_add_offset.append(unicorn_mappings[index][0])
 
 	i = 0
 	j = 0
@@ -94,9 +209,29 @@ def run_check(unicorn_refrence=None):
 					gdb_val = int(gdb[j].strip().split(" ")[1].strip(), 16)
 					old_i, old_j = i, j
 
-					bold_print("Error in function %s" % (elf_get_symbol_name(unicorn_refrence.target, int(int(last_agrement, 16)))))
-					bold_print("Last agreement {} (hit {})".format(last_agrement, hit_count[last_agrement]))
-					bold_print("Unicorn : %s, GDB : %s" % (unicorn[i].strip(), gdb[j].strip().split(" ")[1]))
+					if not unicorn_refrence.target.static_binary:
+						gdb_location, gdb_val, gdb_real_location = resolve_mapping(gdb_val)
+						if(gdb_val == unicorn_val):
+							last_agrement = unicorn[i].strip()
+							hit_count[last_agrement] = hit_count.get(last_agrement, 0) + 1
+
+							i += 1
+							j += 1
+							op_count += 1		
+							continue
+
+						unicorn_location, _, unicorn_real_location = resolve_mapping(unicorn_val, gdb=False)
+						bold_print("Disagreement gdb : {}, {}".format(gdb_location, hex(gdb_val)))
+						bold_print("Disagreement unicorn : {}, {}".format(unicorn_location, hex(unicorn_val)))				
+						bold_print("Last agreement {} (hit {})".format(last_agrement, hit_count[last_agrement]))
+						bold_print("Binary location : gdb : {},  unicorn : {}".format(hex(gdb_real_location), hex(unicorn_real_location)))
+					#	print(hex(unicorn_refrence.get_latest_register_write("r9", op_count)))
+					##	exit(0)
+					else:
+						bold_print("Error in function %s" % (elf_get_symbol_name(unicorn_refrence.target, int(int(last_agrement, 16)))))
+						bold_print("Last agreement {} (hit {})".format(last_agrement, hit_count[last_agrement]))
+						bold_print("Unicorn : %s, GDB : %s" % (unicorn[i].strip(), gdb[j].strip().split(" ")[1]))
+
 					
 					target = "unicorn" if(unicorn_val < gdb_val) else "gdb"
 
@@ -105,18 +240,26 @@ def run_check(unicorn_refrence=None):
 					if(target == "gdb"):
 						simulate_variable = j
 						while simulate_variable < len(gdb) and unicorn[i] != split_safe(gdb[simulate_variable].strip().split(" "), 1):
+							if not unicorn_refrence.target.static_binary:
+								if(valid_dynamic(unicorn[i], split_safe(gdb[simulate_variable].strip().split(" "), 1))):
+									break
+
 							simulate_variable += 1
 					else:
 						simulate_variable = i
 						while simulate_variable < len(unicorn) and unicorn[simulate_variable] != gdb[j].strip().split(" ")[1]:
+							if not unicorn_refrence.target.static_binary:
+								if(valid_dynamic(unicorn[simulate_variable], gdb[j].strip().split(" ")[1])):
+									break
 							simulate_variable += 1
 
 					if (not (simulate_variable < len(gdb) and target == "gdb")) or (not (simulate_variable < len(unicorn) and target == "unicorn")):
 						bold_print("Could not resolve linearly... {}".format(target))
 
-						new_i, new_j = check_for_new_consensus(gdb, unicorn, i, j)
+						new_i, new_j = check_for_new_consensus(gdb, unicorn, i, j, static=unicorn_refrence.target.static_binary)
 						if(new_i == None):
 							bold_print("Could not catch up ... {}".format(target))
+							bold_print("Full crash after {} instructions".format(op_count))
 							exit(0)
 						else:
 							bold_print("Could catch up non linear!!! Next agreement {} <3 ({})".format(unicorn[new_i], elf_get_symbol_name(unicorn_refrence.target, int(int(unicorn[new_i], 16))) ))
@@ -183,9 +326,10 @@ def run_check(unicorn_refrence=None):
 	if(i < len(gdb)):
 		bold_print("EARLY EXIT, did something bad happen with unicorn? [unicorn i, vs gbd j : %i vs %i" % (i, len(gdb)))
 		bold_print("Size unicron %i, size gdb %i" % (len(unicorn), len(gdb)))
-		print("Last instruction {}".format(unicorn[i-1]))
-		print("Last instruction {}".format(unicorn[i-2]))
-		print("Last instruction {}".format(unicorn[i-3]))
+		if(0 < i):
+			print("Last instruction {}".format(unicorn[i-1]))
+			print("Last instruction {}".format(unicorn[i-2]))
+			print("Last instruction {}".format(unicorn[i-3]))
 
 	bold_print("Disagreement with gdb == %i" % (disagreement_count))
 	print("This can be error with handling of instruction or the simple fact that unicorn can have placed something more accesible than gdb.")

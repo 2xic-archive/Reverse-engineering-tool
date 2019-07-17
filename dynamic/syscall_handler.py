@@ -349,8 +349,7 @@ def hook_syscall64(mu, user_data):
 
 	elif(rax == 0xca):
 		#	http://man7.org/linux/man-pages/man2/futex.2.html
-		pass
-		'''
+#		pass
 		uaddr = rdi
 		futex_op = rsi
 		val = rdx
@@ -427,9 +426,13 @@ def hook_syscall64(mu, user_data):
 		if(cmd == FUTEX_CMP_REQUEUE_PI):
 			raise Exception("Not fully implemented : futex_requeue")
 			#return futex_requeue(uaddr, flags, uaddr2, val, val2, &val3, 1);
-		
-		raise Exception("not fully implemented. Error from linux (ENOSYS)")
-		'''
+		mu.reg_write(UC_X86_REG_RAX, -ENOSYS)
+
+
+#		print(cmd)
+#		mu.emu_stop()
+#		raise Exception("not fully implemented. Error from linux (ENOSYS) last")
+
 	else:
 		mu.emu_stop()
 		print("unknown syscall(0x%x, %i). Fix! 0x%x" % (rax, rax, rip))
