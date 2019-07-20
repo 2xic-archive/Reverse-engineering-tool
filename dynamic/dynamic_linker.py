@@ -60,29 +60,38 @@ def parse_relocation(elf_target, target, debug=False):
 	lookup = {
 
 	}
-	close = False
+	direct_mapping_count = 0
+
 	for offset in range(dynamic_section_sym_start, dynamic_section_sym_end, dynamic_section_sym_entry_size):
 		if(elf_target.is_64_bit):
 			struct_format = "QQQ"
 			address,info,addend = struct.unpack(struct_format, elf_target.file[offset:offset+dynamic_section_sym_entry_size])
+
+
+			if("ld" in elf_target.file_name):
+				if(address == 0x224a00):
+					print("BAGEL")
 			try:
 				elf_target.qword_helper[hex(address)] = elf_target.symbol_table[ELF64_R_SYM(info)]
-				if(debug):
-					print((hex(address), info, addend), elf_target.symbol_table[ELF64_R_SYM(info)])
-				if(len(elf_target.symbol_table[ELF64_R_SYM(info)]) > 0):
+
+
+				rela_type = (handle_rela(info & 0xFFFFFFFF))
+
+				if(0 < len(elf_target.symbol_table[ELF64_R_SYM(info)]) and 
+					(rela_type == "R_X86_64_64" or rela_type == "R_X86_64_JUMP_SLOT" or 
+						rela_type == "R_X86_64_GLOB_DAT")):
 					lookup[elf_target.symbol_table[ELF64_R_SYM(info)]] = address
 					assert(addend == 0)
+				elif(rela_type == "R_X86_64_RELATIVE"):
+					lookup["DIRECT_MAPPING_{}".format(direct_mapping_count)] = [address, addend]
+					direct_mapping_count += 1
+				elif(rela_type == "R_X86_64_IRELATIVE"):					
+					lookup["DIRECT_MAPPING_{}".format(direct_mapping_count)] = [address, addend]
+					direct_mapping_count += 1
 				else:
-					if("lib" in elf_target.file_path):
-						#print([ELF64_R_SYM(info), info])
-						#print([
-						#		hex(address),
-						#		ELF64_R_SYM(info) == 0,
-						#		addend
-						#	])
-						'''
-								python3 main.py --test | grep 0x398d80
-						'''	
+					print("Fix dynamic linker[{}], need to handle type : {}, symbol size : {}, location {}".format(elf_target.file_name, rela_type, len(elf_target.symbol_table[ELF64_R_SYM(info)]), hex(address)))
+#					lookup["DIRECT_MAPPING_{}".format(direct_mapping_count)] = [address, 0xf00dbeef]
+#					direct_mapping_count += 1
 			except Exception as e:
 				print("erorr in parse_relocation", e)
 	return lookup
@@ -125,30 +134,36 @@ def link_lib_and_binary(binary, library):
 
 	}
 
+	mappings = []
+
 	for section_key, section_info in binary.sections_with_name.items():
 		if(section_info["type"] == 0x4):
 			for key, item in parse_relocation(binary, section_key).items():
-				binary_map_functions[key] = item
-
-	for section_key, section_info in library.sections_with_name.items():
-		if(section_info["type"] == 0x0B):
-			for key, item in get_dynamic_symbols(library, section_key).items():
-				look_up_libary_function[key] = item
-
+				if("DIRECT_MAPPING_" in key):
+					mappings.append([hex(item[0]), "DIRECT_MAPPING_", item[1]])
+				else:
+					binary_map_functions[key] = item
 	'''
-		resolve binary -> library
+		sometimes you jsut want R_X86_64_IRELATIVE
 	'''
-	mappings = []
+	if(library != None):
+		for section_key, section_info in library.sections_with_name.items():
+			if(section_info["type"] == 0x0B):
+				for key, item in get_dynamic_symbols(library, section_key).items():
+					look_up_libary_function[key] = item
 
-	for key, item in binary_map_functions.items():
-		if(look_up_libary_function.get(key, None) != None):
-			mappings.append([hex(item), look_up_libary_function[key]])
-			binary_map_functions[key] = None
-	
-	for key, item in binary_map_functions.items():
-		if(binary_map_functions[key] != None):
-			mappings.append([hex(item), ["0xf00dbeef", 8]])
-
+		'''
+			resolve binary -> library
+		'''
+		for key, item in binary_map_functions.items():
+			if(look_up_libary_function.get(key, None) != None):
+				mappings.append([hex(item), look_up_libary_function[key]])
+				binary_map_functions[key] = None
+		
+		for key, item in binary_map_functions.items():
+			if(binary_map_functions[key] != None):
+		#		mappings.append([hex(item), ["0xf00dbeef", 8]])
+				pass
 	'''
 		return a mapping between binary -> library function
 	'''

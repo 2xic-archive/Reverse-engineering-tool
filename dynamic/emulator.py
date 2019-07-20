@@ -45,6 +45,8 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 	'''
 	def boot(self):
 		self.emulator = Uc(UC_ARCH_X86, UC_MODE_64)
+		self.future_breakpoints = []
+		
 		stack_handler.__init__(self)
 		memory_mapper.__init__(self)
 		strace.__init__(self)
@@ -154,8 +156,8 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 
 		})
 
-#		for i in self.future_breaks:
-#			self.unicorn_debugger.add_breakpoint(i)
+		for i in self.future_breakpoints:
+			self.unicorn_debugger.add_breakpoint(i)
 
 		# self.unicorn_debugger.add_breakpoint(0x900000 + 0x20209)
 #		self.unicorn_debugger.add_breakpoint(0xa1ef5c)
@@ -200,7 +202,7 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 				#	for instance with xgetbv, the size 0xf1f1f1f1 will be returned, this makes the program go bad so panic_patch helps.
 				self.unicorn_debugger.panic_patch(address)
 			else:
-				try:
+				try:				
 					instruction_name, hook_instruction, hook_name = self.unicorn_debugger.get_instruction(address, size)
 					print("0x%x, %s" % (address, instruction_name))
 				#	print('>>> (%x) Tracing instruction at 0x%x  [0x%x] (%s), instruction size = 0x%x' % (self.unicorn_debugger.instruction_count, address, address-self.base_program_address, self.unicorn_debugger.determine_location(address), size))

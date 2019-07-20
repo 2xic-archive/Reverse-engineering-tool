@@ -224,6 +224,75 @@ SH_TYPE = {
 	0xffffffff:"HIUSER",
 }
 
+'''
+	Thank you
+	http://openpowerfoundation.org/wp-content/uploads/resources/leabi/content/dbdoclet.50655241_51269.html
+	https://www.intezer.com/executable-and-linkable-format-101-part-3-relocations/
+	https://github.com/serpilliere/elfesteem/blob/master/elfesteem/elf.py
+'''
+ELF_RELA_TYPE = {
+	"A": "Addend of Elfxx_Rela entries.",
+	"B": "Image base where the shared object was loaded in process virtual address space.",
+	"G": "Offset to the GOT relative to the address of the correspondent relocation entry’s symbol.",
+	"L": "Section offset or address of the procedure linkage table (PLT, .got.plt).",
+	"P": "The section offset or address of the storage unit being relocated. retrieved via r_offset relocation entry’s field.",
+	"S": "Relocation entry’s correspondent symbol value.",
+	"Z": "Size of Relocations entry’s symbol."
+}
+
+ELF_RELA_TYPE_ = ["Addend of Elfxx_Rela entries.",
+	"Image base where the shared object was loaded in process virtual address space.",
+	"Offset to the GOT relative to the address of the correspondent relocation entry’s symbol.",
+	"Section offset or address of the procedure linkage table (PLT, .got.plt).",
+	"The section offset or address of the storage unit being relocated. retrieved via r_offset relocation entry’s field.",
+	"Relocation entry’s correspondent symbol value.",
+	"Size of Relocations entry’s symbol."]
+
+ELF_RELA_TYPE_REAL = {
+	0  : "R_X86_64_NONE       - No reloc",
+	1  : "R_X86_64_64         - Direct 64 bit", 
+	2  : "R_X86_64_PC32       - PC relative 32 bit signed",
+	3  : "R_X86_64_GOT32      - 32 bit GOT entry",
+	4  : "R_X86_64_PLT32      - 32 bit PLT address",
+	5  : "R_X86_64_COPY       - Copy symbol at runtime",
+	6  : "R_X86_64_GLOB_DAT   - Create GOT entry",
+	7  : "R_X86_64_JUMP_SLOT  - Create PLT entry",
+	8  : "R_X86_64_RELATIVE   - Adjust by program base",
+	9  : "R_X86_64_GOTPCREL   - 32 bit signed PC relative offset to GOT",
+	10 : "R_X86_64_32         - Direct 32 bit zero extended",
+	11 : "R_X86_64_32S        - Direct 32 bit sign extended",
+	12 : "R_X86_64_16         - Direct 16 bit zero extended",
+	13 : "R_X86_64_PC16       - 16 bit sign extended pc relative",
+	14 : "R_X86_64_8          - Direct 8 bit sign extended ",
+	15 : "R_X86_64_PC8        - 8 bit sign extended pc relative",
+	16 : "R_X86_64_DTPMOD64   - ID of module containing symbol",
+	17 : "R_X86_64_DTPOFF64   - Offset in module's TLS block",
+	18 : "R_X86_64_TPOFF64    - Offset in initial TLS block",
+	19 : "R_X86_64_TLSGD      - 32 bit signed PC relative offset to two GOT entries for GD symbol",
+	20 : "R_X86_64_TLSLD      - 32 bit signed PC relative offset to two GOT entries for LD symbol",
+	21 : "R_X86_64_DTPOFF32   - Offset in TLS block",
+	22 : "R_X86_64_GOTTPOFF   - 32 bit signed PC relative offset to GOT entry for IE symbol",
+	23 : "R_X86_64_TPOFF32    - Offset in initial TLS block",
+	24 : "R_X86_64_PC64       - PC relative 64 bit",
+	25 : "R_X86_64_GOTOFF64   - 64 bit offset to GOT",
+	26 : "R_X86_64_GOTPC32    - 32 bit signed pc relative offset to GOT",
+	27 : "R_X86_64_GOT64      - 64-bit GOT entry offset",
+	28 : "R_X86_64_GOTPCREL64 - 64-bit PC relative offset to GOT entry",
+	29 : "R_X86_64_GOTPC64    - 64-bit PC relative offset to GOT",
+	30 : "R_X86_64_GOTPLT64   - like GOT64, says PLT entry needed",
+	31 : "R_X86_64_PLTOFF64   - 64-bit GOT relative offset to PLT entry",
+	32 : "R_X86_64_SIZE32     - Size of symbol plus 32-bit addend",
+	33 : "R_X86_64_SIZE64     - Size of symbol plus 64-bit addend",
+	34 : "R_X86_64_GOTPC32_TLSDESC - GOT offset for TLS descriptor. ",
+	35 : "R_X86_64_TLSDESC_CAL- Marker for call through TLS descriptor. ",
+	36 : "R_X86_64_TLSDESC    - TLS descriptor. ",
+	37 : "R_X86_64_IRELATIVE  - Adjust indirectly by program base",
+	38 : "R_X86_64_NUM            "
+}
+
+def handle_rela(x):
+	return ELF_RELA_TYPE_REAL[x].split(" ")[0]
+
 
 def ELF_ST_TYPE(i):
 	return ((i)&0x0f)

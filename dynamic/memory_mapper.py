@@ -20,7 +20,9 @@ class memory_mapper(object):
 
 		if not self.target.static_binary:
 			self.map_library()
-
+#			print(self.look_up_library)
+#			input("run ? ")
+#			self.run_library_test()
 	'''
 		should help with detecting bugs in linker.
 	'''
@@ -30,8 +32,28 @@ class memory_mapper(object):
 			#self.emulator.mem_write(location, bytes(bytearray(struct.pack("<Q", 0xf00dbeef))))
 			pass
 
+	def read_qword(self, start):
+		address_bytes = self.emulator.mem_read(start, 8)
+		address_hex = hex(int.from_bytes(address_bytes, byteorder='little'))
+		return [address_bytes, list(address_bytes) , address_hex]
+
+	def run_library_test(self):
+#		print(self.look_up_library)
+		for x in [[0x224f48, "ld-linux-x86-64.so.2"]]:
+			target = self.look_up_library[x[1]][0] + x[0]#1465824
+			print(x)
+			print(self.read_qword(target))
+			print(self.written_addresses.get(target, None))
+			print("")
+		#	0x397240
+		exit(0)
+
 	def map_library(self):
 		self.look_up_library = {
+
+		}
+
+		self.written_addresses = {
 
 		}
 
@@ -64,9 +86,13 @@ class memory_mapper(object):
 				binary = int(i[0], 16)
 				binary += (self.base_program_address)
 
-				library_map, library_map_size = i[1]
-				library_map = int(library_map, 16)
-				library_map += self.current_library_address
+				if(i[1] == "DIRECT_MAPPING_"):
+					library_map = i[2]
+					library_map += self.base_program_address
+				else:				
+					library_map, library_map_size = i[1]
+					library_map = int(library_map, 16)
+					library_map += self.current_library_address
 
 				xref = bytes(bytearray(struct.pack("<Q", library_map)))
 
@@ -74,7 +100,7 @@ class memory_mapper(object):
 					self.write_illegal_library(binary)
 				else:
 					self.emulator.mem_write(binary, xref)
-
+					self.written_addresses[binary] = self.written_addresses.get(binary, 0) + 1
 
 			self.current_library_address += self.round_memory((library_size) + 1)
 
@@ -85,15 +111,38 @@ class memory_mapper(object):
 					parrent_library = int(i[0], 16)
 					parrent_library += self.look_up_library[lib.file_name][0]
 
-					children_library, library_map_size = i[1]
-					children_library = int(children_library, 16)
-					children_library += self.look_up_library[dependent_library.file_name][0]
+					if(i[1] == "DIRECT_MAPPING_"):
+						children_library = i[2]
+						children_library += self.look_up_library[lib.file_name][0]
+					else:						
+						children_library, library_map_size = i[1]
+						children_library = int(children_library, 16)
+						children_library += self.look_up_library[dependent_library.file_name][0]
 
 					if(i[1][0] == "0xf00dbeef"):
 						self.write_illegal_library(binary)
 					else:
 						xref = bytes(bytearray(struct.pack("<Q", children_library)))
 						self.emulator.mem_write(parrent_library, xref)
+						self.written_addresses[parrent_library] = self.written_addresses.get(parrent_library, 0) + 1
+
+				for i in link_lib_and_binary(dependent_library, None):
+					if(i[1] == "DIRECT_MAPPING_"):
+						parrent_map = int(i[0], 16)
+						parrent_map += self.look_up_library[dependent_library.file_name][0]
+
+						child_map = i[2]
+						child_map += self.look_up_library[dependent_library.file_name][0]
+						xref = bytes(bytearray(struct.pack("<Q", child_map)))
+							
+						self.emulator.mem_write(parrent_map, xref)
+						self.written_addresses[parrent_map] = self.written_addresses.get(parrent_library, 0) + 1
+#		print(self.look_up_library)
+		self.future_breakpoints.append(0x1860 + self.look_up_library["ld-linux-x86-64.so.2"][0])
+		self.future_breakpoints.append(0xc20 + self.look_up_library["libc.so.6"][0])
+		self.future_breakpoints.append(0x20400 + self.look_up_library["libc.so.6"][0])
+#					print(i)
+#					raise Exception("you miss direct mapping")
 
 	def resolve_dynamic_setup(self):
 		# this is only for a dynamic binary
@@ -104,10 +153,11 @@ class memory_mapper(object):
 			lib_ld + 0xfba0 (_dl_fini), not sure why it is not named in the binary tho.
 		'''
 		
-		self.emulator.reg_write(UC_X86_REG_RDX, self.look_up_library["ld-linux-x86-64.so.2"][0] + 0xfba0)
+#		self.emulator.reg_write(UC_X86_REG_RDX, self.look_up_library["ld-linux-x86-64.so.2"][0] + 0xfba0)
 
 		'''	
 			-	this should be fixed with a linker update?
+		'''
 		'''
 		self.emulator.mem_write(self.look_up_library["libc.so.6"][0] + 0x399000, 
 			bytes(bytearray(struct.pack("<Q", self.look_up_library["ld-linux-x86-64.so.2"][0] + 0x224040))))
@@ -117,6 +167,7 @@ class memory_mapper(object):
 
 		self.emulator.mem_write(self.look_up_library["libc.so.6"][0] + 0x398df8, 
 			bytes(bytearray(struct.pack("<Q", self.look_up_library["ld-linux-x86-64.so.2"][0] + 0x224040))))
+		'''
 
 	# unicorn want size adn adress to be 4KB aligned
 	def round_memory(self, offset):
