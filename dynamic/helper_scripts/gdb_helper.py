@@ -4,7 +4,12 @@ import gdb
 
 # gdb -q -x gdb_helper.py /root/test/test_binaries/small_c_hello
 
-output = gdb.execute('break _start', to_string=True)
+ld_offset = 0x7ffff7dd9000
+
+
+gdb.execute("break *{}".format(ld_offset + 0xc20))
+
+#output = gdb.execute('break _start', to_string=True)
 output = gdb.execute('display/i $pc', to_string=True)
 
 output = gdb.execute('run', to_string=True)

@@ -44,6 +44,10 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 		should make a better way to reset each part of the emulator.
 	'''
 	def boot(self):
+		self.has_emulator_ran = False
+		self.unicorn_debugger = None
+		self.db_registers = []
+		self.db = triforce_db.db_init()
 		self.emulator = Uc(UC_ARCH_X86, UC_MODE_64)
 		self.future_breakpoints = []
 		
@@ -74,14 +78,13 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 			
 		]
 
-		self.db = triforce_db.db_init()
 		for register, unicorn_refrence in self.db_registers:
 			self.db.add_register(register)
 
 		'''
 			Program memory
 		'''
-		self.unicorn_debugger = unicorn_debug(self.emulator, self.section_virtual_map, self.section_map, self.address_space, self.logging)
+		self.unicorn_debugger = unicorn_debug(self, self.section_virtual_map, self.section_map, self.address_space, self.logging)
 		self.unicorn_debugger.full_trace = True
 
 
@@ -162,9 +165,21 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 		# self.unicorn_debugger.add_breakpoint(0x900000 + 0x20209)
 #		self.unicorn_debugger.add_breakpoint(0xa1ef5c)
 
-
 #		self.unicorn_debugger.trace_registers("rdi")
 #		self.unicorn_debugger.trace_registers("rdx")
+
+		'''
+			I checked the ld stack data, seems to be the same as a normal
+			static binary.
+		'''
+		start, end, delta = self.init_stack()
+		self.emulator.reg_write(UC_X86_REG_RSP, end)
+
+
+		if not self.target.static_binary:
+			self.boot_ld()
+	#		input("more?")
+	#	exit(0)
 
 	def log_text(self, text, style=None, level=0):
 		if(self.logging):
@@ -180,7 +195,14 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 	def run_thread(self, non_stop=False):
 		self.run(non_stop)
 
-	def run(self, non_stop=False):
+	def run(self, non_stop=False, program_entry_point=None):
+		if(program_entry_point == None):
+			program_entry_point = self.target.program_entry_point
+
+		if(self.unicorn_debugger == None):
+			self.unicorn_debugger = unicorn_debug(self.emulator, {},  {},  {}, self.logging)
+		
+
 		self.unicorn_debugger.non_stop = non_stop
 
 		self.address_instruction_lookup = {
@@ -205,8 +227,9 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 				try:				
 					instruction_name, hook_instruction, hook_name = self.unicorn_debugger.get_instruction(address, size)
 					print("0x%x, %s" % (address, instruction_name))
+			#		print("RDI 0x%x" % (self.emulator.reg_read(UC_X86_REG_RDI)))
 				#	print('>>> (%x) Tracing instruction at 0x%x  [0x%x] (%s), instruction size = 0x%x' % (self.unicorn_debugger.instruction_count, address, address-self.base_program_address, self.unicorn_debugger.determine_location(address), size))
-					self.log_text('>>> (%x) Tracing instruction at 0x%x  [0x%x] (%s), instruction size = 0x%x' % (self.unicorn_debugger.instruction_count, address, address-self.base_program_address, self.unicorn_debugger.determine_location(address), size))
+				#	self.log_text('>>> (%x) Tracing instruction at 0x%x  [0x%x] (%s), instruction size = 0x%x' % (self.unicorn_debugger.instruction_count, address, address-self.base_program_address, self.unicorn_debugger.determine_location(address), size))
 
 
 					if(self.address_instruction_lookup.get(hex(address), None) == None):
@@ -234,9 +257,10 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 				mu.emu_stop()
 
 		def hook_mem_access(uc, access, address, size, value, user_data):
+
 			if access == UC_MEM_WRITE:
 				self.log_bold_text(">>> Memory is being WRITE at 0x%x(%s), data size = %u, data value = 0x%x" % (address, self.unicorn_debugger.determine_location(address) , size, value))
-				
+			
 			#	self.db.add_memory_trace(hex(address), self.unicorn_debugger.current_address, address)
 			#	self.db.add_memory_trace(hex(address), 10, address)
 			else:
@@ -262,31 +286,27 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 			self.log_text(">>> got SYSCALL with EAX = 0x%x" %(eax))
 			mu.emu_stop()
 
+		if not self.has_emulator_ran:
+			self.emulator.hook_add(UC_HOOK_INSN, hook_syscall64, self, 1, 0, UC_X86_INS_SYSCALL)
 
-		start, end, delta = self.init_stack()
+			self.emulator.hook_add(UC_HOOK_INTR, hook_intr)
+			self.emulator.hook_add(UC_HOOK_MEM_INVALID, hook_mem_invalid)
 
-#		self.unicorn_debugger.view_stack(end, pretty_print_bytes(self.emulator.mem_read(end, delta), aschii=False))
-#		exit(0)
+			self.emulator.hook_add(UC_HOOK_MEM_WRITE, hook_mem_access)
+			self.emulator.hook_add(UC_HOOK_MEM_READ, hook_mem_access)
 
-		self.emulator.hook_add(UC_HOOK_INSN, hook_syscall64, self, 1, 0, UC_X86_INS_SYSCALL)
-		self.emulator.reg_write(UC_X86_REG_RSP, end)
+			self.emulator.hook_add(UC_HOOK_MEM_READ_UNMAPPED | UC_HOOK_MEM_WRITE_UNMAPPED, hook_mem_invalid)
 
-		self.emulator.hook_add(UC_HOOK_INTR, hook_intr)
-		self.emulator.hook_add(UC_HOOK_MEM_INVALID, hook_mem_invalid)
+			self.emulator.hook_add(UC_HOOK_BLOCK, hook_block)
+			self.emulator.hook_add(UC_HOOK_CODE, hook_code)
 
-		self.emulator.hook_add(UC_HOOK_MEM_WRITE, hook_mem_access)
-		self.emulator.hook_add(UC_HOOK_MEM_READ, hook_mem_access)
+			self.unicorn_debugger.setup()
 
-		self.emulator.hook_add(UC_HOOK_MEM_READ_UNMAPPED | UC_HOOK_MEM_WRITE_UNMAPPED, hook_mem_invalid)
-
-		self.emulator.hook_add(UC_HOOK_BLOCK, hook_block)
-		self.emulator.hook_add(UC_HOOK_CODE, hook_code)
-
-		self.unicorn_debugger.setup()
+			self.has_emulator_ran = True
 
 		try:
 #			print("Starting from offset 0x%x" % (self.target.program_entry_point))
-			self.emulator.emu_start(self.target.program_entry_point, self.target.program_entry_point + 0x50)
+			self.emulator.emu_start(program_entry_point, program_entry_point + 0xdeadbeef)
 		except Exception as e:
 			print(e)
 			print("Last instruction location 0x%x, size %i" % (self.unicorn_debugger.current_address, self.unicorn_debugger.current_size))
@@ -313,7 +333,7 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 		return address_values
 
 
-	def get_latest_register_write(self, register, op_count, excecution_round=0):
+	def get_latest_register_write(self, register, op_count=-1, excecution_round=0):
 		try:
 			return self.db.latest_memory_commit(register, excecution_round, op_count)
 		except Exception as e:

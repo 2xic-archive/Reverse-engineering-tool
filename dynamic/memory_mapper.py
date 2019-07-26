@@ -20,6 +20,11 @@ class memory_mapper(object):
 
 		if not self.target.static_binary:
 			self.map_library()
+			print(hex(0xca244d-self.look_up_library["ld-linux-x86-64.so.2"][0]))
+			exit(0)
+#			self.boot_ld()
+
+
 #			print(self.look_up_library)
 #			input("run ? ")
 #			self.run_library_test()
@@ -48,6 +53,21 @@ class memory_mapper(object):
 		#	0x397240
 		exit(0)
 
+	def boot_ld(self):
+		'''
+			need to run the linux dynamic linker
+			http://man7.org/linux/man-pages/man8/ld.so.8.html			
+		'''
+#		print(self.look_up_library)
+#		input("run?")
+		self.run(program_entry_point=self.look_up_library["ld-linux-x86-64.so.2"][0] + self.look_up_library["ld-linux-x86-64.so.2"][2].program_entry_point)
+#		self.run(program_entry_point=libraries[libraries.index("ld-linux-x86-64.so.2")].program_entry_point)
+		#	program_entry_point
+#		exit(0)
+#		print(self.emulator.mem_read(0xca1ad5+0x222394, 8))
+#		print(self.emulator.mem_read(0xca1ad5+0x222394+8, 8))
+#		input("need to run binary ? ")
+		
 	def map_library(self):
 		self.look_up_library = {
 
@@ -80,7 +100,7 @@ class memory_mapper(object):
 			for secition in mappings:
 				self.emulator.mem_write(secition[0], secition[1])
 
-			self.look_up_library[library.file_name] = [self.current_library_address, library_size]
+			self.look_up_library[library.file_name] = [self.current_library_address, library_size, library]
 
 			for i in link_lib_and_binary(self.target, library):
 				binary = int(i[0], 16)
@@ -138,9 +158,12 @@ class memory_mapper(object):
 						self.emulator.mem_write(parrent_map, xref)
 						self.written_addresses[parrent_map] = self.written_addresses.get(parrent_library, 0) + 1
 #		print(self.look_up_library)
-		self.future_breakpoints.append(0x1860 + self.look_up_library["ld-linux-x86-64.so.2"][0])
-		self.future_breakpoints.append(0xc20 + self.look_up_library["libc.so.6"][0])
-		self.future_breakpoints.append(0x20400 + self.look_up_library["libc.so.6"][0])
+
+#		self.future_breakpoints.append(0x1860 + self.look_up_library["ld-linux-x86-64.so.2"][0])
+#		self.future_breakpoints.append(0xc20 + self.look_up_library["libc.so.6"][0])
+#		self.future_breakpoints.append(0x20400 + self.look_up_library["libc.so.6"][0])
+
+		self.future_breakpoints.append(self.look_up_library["ld-linux-x86-64.so.2"][0] + 0x0248e)
 #					print(i)
 #					raise Exception("you miss direct mapping")
 
@@ -212,8 +235,8 @@ class memory_mapper(object):
 		high_address = 0x0
 
 		for name, content in (binary.program_headers).items():
-			if(content["type_name"] == "PT_NULL"):
-				continue
+#			if(content["type_name"] == "PT_NULL"):
+#				continue
 			
 			file_offset = content["location"]
 			file_end = file_offset + int(content["size"])
@@ -234,9 +257,9 @@ class memory_mapper(object):
 			self.section_map[name] = [ int(content["virtual_address"],16),  int(content["virtual_address"],16) + content["size"]]
 
 
-			if not "SHF_ALLOC" in content["flags"]:
-				self.log_text("Skipped section %s (%s)" % (name, content["flags"]))
-				continue
+#			if not "SHF_ALLOC" in content["flags"]:
+#				self.log_text("Skipped section %s (%s)" % (name, content["flags"]))
+#				continue
 
 			'''
 				brk should only get adjusted on the target binary ?
@@ -289,6 +312,15 @@ class memory_mapper(object):
 		self.map_target(self.stack_address, self.stack_size, None, "stack")
 #		self.emulator.mem_map(stack_adr, stack_size)
 		self.emulator.reg_write(UC_X86_REG_RSP, self.stack_address + self.stack_size - 1)
+
+	def library_offset(self, address):
+#		print(self.look_up_library)
+		for name, value in self.look_up_library.items():
+	#		print((value[0]) , address)
+	#		print((address , value[0] + value[1]))
+			if((value[0]) <= address <= (value[0] + value[1])):
+				return value[0]
+		return address
 
 	def is_memory_mapped(self, address):
 		'''

@@ -107,7 +107,7 @@ class stack_handler(object):
 
 		]
 
-		self.actual_location_exec = self.push_string("/root/test/test_binaries/static_small")
+		self.actual_location_exec = self.push_string(self.target.file_path)
 
 		for envp_varaible in envp:
 			envp_location.append(self.push_string(envp_varaible))

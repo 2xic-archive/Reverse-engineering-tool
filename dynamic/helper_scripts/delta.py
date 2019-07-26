@@ -219,14 +219,14 @@ def run_check(unicorn_refrence=None):
 							j += 1
 							op_count += 1		
 							continue
+						_, _, agreement = resolve_mapping(int(last_agrement, 16), gdb=False)
 
 						unicorn_location, _, unicorn_real_location = resolve_mapping(unicorn_val, gdb=False)
 						bold_print("Disagreement gdb : {}, {}".format(gdb_location, hex(gdb_val)))
-						bold_print("Disagreement unicorn : {}, {}".format(unicorn_location, hex(unicorn_val)))				
-						bold_print("Last agreement {} (hit {})".format(last_agrement, hit_count[last_agrement]))
+						bold_print("Disagreement unicorn : {}, {}".format(unicorn_location, hex(unicorn_val)))	
+
+						bold_print("Last agreement {} (hit {})".format(hex(agreement), hit_count[last_agrement]))
 						bold_print("Binary location : gdb : {},  unicorn : {}".format(hex(gdb_real_location), hex(unicorn_real_location)))
-					#	print(hex(unicorn_refrence.get_latest_register_write("r9", op_count)))
-					##	exit(0)
 					else:
 						bold_print("Error in function %s" % (elf_get_symbol_name(unicorn_refrence.target, int(int(last_agrement, 16)))))
 						bold_print("Last agreement {} (hit {})".format(last_agrement, hit_count[last_agrement]))

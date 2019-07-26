@@ -134,6 +134,8 @@ def hook_syscall64(mu, user_data):
 
 		print("0x%x" % (rip))
 		print("implement mmap")
+		raise syscall_exception("unknown call in syscall")
+
 #		mu.emu_stop()
 
 	elif(rax == 0x3f):
@@ -239,6 +241,27 @@ def hook_syscall64(mu, user_data):
 			print(hex(rdx))
 			user_data.unicorn_debugger.handle_commands(memory_access=True)
 			mu.emu_stop()
+	elif(rax == 0x14):
+		fd = rdi
+		vector = rsi
+		vector_length = rdx
+		'''
+		struct iovec {
+			void  *iov_base;    /* Starting address */
+			size_t iov_len;     /* Number of bytes to transfer */
+		};
+		'''
+		#	STDERR_FILENO
+		if(fd == 2):
+			location = vector
+			for i in range(vector_length):
+				iov_base = (mu.mem_read(location, 8))
+				iov_len = (mu.mem_read(location + 8, 8))
+
+				string_location, size = (int.from_bytes(bytes(iov_base), byteorder='little'), int.from_bytes(iov_len, byteorder='little'))
+				print(mu.mem_read(string_location, size).decode(), end="")
+
+				location += 16
 
 	elif(rax == 0x15):
 		try:
@@ -436,4 +459,5 @@ def hook_syscall64(mu, user_data):
 	else:
 		mu.emu_stop()
 		print("unknown syscall(0x%x, %i). Fix! 0x%x" % (rax, rax, rip))
+		input("Continue?")
 #		raise syscall_exception("unknown syscall(0x%x, %i). Fix!" % (rax, rax))

@@ -22,11 +22,12 @@ def pretty_print_bytes(results, aschii=True, logging=True):
 
 
 class unicorn_debug():
-	def __init__(self, unicorn, section_virtual_map, section_map, address_space, logging, non_stop=False):
+	def __init__(self, emulator_class, section_virtual_map, section_map, address_space, logging, non_stop=False):
 		self.section_virtual_map = section_virtual_map
 		self.section_map = section_map
 		self.address_space = address_space
-		self.unicorn = unicorn
+		self.parrent = emulator_class
+		self.unicorn = emulator_class.emulator
 		self.logging = logging
 
 		self.non_stop = non_stop
@@ -68,7 +69,7 @@ class unicorn_debug():
 		}
 
 		self.instruction_count = 0
-		self.max_instructions = 100
+		self.max_instructions = 0xdeafbeef #100
 
 		self.full_trace = False
 
@@ -326,6 +327,10 @@ class unicorn_debug():
 		results, string = self.read_2_null(int(tokens[0], 16))
 		pretty_print_bytes(bytes(bytearray(results)))
 
+	def db_register_commit(self, tokens):
+		name = tokens[0]
+		print("Latest commit in {}, was at {}".format(name, hex(self.parrent.get_latest_register_write(name))))
+
 	def handle_commands(self, memory_access=False):
 		if(memory_access):
 			command = input("Memory access hit, write a command or press enter to continue\n")
@@ -336,7 +341,8 @@ class unicorn_debug():
 			"stepi":self.step,
 			"x":self.memory_handle,
 			"read_2_null":self.read_null_terminated,
-			"stack_peek":self.peek_stack
+			"stack_peek":self.peek_stack,
+			"last_commit":self.db_register_commit
 		}
 		if(len(command) > 0):
 			command_tokens = command.split(" ")

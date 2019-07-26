@@ -252,6 +252,11 @@ static PyObject *latest_memory_commit(db_object *self, PyObject *args, PyObject 
 			return NULL;
 		}
 
+		if(op_count == -1){
+			int *current_op_count = vector_get_pointer(self->op_count, self->execution_time->size - 1);
+			op_count = *current_op_count;
+		}
+
 //		unsigned long long *address_exectuion = latest_state_adress(based_off_memory_state);
 		unsigned long long *address_exectuion = find_closest(based_off_memory_state, op_count, MEMORY_EXECUTION);
 		if(address_exectuion == NULL){
