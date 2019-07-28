@@ -7,10 +7,18 @@ import struct
 import sys
 PATH = (os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(PATH + "/syscalls/")
+sys.path.append(PATH + "/../common/")
+
+from printer import *
 from futex import *
+from fd import *
+from mmmap import mmap_type, find_memory_adress
 
 class syscall_exception(Exception):
-    pass
+	def __init__(self, message, user_data=None):
+		if(user_data != None):
+			user_data.stop_now()
+
 
 def hook_syscall32(mu, user_data):
 	eax = mu.reg_read(UC_X86_REG_EAX)
@@ -18,7 +26,7 @@ def hook_syscall32(mu, user_data):
 	mu.emu_stop()
 
 def syscall_info(mu):
-	print("Syscall at 0x%x" % (mu.reg_read(UC_X86_REG_RIP)))
+	print("Syscall at 0x%x RAX == 0x%x" % (mu.reg_read(UC_X86_REG_RIP), mu.reg_read(UC_X86_REG_RAX)))
 
 def hook_syscall64(mu, user_data):
 	rax = mu.reg_read(UC_X86_REG_RAX)
@@ -37,6 +45,13 @@ def hook_syscall64(mu, user_data):
 	#	https://filippo.io/linux-syscall-table/
 	syscall_info(mu)
 
+
+	def print_registers():
+		print("""RAX == 0x%x, rdi == 0x%x, rsi == 0x%x, rdx == 0x%x, 
+				r8 == 0x%x, r9 == 0x%x, r10 == 0x%x, rip == 0x%x,
+				rsp == 0x%x
+			""" % (rax, rdi, rsi, rdx, r8, r9, 10, rip, rsp))
+
 	if(rax == 0x0):
 		#	http://man7.org/linux/man-pages/man2/read.2.html
 		fd = rdi 
@@ -47,7 +62,7 @@ def hook_syscall64(mu, user_data):
 			'''
 				how does normal linux deal with this?
 			'''
-			raise Exception("overflow is illegal!")
+			raise syscall_exception("overflow is illegal!", user_data)
 		
 	#	print("WRITING! FROM 0x%x , size : %i" % (buf, size))
 		inputd += "\n"
@@ -84,6 +99,31 @@ def hook_syscall64(mu, user_data):
 		else:
 			print("unkown file_descripor... input not aviable yet")
 			mu.emu_stop()
+
+	elif(rax == 0x2):
+		_, file_name = user_data.unicorn_debugger.read_2_null(rdi)
+		flags = rsi
+		mode = rdx
+
+		user_data.file_descriptors.append(file_descriptor(len(user_data.file_descriptors), file_name))
+
+		mu.reg_write(UC_X86_REG_RAX, user_data.file_descriptors[-1].fd_number)
+		mu.reg_write(UC_X86_REG_RCX, 0x400994)
+		mu.reg_write(UC_X86_REG_R11, 0x346)	
+
+		#print(file_name)
+		#raise syscall_exception("File {}, flags {}, mode {}".format(file_name, flags, mode), user_data)
+
+	elif(rax == 0x3):
+		file_descripor = rdi
+
+		index = user_data.file_descriptors.index(file_descripor)
+		user_data.file_descriptors.pop(index)		
+
+#		for i in user_data.file_descriptors:
+#		raise syscall_exception("fd {}".format(file_descripor), user_data)
+
+
 	elif(rax == 0x8):
 		#	http://man7.org/linux/man-pages/man2/lseek.2.html
 		fd = rdi
@@ -130,11 +170,21 @@ def hook_syscall64(mu, user_data):
 		protection = rdx
 		flags = r10
 		file_descripor = r8
-		off = r9
+		offset = r9
 
 		print("0x%x" % (rip))
 		print("implement mmap")
-		raise syscall_exception("unknown call in syscall")
+		print(mmap_type(protection))
+		print((address, length))
+		print(file_descripor)
+		print(offset)
+
+		if(2 < file_descripor):
+			print(user_data.file_descriptors[-1].fd_number)
+
+		find_memory_adress(user_data, length)
+#		exit(0)
+		raise syscall_exception("unknown call in syscall", user_data)
 
 #		mu.emu_stop()
 
@@ -259,7 +309,7 @@ def hook_syscall64(mu, user_data):
 				iov_len = (mu.mem_read(location + 8, 8))
 
 				string_location, size = (int.from_bytes(bytes(iov_base), byteorder='little'), int.from_bytes(iov_len, byteorder='little'))
-				print(mu.mem_read(string_location, size).decode(), end="")
+				bold_print(mu.mem_read(string_location, size).decode(), end="")
 
 				location += 16
 
@@ -280,8 +330,10 @@ def hook_syscall64(mu, user_data):
 			results = None
 			if(mode == "F_OK"):
 				results = os.path.isfile(string)
+			elif(mode == "R_OK"):
+				results = os.access(string, os.R_OK)
 			else:
-				raise Exception("not implemented")
+				raise syscall_exception("not implemented, mode {}, file {}".format(mode, string), user_data)
 
 			if not results:
 				mu.reg_write(UC_X86_REG_RAX, 0xfffffffffffffffe) # seems to be some bitwise operations, proably include that it does not exsist, therefore can't be excecuted or read.
@@ -289,7 +341,13 @@ def hook_syscall64(mu, user_data):
 				mu.reg_write(UC_X86_REG_RCX, 0x400994)
 				mu.reg_write(UC_X86_REG_R11, 0x346)
 			else:
-				raise Exception("not implemented")
+				mu.reg_write(UC_X86_REG_RAX, 0) # seems to be some bitwise operations, proably include that it does not exsist, therefore can't be excecuted or read.
+													# (i got the value from gdb)
+				mu.reg_write(UC_X86_REG_RCX, 0x400994)
+				mu.reg_write(UC_X86_REG_R11, 0x346)
+
+#				raise syscall_exception("not implemented, mode {}, file {}".format(mode, string), user_data)
+
 		except Exception as e:
 			mu.emu_stop()
 			print(e)	
@@ -301,29 +359,36 @@ def hook_syscall64(mu, user_data):
 		strcuture = rsi
 
 		fstat_structure = OrderedDict()
-		if(file_descripor == 0 or file_descripor == 1):
+		file_stat = None
+		if(file_descripor == 0 or file_descripor == 1 or file_descripor == 2):
 			file_stat = os.stat(file_descripor)
 			# the fstat have a given tructure, you need to push in the correct order. Value only.
-			fstat_structure["st_dev"] = file_stat.st_dev
-			fstat_structure["st_ino"] = file_stat.st_ino
-			fstat_structure["st_mode"] = file_stat.st_mode
-			fstat_structure["st_nlink"] = file_stat.st_nlink
-			fstat_structure["st_uid"] = file_stat.st_uid
-			fstat_structure["st_gid"] = file_stat.st_gid
-			fstat_structure["st_rdev"] = file_stat.st_rdev
-			fstat_structure["st_size"] = file_stat.st_size
-			fstat_structure["st_blksize"] = file_stat.st_blksize
-			fstat_structure["st_blocks"] = file_stat.st_blocks
-			fstat_structure["st_atime"] = int(file_stat.st_atime)
-			fstat_structure["st_mtime"] = int(file_stat.st_mtime)
-			fstat_structure["st_ctime"] = int(file_stat.st_ctime)
-			fstat_structure["st_atime_nano"] = int(file_stat.st_atime)
-			fstat_structure["st_mtime_nano"] = int(file_stat.st_mtime)
-			fstat_structure["st_ctime_nano"] = int(file_stat.st_ctime)
+
+		elif(file_descripor in user_data.file_descriptors):
+			user_data.file_descriptors.index(file_descripor)
+			file_stat = (os.stat(user_data.file_descriptors[index].file_name))
 		else:
-			print("unknown file_descripor, not fully implemented yet")
+			print("FD == {}".format(file_descripor))
+			raise syscall_exception("unknown file_descripor, not fully implemented yet", user_data)
 			mu.emu_stop()
-		
+	
+		fstat_structure["st_dev"] = file_stat.st_dev
+		fstat_structure["st_ino"] = file_stat.st_ino
+		fstat_structure["st_mode"] = file_stat.st_mode
+		fstat_structure["st_nlink"] = file_stat.st_nlink
+		fstat_structure["st_uid"] = file_stat.st_uid
+		fstat_structure["st_gid"] = file_stat.st_gid
+		fstat_structure["st_rdev"] = file_stat.st_rdev
+		fstat_structure["st_size"] = file_stat.st_size
+		fstat_structure["st_blksize"] = file_stat.st_blksize
+		fstat_structure["st_blocks"] = file_stat.st_blocks
+		fstat_structure["st_atime"] = int(file_stat.st_atime)
+		fstat_structure["st_mtime"] = int(file_stat.st_mtime)
+		fstat_structure["st_ctime"] = int(file_stat.st_ctime)
+		fstat_structure["st_atime_nano"] = int(file_stat.st_atime)
+		fstat_structure["st_mtime_nano"] = int(file_stat.st_mtime)
+		fstat_structure["st_ctime_nano"] = int(file_stat.st_ctime)
+
 		strcuture_index = strcuture
 		for key, value in fstat_structure.items():
 			strcuture_index = user_data.stack_write_at_index(strcuture_index, bytes(bytearray(struct.pack("<Q", value))))
@@ -393,69 +458,64 @@ def hook_syscall64(mu, user_data):
 			flags |= FLAGS_CLOCKRT;
 			if (cmd != FUTEX_WAIT and cmd != FUTEX_WAIT_BITSET and \
 				cmd != FUTEX_WAIT_REQUEUE_PI):
-				raise Exception("Function not implemented. Error from linux (ENOSYS)")
+				raise syscall_exception("Function not implemented. Error from linux (ENOSYS)", user_data)
 	
 		if(cmd == FUTEX_LOCK_PI):
 			print("-ENOSYS")
-			raise Exception("not fully implemented syscall")
+			raise syscall_exception("not fully implemented syscall", user_data)
 		if(cmd == FUTEX_UNLOCK_PI):
 			print("-ENOSYS")
-			raise Exception("not fully implemented syscall")
+			raise syscall_exception("not fully implemented syscall", user_data)
 		if(cmd == FUTEX_TRYLOCK_PI):
 			print("-ENOSYS")
-			raise Exception("not fully implemented syscall")
+			raise syscall_exception("not fully implemented syscall", user_data)
 		if(cmd == FUTEX_WAIT_REQUEUE_PI):
 			print("-ENOSYS")
-			raise Exception("not fully implemented syscall")
+			raise syscall_exception("not fully implemented syscall", user_data)
 		if(cmd == FUTEX_CMP_REQUEUE_PI):
 			print("-ENOSYS")
-			raise Exception("not fully implemented syscall")
+			raise syscall_exception("not fully implemented syscall", user_data)
 
 	
 		if(cmd == FUTEX_WAIT):
 			val3 = FUTEX_BITSET_MATCH_ANY;
 		#	/* fall through */
 		if(cmd == FUTEX_WAIT_BITSET):
-			raise Exception("Not fully implemented : futex_wait")
+			raise syscall_exception("Not fully implemented : futex_wait", user_data)
 			#return futex_wait(uaddr, flags, val, timeout, val3);
 		if(cmd == FUTEX_WAKE):
 			val3 = FUTEX_BITSET_MATCH_ANY;
 		#	/* fall through */
 		if(cmd == FUTEX_WAKE_BITSET):
-			raise Exception("Not fully implemented : futex_wake")
+			raise syscall_exception("Not fully implemented : futex_wake", user_data)
 			#return futex_wake(uaddr, flags, val, val3);
 		if(cmd == FUTEX_REQUEUE):
-			raise Exception("Not fully implemented : futex_requeue")
+			raise syscall_exception("Not fully implemented : futex_requeue", user_data)
 			#return futex_requeue(uaddr, flags, uaddr2, val, val2, NULL, 0);
 		if(cmd == FUTEX_CMP_REQUEUE):
-			raise Exception("Not fully implemented : futex_requeue")
+			raise syscall_exception("Not fully implemented : futex_requeue", user_data)
 			#return futex_requeue(uaddr, flags, uaddr2, val, val2, &val3, 0);
 		if(cmd == FUTEX_WAKE_OP):
-			raise Exception("Not fully implemented : futex_wake_op")
+			raise syscall_exception("Not fully implemented : futex_wake_op", user_data)
 			#return futex_wake_op(uaddr, flags, uaddr2, val, val2, val3);
 		if(cmd == FUTEX_LOCK_PI):
-			raise Exception("Not fully implemented : futex_lock_pi")
+			raise syscall_exception("Not fully implemented : futex_lock_pi", user_data)
 			#return futex_lock_pi(uaddr, flags, timeout, 0);
 		if(cmd == FUTEX_UNLOCK_PI):
-			raise Exception("Not fully implemented : futex_unlock_pi")
+			raise syscall_exception("Not fully implemented : futex_unlock_pi", user_data)
 			#return futex_unlock_pi(uaddr, flags);
 		if(cmd == FUTEX_TRYLOCK_PI):
-			raise Exception("Not fully implemented : futex_lock_pi")
+			raise syscall_exception("Not fully implemented : futex_lock_pi", user_data)
 			#return futex_lock_pi(uaddr, flags, NULL, 1);
 		if(cmd == FUTEX_WAIT_REQUEUE_PI):
 			val3 = FUTEX_BITSET_MATCH_ANY;
-			raise Exception("Not fully implemented : futex_wait_requeue_pi")
+			raise syscall_exception("Not fully implemented : futex_wait_requeue_pi", user_data)
 			#return futex_wait_requeue_pi(uaddr, flags, val, timeout, val3, uaddr2);
 		if(cmd == FUTEX_CMP_REQUEUE_PI):
-			raise Exception("Not fully implemented : futex_requeue")
+			raise syscall_exception("Not fully implemented : futex_requeue", user_data)
 			#return futex_requeue(uaddr, flags, uaddr2, val, val2, &val3, 1);
 		mu.reg_write(UC_X86_REG_RAX, -ENOSYS)
-
-
-#		print(cmd)
-#		mu.emu_stop()
-#		raise Exception("not fully implemented. Error from linux (ENOSYS) last")
-
+	#	print_registers()
 	else:
 		mu.emu_stop()
 		print("unknown syscall(0x%x, %i). Fix! 0x%x" % (rax, rax, rip))

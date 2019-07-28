@@ -55,16 +55,15 @@ def mapping_range(address, start, end):
 	return  start <= address <= end
 	#((address - start) <= (end - start))
 
-def resolve_mapping(address, gdb=True):
+def resolve_mapping(address, gdb=True, get_elf=False):
 	if gdb:
 		for index, item in enumerate(gdb_mappings):
 			if(mapping_range(address, item[0], item[1])):
-				return gdb_mappings_name[index], ((address - gdb_resolve_mappings[index]) + gdb_add_offset[index]), address - gdb_resolve_mappings[index]
+				return gdb_mappings_name[index], ((address - gdb_resolve_mappings[index]) + gdb_add_offset[index]), address - gdb_resolve_mappings[index], None
 	elif not gdb:
 		for index, item in enumerate(unicorn_mappings):
-		#	print(item)
 			if(mapping_range(address, item[0], item[0] + item[1])):
-				return unicorn_mappings_names[index], item[0], (address - item[0])
+				return unicorn_mappings_names[index], item[0], (address - item[0]), item[2]
 
 	print("did not find ??? 0x%x" % (address))
 	assert(False)
@@ -75,7 +74,7 @@ def valid_dynamic(unicorn_item, gdb_item):
 
 	new_unicorn_val = int(unicorn_item.strip(), 16)
 	new_gdb_val = int(gdb_item, 16)
-	_, new_gdb_val, _ = resolve_mapping(new_gdb_val)
+	_, new_gdb_val, _, _ = resolve_mapping(new_gdb_val)
 	if(new_gdb_val == new_unicorn_val):
 		return True
 	return False
@@ -120,7 +119,7 @@ def check_for_new_consensus(gdb, unicorn, i, j, static=True):
 			gdb_look_up_hash[n.strip().split(" ")[1]] = index_gdb
 		if not static and ("=>" in n):
 			gdb_val = int(n.strip().split(" ")[1], 16)
-			_, gdb_val, _ = resolve_mapping(gdb_val)
+			_, gdb_val, _, _ = resolve_mapping(gdb_val)
 			gdb_look_up_hash[hex(gdb_val)] = index_gdb
 			
 	minimum_change_i = None
@@ -210,7 +209,7 @@ def run_check(unicorn_refrence=None):
 					old_i, old_j = i, j
 
 					if not unicorn_refrence.target.static_binary:
-						gdb_location, gdb_val, gdb_real_location = resolve_mapping(gdb_val)
+						gdb_location, gdb_val, gdb_real_location, _ = resolve_mapping(gdb_val)
 						if(gdb_val == unicorn_val):
 							last_agrement = unicorn[i].strip()
 							hit_count[last_agrement] = hit_count.get(last_agrement, 0) + 1
@@ -219,12 +218,14 @@ def run_check(unicorn_refrence=None):
 							j += 1
 							op_count += 1		
 							continue
-						_, _, agreement = resolve_mapping(int(last_agrement, 16), gdb=False)
+						_, _, agreement, elf_refrence = resolve_mapping(int(last_agrement, 16), gdb=False)
 
-						unicorn_location, _, unicorn_real_location = resolve_mapping(unicorn_val, gdb=False)
+						unicorn_location, _, unicorn_real_location, _ = resolve_mapping(unicorn_val, gdb=False)
 						bold_print("Disagreement gdb : {}, {}".format(gdb_location, hex(gdb_val)))
 						bold_print("Disagreement unicorn : {}, {}".format(unicorn_location, hex(unicorn_val)))	
 
+						bold_print("Error in Elf %s" % (elf_refrence.file_name))
+						bold_print("Error in function %s" % (elf_get_symbol_name(elf_refrence, int(last_agrement, 16))))
 						bold_print("Last agreement {} (hit {})".format(hex(agreement), hit_count[last_agrement]))
 						bold_print("Binary location : gdb : {},  unicorn : {}".format(hex(gdb_real_location), hex(unicorn_real_location)))
 					else:

@@ -316,6 +316,8 @@ class elf:
 
 
 		self.file_header = self.file[:self.file_header_size]		
+#		self.program_headers = self.file[self.program_header_start: self.program_header_start + (self.program_header_count * self.program_header_size)]
+#		self.section_headers = self.file[self.section_headers_start: self.section_headers_start + (self.section_headers_count * self.section_headers_size)]
 
 		for i in range(self.section_headers_count):
 			self.section_headers[i] = self.parse_section_header(self.section_headers_start + self.section_headers_size * i)

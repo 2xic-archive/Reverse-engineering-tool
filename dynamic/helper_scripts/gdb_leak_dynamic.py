@@ -1,6 +1,7 @@
 import gdb
 import sys
 import os
+import json
 
 PATH = (os.path.dirname(os.path.abspath(__file__)) + "/")
 sys.path.insert(0, PATH + "../")
@@ -9,21 +10,51 @@ sys.path.insert(0, PATH + "../../")
 from dynamic_linker import *
 from elf.utils import get_symbol_name as elf_get_symbol_name
 from elf.elf_parser import * 
+import sys
 
 libc_offset = 0x7ffff7a3a000
 ld_offset = 0x7ffff7dd9000
 
 libc = elf("/lib/x86_64-linux-gnu/libc.so.6")
 program = elf("/root/test/test_binaries/getgid")
-print(program.program_header_start)
 
-'''
-	
-'''
 
-exit(0)
+#offset = 0x2cd2 if len(sys.argv) < 2 else int(sys.argv[1], 16)
+#os.environ["DEBUSSY"] = "1"
+#print(sys.argv)
 
 gdb.execute("display/i $pc")
+
+for breaks in json.loads(open(PATH + "../breaks.json").read()):
+	def parse(token):
+		if(token == "ld"):
+			return ld_offset
+		elif(token == "libc"):
+			return libc_offset
+		elif(token.isdigit()):
+			return int(token)
+		elif("0x" in token):
+			return int(token, 16)
+		return 0
+	
+	sign = 1
+	break_location = 0
+	token =""
+	for y in breaks:
+		if(y == "+" or y == "-"): 
+			break_location += parse(token) * sign
+			sign = (1) if(y == "+") else (-1)
+			token = ""
+			continue				
+		token += y
+
+	break_location += parse(token) * sign
+
+	print("Set breakpoint {}".format(break_location))
+#	print("{}".format(hex(break_location)))
+	gdb.execute("break *{}".format(break_location))
+
+
 #output = gdb.execute('break _start', to_string=True)
 #output = gdb.execute('run', to_string=True)
 '''
@@ -50,11 +81,11 @@ for x, y in leak_info:
 #gdb.execute("break *{}".format(libc_offset + 0x20400))
 
 #ENTRY_OFFSET = 	gdb.execute("break *{}".format(ld_offset + 0xc20))
-gdb.execute("break *{}".format(ld_offset + 0x2490))
-
 #gdb.execute("r")
 #gdb.execute("break *{}".format(ld_offset + 0xc64))
-gdb.execute("r")
+
+#gdb.execute("r")
+
 
 '''
 for i in range(5000):

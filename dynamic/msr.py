@@ -9,7 +9,7 @@ from unicorn.x86_const import *
 class msr_helper(object):
 	def __init__(self):
 		self.FSMSR = 0xC0000100
-		self.scratch = 0x0
+		self.scratch = self.msr_location
 
 		self.set_msr(self.emulator, self.FSMSR, 0x1000)
 

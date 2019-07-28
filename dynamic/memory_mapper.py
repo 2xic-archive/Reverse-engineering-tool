@@ -10,6 +10,7 @@ class memory_mapper(object):
 		self.stack_address = None
 		self.stack_size = 1024 * 1024 * 4
 		self.current_library_address = 0x900000
+		self.msr_location = 0xf00000
 
 		self.address_space = {
 
@@ -20,8 +21,8 @@ class memory_mapper(object):
 
 		if not self.target.static_binary:
 			self.map_library()
-			print(hex(0xca244d-self.look_up_library["ld-linux-x86-64.so.2"][0]))
-			exit(0)
+	#		print(hex(0xca244d-self.look_up_library["ld-linux-x86-64.so.2"][0]))
+	#		exit(0)
 #			self.boot_ld()
 
 
@@ -95,7 +96,7 @@ class memory_mapper(object):
 		for library in libraries:
 			mappings, low_address, high_address = self.load_binary_sections_small(library, self.current_library_address)
 			library_size = self.round_memory((high_address - library.base_address) + 1)
-			self.map_target(self.current_library_address, library_size, None, "library")
+			self.map_target(self.current_library_address, library_size, None, "library [{}]".format(library.file_name))
 
 			for secition in mappings:
 				self.emulator.mem_write(secition[0], secition[1])
@@ -163,9 +164,8 @@ class memory_mapper(object):
 #		self.future_breakpoints.append(0xc20 + self.look_up_library["libc.so.6"][0])
 #		self.future_breakpoints.append(0x20400 + self.look_up_library["libc.so.6"][0])
 
-		self.future_breakpoints.append(self.look_up_library["ld-linux-x86-64.so.2"][0] + 0x0248e)
-#					print(i)
-#					raise Exception("you miss direct mapping")
+#		self.future_breakpoints.append(self.look_up_library["ld-linux-x86-64.so.2"][0] + 0x2481)
+#		self.future_breakpoints.append(self.look_up_library["ld-linux-x86-64.so.2"][0] + 0x2493)
 
 	def resolve_dynamic_setup(self):
 		# this is only for a dynamic binary
@@ -234,6 +234,8 @@ class memory_mapper(object):
 		low_address = 0x0
 		high_address = 0x0
 
+		mappings.append([offset, bytes(binary.file_header), "fileheader {}".format(binary.file_name)])
+
 		for name, content in (binary.program_headers).items():
 #			if(content["type_name"] == "PT_NULL"):
 #				continue
@@ -252,6 +254,9 @@ class memory_mapper(object):
 
 			mappings.append([offset + content["location"], section_bytes, name])
 
+			if((offset + content["location"]) < 0x40):
+				print(("[%s]Loaded section %s at 0x%x -> 0x%x (%s)" % (binary.file_name, name, start, end, content["flags"])))
+
 
 		for name, content in (binary.sections_with_name).items():
 			self.section_map[name] = [ int(content["virtual_address"],16),  int(content["virtual_address"],16) + content["size"]]
@@ -260,6 +265,16 @@ class memory_mapper(object):
 #			if not "SHF_ALLOC" in content["flags"]:
 #				self.log_text("Skipped section %s (%s)" % (name, content["flags"]))
 #				continue
+
+			if(int(content["virtual_address"], 16) == 0):
+				'''
+				sh_addr
+					If the section is to appear in the memory image of a process, 
+					this member gives the address at which the section's first byte should reside. 
+					Otherwise, the member contains 0.
+				-	https://docs.oracle.com/cd/E19683-01/817-3677/chapter6-94076/index.html
+				'''
+				continue
 
 			'''
 				brk should only get adjusted on the target binary ?
@@ -284,7 +299,12 @@ class memory_mapper(object):
 
 			low_address = min(low_address, start)
 			high_address = max(high_address, end)
-			
+		
+			if((offset + start) < 0x40):
+				print(("SHF_ALLOC" in content["flags"]))
+				print(("[%s]Loaded section %s at 0x%x -> 0x%x (%s)" % (binary.file_name, name, start, end, content["flags"])))
+				print(int(content["size"]) == len(bytearray(section_bytes)))
+
 			self.log_text("Loaded section %s at 0x%x -> 0x%x (%s)" % (name, start, end, content["flags"]))
 
 			section_bytes = bytes(self.extend_bytearray(bytearray(section_bytes), int(content["size"])))
@@ -335,6 +355,7 @@ class memory_mapper(object):
 		return False
 
 	def map_page_zero(self):
+		self.map_target(self.msr_location, self.round_memory(8), None, "msr location")
 		if(self.base_program_address == 0):
 			print("Probably loaded a dynamic binary. Page zero should be remapped.")
 		else:

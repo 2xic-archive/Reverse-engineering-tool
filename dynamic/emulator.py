@@ -4,6 +4,8 @@ import sys
 import os
 import random
 import threading
+import json
+PATH = (os.path.dirname(os.path.abspath(__file__)) + "/")
 
 
 from unicorn import *
@@ -39,7 +41,9 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 		self.target = target
 
 		self.boot()
-
+#		import sys
+#		print(sys.argv)
+#		exit(0)
 	'''
 		should make a better way to reset each part of the emulator.
 	'''
@@ -50,6 +54,7 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 		self.db = triforce_db.db_init()
 		self.emulator = Uc(UC_ARCH_X86, UC_MODE_64)
 		self.future_breakpoints = []
+		self.file_descriptors = []
 		
 		stack_handler.__init__(self)
 		memory_mapper.__init__(self)
@@ -75,7 +80,7 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 			("rip", UC_X86_REG_RIP),
 			("rsp", UC_X86_REG_RSP),
 			("r9", UC_X86_REG_R9),
-			
+			("rdx", UC_X86_REG_RDX)			
 		]
 
 		for register, unicorn_refrence in self.db_registers:
@@ -174,12 +179,65 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 		'''
 		start, end, delta = self.init_stack()
 		self.emulator.reg_write(UC_X86_REG_RSP, end)
+		self.emulator.mem_write(0xec5170, bytes(bytearray(struct.pack("<Q", 0xf00dbeef))))
+		self.emulator.mem_write(0xec5170+8, bytes(bytearray(struct.pack("<Q", 0xf00dbeef))))
 
 
+	#	self.unicorn_debugger.add_hook_memory(0xec5170, write_only=True)
+
+
+		self.parse_argv_breaks()
+#		exit(0)
 		if not self.target.static_binary:
 			self.boot_ld()
-	#		input("more?")
-	#	exit(0)
+
+	def parse_location(self, tokens):
+		token = ""
+		break_location = 0
+		sign = 1
+		def parse(token):
+			if(token == "ld"):
+				return self.look_up_library["ld-linux-x86-64.so.2"][0]
+			elif(token == "libc"):
+				return self.look_up_library["libc.so.6"][0]
+			elif(token.isdigit()):
+				return int(token)
+			elif(token.replace("0x", "").isdigit()):
+				return int(token, 16)
+			return 0
+	
+		sign = 1
+		for y in tokens:
+			if(y == "+" or y == "-"): 
+				break_location += parse(token) * sign
+				sign = (1) if(y == "+") else (-1)
+				token = ""
+				continue				
+			token += y
+		break_location += parse(token) * sign
+		return break_location
+
+	def parse_argv_breaks(self):
+		'''
+			just to make it easier to debug.
+			will rewrite this and the token parser in the helper after
+			I have finished the dynamic linker.
+		'''
+		i = 1
+		breaks = []
+		while i < len(sys.argv):
+			if(sys.argv[i] == "--break"):
+				i += 1
+
+				token = sys.argv[i]
+				breaks.append(token)
+
+				break_location = self.parse_location(token)
+
+				print("Set breakpoint {}".format(break_location))
+				self.unicorn_debugger.add_breakpoint(break_location)
+			i += 1
+		open(PATH + "/breaks.json", "w").write(json.dumps(breaks))
 
 	def log_text(self, text, style=None, level=0):
 		if(self.logging):
@@ -194,6 +252,10 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 	@threaded
 	def run_thread(self, non_stop=False):
 		self.run(non_stop)
+
+	def stop_now(self):
+		self.emulator.emu_stop()
+		self.unicorn_debugger.log_file.close()
 
 	def run(self, non_stop=False, program_entry_point=None):
 		if(program_entry_point == None):
@@ -213,6 +275,11 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 		def hook_block(uc, address, size, user_data):
 			#self.log_bold_text(">>> Tracing call block at 0x%x(%s), block size = 0x%x" % (address, self.unicorn_debugger.determine_location(address)  , size))
 			print(">>> Tracing call block at 0x%x(%s), block size = 0x%x" % (address, self.unicorn_debugger.determine_location(address)  , size))
+
+			if(address == 0x9f54cb):
+				self.stop_now()
+#				raise Exception("bugs")
+#				exit(0)
 			self.log_text(uc.reg_read(UC_X86_REG_RBP))
 
 		def hook_mem_invalid(uc, access, address, size, value, user_data):
@@ -257,6 +324,10 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 				mu.emu_stop()
 
 		def hook_mem_access(uc, access, address, size, value, user_data):
+
+#			if(address == 0xec5170):
+#				print("huh bug?")
+#				input("adress read")
 
 			if access == UC_MEM_WRITE:
 				self.log_bold_text(">>> Memory is being WRITE at 0x%x(%s), data size = %u, data value = 0x%x" % (address, self.unicorn_debugger.determine_location(address) , size, value))

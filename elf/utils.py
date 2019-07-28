@@ -5,6 +5,9 @@
 def get_symbol_name(elf, address):
 	keys = list(elf.symbol_lookup.keys())
 
+	if(len(keys) == 0):
+		return None
+
 	if(keys[0] == address):
 		return elf.symbol_lookup[keys[0]]
 	elif(keys[-1] == address):

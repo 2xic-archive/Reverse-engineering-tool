@@ -88,10 +88,8 @@ def parse_relocation(elf_target, target, debug=False):
 				elif(rela_type == "R_X86_64_IRELATIVE"):					
 					lookup["DIRECT_MAPPING_{}".format(direct_mapping_count)] = [address, addend]
 					direct_mapping_count += 1
-				else:
+				elif(debug):
 					print("Fix dynamic linker[{}], need to handle type : {}, symbol size : {}, location {}".format(elf_target.file_name, rela_type, len(elf_target.symbol_table[ELF64_R_SYM(info)]), hex(address)))
-#					lookup["DIRECT_MAPPING_{}".format(direct_mapping_count)] = [address, 0xf00dbeef]
-#					direct_mapping_count += 1
 			except Exception as e:
 				print("erorr in parse_relocation", e)
 	return lookup

@@ -69,7 +69,7 @@ class unicorn_debug():
 		}
 
 		self.instruction_count = 0
-		self.max_instructions = 0xdeafbeef #100
+		self.max_instructions = 0x2710 #0xdeafbeef #100
 
 		self.full_trace = False
 
@@ -253,6 +253,7 @@ class unicorn_debug():
 		else:
 			register = eval("UC_X86_REG_{}".format(name[0].upper()))
 			print(hex(self.unicorn.reg_read(register)))
+			print(self.determine_location(self.unicorn.reg_read(register)))
 
 	def step(self, tokens):
 		print("one instruction step")
@@ -269,8 +270,13 @@ class unicorn_debug():
 					results += (sign * int(look_a_side_buffer, 16))
 				elif(look_a_side_buffer.isdigit()):
 					results += (sign * int(look_a_side_buffer))
+				elif(look_a_side_buffer.lower() == "ld"):
+					results += (sign * self.parrent.look_up_library["ld-linux-x86-64.so.2"][0])
+				elif(look_a_side_buffer.lower() == "libc"):
+					results += (sign * self.parrent.look_up_library["libc.so.6"][0])
 				else:
 					results += (sign * self.unicorn.reg_read(eval("UC_X86_REG_{}".format(look_a_side_buffer.upper()))))
+				
 				if(i == "+"):
 					sign = 1
 				elif(i == "-"):
@@ -285,6 +291,10 @@ class unicorn_debug():
 			results += (sign * int(look_a_side_buffer, 16))
 		elif(look_a_side_buffer.isdigit()):
 			results += (sign * int(look_a_side_buffer))
+		elif(look_a_side_buffer.lower() == "ld"):
+			results += (sign * self.parrent.look_up_library["ld-linux-x86-64.so.2"][0])
+		elif(look_a_side_buffer.lower() == "libc"):
+			results += (sign * self.parrent.look_up_library["libc.so.6"][0])		
 		else:
 			results += (sign * self.unicorn.reg_read(eval("UC_X86_REG_{}".format(look_a_side_buffer.upper()))))
 				
@@ -330,7 +340,12 @@ class unicorn_debug():
 	def db_register_commit(self, tokens):
 		name = tokens[0]
 		print("Latest commit in {}, was at {}".format(name, hex(self.parrent.get_latest_register_write(name))))
+		location = self.parrent.get_latest_register_write(name)
+		print("Binary location : {}".format(hex(location-self.parrent.library_offset(location))))
 
+	def print_math(self, tokens):
+		results = (self.parse_math(tokens[0]))
+		print("0x%x, %i" % (results, results))
 	def handle_commands(self, memory_access=False):
 		if(memory_access):
 			command = input("Memory access hit, write a command or press enter to continue\n")
@@ -342,7 +357,8 @@ class unicorn_debug():
 			"x":self.memory_handle,
 			"read_2_null":self.read_null_terminated,
 			"stack_peek":self.peek_stack,
-			"last_commit":self.db_register_commit
+			"last_commit":self.db_register_commit,
+			"do_math":self.print_math
 		}
 		if(len(command) > 0):
 			command_tokens = command.split(" ")
@@ -556,8 +572,14 @@ class unicorn_debug():
 				if self.test or not should_continue("hit instruction_count limit, continue?"):
 					self.unicorn.emu_stop()
 					self.log_file.close()
+			#		print(self.log_file.closed)
 				else:
-					self.max_instructions *= 2
+					if(should_continue("open debugger?")):
+						self.handle_commands()
+						self.unicorn.emu_stop()
+						self.log_file.close()
+					else:
+						self.max_instructions *= 2
 
 		except Exception as e:
 			print(e)
@@ -592,6 +614,6 @@ class unicorn_debug():
 
 		for location_name, address_location in self.address_space.items():
 			if(address_location[0] <= address and address <= address_location[1]):
-				return location_name
+				return "{} [{}]".format(location_name, hex(address - address_location[0]))
 		return "unknown"
 
