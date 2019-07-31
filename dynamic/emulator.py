@@ -55,7 +55,11 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 		self.emulator = Uc(UC_ARCH_X86, UC_MODE_64)
 		self.future_breakpoints = []
 		self.file_descriptors = []
+		self.last_mmap_address = 0xdeadbeef
 		
+		self.log_instruction_nr = 1000
+		self.log_space = 0
+
 		stack_handler.__init__(self)
 		memory_mapper.__init__(self)
 		strace.__init__(self)
@@ -184,12 +188,17 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 
 
 	#	self.unicorn_debugger.add_hook_memory(0xec5170, write_only=True)
-
+		self.unicorn_debugger.add_hook_memory(0xec5170, write_only=True)
+		self.unicorn_debugger.add_breakpoint(0xcb7691)
 
 		self.parse_argv_breaks()
+#		exit(0)g
+#		print(self.emulator.mem_read(0, 0x128))
 #		exit(0)
+
 		if not self.target.static_binary:
 			self.boot_ld()
+
 
 	def parse_location(self, tokens):
 		token = ""
@@ -198,11 +207,13 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 		def parse(token):
 			if(token == "ld"):
 				return self.look_up_library["ld-linux-x86-64.so.2"][0]
+			elif(token == "ld_entry"):
+				return self.look_up_library["ld-linux-x86-64.so.2"][0] + self.look_up_library["ld-linux-x86-64.so.2"][2].program_entry_point
 			elif(token == "libc"):
 				return self.look_up_library["libc.so.6"][0]
 			elif(token.isdigit()):
 				return int(token)
-			elif(token.replace("0x", "").isdigit()):
+			elif("0x" in token):
 				return int(token, 16)
 			return 0
 	
@@ -274,7 +285,7 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 		# callback for tracing basic blocks
 		def hook_block(uc, address, size, user_data):
 			#self.log_bold_text(">>> Tracing call block at 0x%x(%s), block size = 0x%x" % (address, self.unicorn_debugger.determine_location(address)  , size))
-			print(">>> Tracing call block at 0x%x(%s), block size = 0x%x" % (address, self.unicorn_debugger.determine_location(address)  , size))
+		#	print(">>> Tracing call block at 0x%x(%s), block size = 0x%x" % (address, self.unicorn_debugger.determine_location(address)  , size))
 
 			if(address == 0x9f54cb):
 				self.stop_now()
@@ -292,8 +303,15 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 				self.unicorn_debugger.panic_patch(address)
 			else:
 				try:				
-					instruction_name, hook_instruction, hook_name = self.unicorn_debugger.get_instruction(address, size)
-					print("0x%x, %s" % (address, instruction_name))
+				
+					if(self.log_space == self.log_instruction_nr):
+						instruction_name, hook_instruction, hook_name = self.unicorn_debugger.get_instruction(address, size)		
+						print("0x%x, %s" % (address, instruction_name))
+						self.log_space = 0
+					else:
+						self.log_space += 1
+		
+
 			#		print("RDI 0x%x" % (self.emulator.reg_read(UC_X86_REG_RDI)))
 				#	print('>>> (%x) Tracing instruction at 0x%x  [0x%x] (%s), instruction size = 0x%x' % (self.unicorn_debugger.instruction_count, address, address-self.base_program_address, self.unicorn_debugger.determine_location(address), size))
 				#	self.log_text('>>> (%x) Tracing instruction at 0x%x  [0x%x] (%s), instruction size = 0x%x' % (self.unicorn_debugger.instruction_count, address, address-self.base_program_address, self.unicorn_debugger.determine_location(address), size))
@@ -325,15 +343,8 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 
 		def hook_mem_access(uc, access, address, size, value, user_data):
 
-#			if(address == 0xec5170):
-#				print("huh bug?")
-#				input("adress read")
-
 			if access == UC_MEM_WRITE:
 				self.log_bold_text(">>> Memory is being WRITE at 0x%x(%s), data size = %u, data value = 0x%x" % (address, self.unicorn_debugger.determine_location(address) , size, value))
-			
-			#	self.db.add_memory_trace(hex(address), self.unicorn_debugger.current_address, address)
-			#	self.db.add_memory_trace(hex(address), 10, address)
 			else:
 				if(size > 32):
 					self.log_bold_text(">>> Memory is being READ at 0x%x (%s), data size = %u" %(address, self.unicorn_debugger.determine_location(address),  size))
@@ -357,6 +368,7 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 			self.log_text(">>> got SYSCALL with EAX = 0x%x" %(eax))
 			mu.emu_stop()
 
+#		print("Booting {}")
 		if not self.has_emulator_ran:
 			self.emulator.hook_add(UC_HOOK_INSN, hook_syscall64, self, 1, 0, UC_X86_INS_SYSCALL)
 

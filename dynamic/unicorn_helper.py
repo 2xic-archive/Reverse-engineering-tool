@@ -69,7 +69,7 @@ class unicorn_debug():
 		}
 
 		self.instruction_count = 0
-		self.max_instructions = 0x2710 #0xdeafbeef #100
+		self.max_instructions = 0x3710 #0xdeafbeef #100
 
 		self.full_trace = False
 
@@ -570,16 +570,17 @@ class unicorn_debug():
 			
 			if(self.max_instructions <= self.instruction_count and not self.non_stop):
 				if self.test or not should_continue("hit instruction_count limit, continue?"):
+					if(should_continue("open debugger?")):
+						self.handle_commands()
+
 					self.unicorn.emu_stop()
 					self.log_file.close()
 			#		print(self.log_file.closed)
 				else:
-					if(should_continue("open debugger?")):
-						self.handle_commands()
-						self.unicorn.emu_stop()
-						self.log_file.close()
-					else:
-						self.max_instructions *= 2
+			#		self.unicorn.emu_stop()
+			#		self.log_file.close()
+			#		else:
+					self.max_instructions *= 2
 
 		except Exception as e:
 			print(e)

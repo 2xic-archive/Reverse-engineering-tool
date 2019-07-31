@@ -27,6 +27,27 @@ def mmap_type(proc_id):
 	return None
 
 def find_memory_adress(user_data, size):
-	location = user_data.round_memory(0xdeadbeef)
+	location = user_data.round_memory(user_data.last_mmap_address)
 	user_data.emulator.mem_map(location, user_data.round_memory(size))
+
+	user_data.last_mmap_address += user_data.round_memory(size)
 	return location
+
+def check_flags(flag):
+	flags = {
+			"MAP_FILE"      :   0,
+			"MAP_SHARED"    :   1,
+			"MAP_PRIVATE"   :   2,
+			"MAP_TYPE"      :   0xf,
+			"MAP_FIXED"     :   0x10,
+			"MAP_ANONYMOUS" :   0x20,
+		}
+	enabled_flags = []
+	for key, value in flags.items():
+		if(flag & value != 0):
+			enabled_flags.append(key)
+	return enabled_flags
+
+
+
+

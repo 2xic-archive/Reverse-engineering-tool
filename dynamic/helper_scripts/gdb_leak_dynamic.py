@@ -16,6 +16,7 @@ libc_offset = 0x7ffff7a3a000
 ld_offset = 0x7ffff7dd9000
 
 libc = elf("/lib/x86_64-linux-gnu/libc.so.6")
+ld = elf("/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2")
 program = elf("/root/test/test_binaries/getgid")
 
 
@@ -29,6 +30,8 @@ for breaks in json.loads(open(PATH + "../breaks.json").read()):
 	def parse(token):
 		if(token == "ld"):
 			return ld_offset
+		elif(token == "ld_entry"):
+			return ld_offset + ld.program_entry_point
 		elif(token == "libc"):
 			return libc_offset
 		elif(token.isdigit()):
@@ -56,7 +59,7 @@ for breaks in json.loads(open(PATH + "../breaks.json").read()):
 
 
 #output = gdb.execute('break _start', to_string=True)
-#output = gdb.execute('run', to_string=True)
+output = gdb.execute('run', to_string=True)
 '''
 for section_key, section_info in libc.sections_with_name.items():
 	if(section_info["type"] == 0x4):

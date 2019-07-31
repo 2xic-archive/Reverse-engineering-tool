@@ -315,7 +315,9 @@ class elf:
 			self.file_header_size = int_from_bytearray(self.read_with_offset(0x28, 2))
 
 
-		self.file_header = self.file[:self.file_header_size]		
+		self.file_header = self.file[:self.file_header_size]
+#		print(self.file_header)
+#		exit(0)		
 #		self.program_headers = self.file[self.program_header_start: self.program_header_start + (self.program_header_count * self.program_header_size)]
 #		self.section_headers = self.file[self.section_headers_start: self.section_headers_start + (self.section_headers_count * self.section_headers_size)]
 

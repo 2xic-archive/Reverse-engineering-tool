@@ -3,11 +3,17 @@
 # Triforce
 [![Build Status](https://travis-ci.org/2xic/Reverse-engineering-tool.svg?branch=master)](https://travis-ci.org/2xic/Reverse-engineering-tool)
 [![Coverage Status](https://coveralls.io/repos/github/2xic/Reverse-engineering-tool/badge.svg?branch=master)](https://coveralls.io/github/2xic/Reverse-engineering-tool?branch=master)
+[![Python Version](https://img.shields.io/pypi/pyversions/3.svg)](https://img.shields.io/pypi/pyversions/3)
+
+
 
 <img src="README/new_version.png"  width="800px" />
 (web interface, click for better resolution)
 
-# 	Status
+# Status
+**Progress is not measured with green/red diffs, currently I spend more time reverse engineering than writing code. I should have the infrastructure that I need to be able to make fixing bugs easy, however some bugs are just obscure and can slow down progress. For instance, I forgot to also write the file header when mapping the binaries, and that made ld.so not happy. Took me a while to realize that bug. Current goal is to make ld.so run, to make dynamic binaries run smoothly. Static binaries should run quite well, if the system calls used are implemented.**
+
+(old status)
 There is now a branch called version 0.1, it shows the idea and part of the vision. Master is maybe already version 0.2, it's web component is a lot faster than the previous version(still some left to do). However, I want more work done on the emulator before I do a version bump. I feel I had a bit too much focus on the web interface for version 0.1. Now a big focus will be on extending the dynamic side, this is key for making this software good. That is why I have made a gdb like interface for the terminal, features will come to the terminal before the web interface to make design iterations faster.
 
 #   Note
