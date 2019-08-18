@@ -25,6 +25,7 @@ from .strace import *
 from .registers import *
 from .configs import *
 import triforce_db
+from .helper_scripts.delta import do_cross_check
 
 def threaded(function):
 	def wrapper(*args, **kwargs):
@@ -35,10 +36,11 @@ def threaded(function):
 
 
 class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, configs):
-	def __init__(self, target):
+	def __init__(self, target, disable_args=False):
 		self.logging = False
 
 		self.target = target
+		self.disable_args = disable_args
 
 		self.boot()
 #		import sys
@@ -163,6 +165,9 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 				"edx":0,
 				"eax":0x7
 		})
+
+		self.unicorn_debugger.jump_op("ret", None, custom_code=self.unicorn_debugger.pop_branch)
+
 		
 		self.unicorn_debugger.jump_op("vpbroadcastb ymm0, xmm0", {
 
@@ -187,15 +192,21 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 		self.emulator.mem_write(0xec5170+8, bytes(bytearray(struct.pack("<Q", 0xf00dbeef))))
 
 
-	#	self.unicorn_debugger.add_hook_memory(0xec5170, write_only=True)
-		self.unicorn_debugger.add_hook_memory(0xec5170, write_only=True)
-		self.unicorn_debugger.add_breakpoint(0xcb7691)
+	#	self.unicorn_debugger.add_hook_memory(0x8020e7+0x8, write_only=True)
+	#	self.unicorn_debugger.add_hook_memory(0x802110, write_only=True)
+	#	self.unicorn_debugger.add_breakpoint(0xcb0953)
+
+
+		#self.unicorn_debugger.add_breakpoint(0xcb0953)
 
 		self.parse_argv_breaks()
 #		exit(0)g
 #		print(self.emulator.mem_read(0, 0x128))
 #		exit(0)
 
+	
+	def run(self, non_stop=False, program_entry_point=None):
+		self.unicorn_debugger.non_stop = non_stop
 		if not self.target.static_binary:
 			self.boot_ld()
 
@@ -229,6 +240,8 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 		return break_location
 
 	def parse_argv_breaks(self):
+		if self.disable_args:
+			return None
 		'''
 			just to make it easier to debug.
 			will rewrite this and the token parser in the helper after
@@ -268,7 +281,7 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 		self.emulator.emu_stop()
 		self.unicorn_debugger.log_file.close()
 
-	def run(self, non_stop=False, program_entry_point=None):
+	def run_binary(self, non_stop=False, program_entry_point=None):
 		if(program_entry_point == None):
 			program_entry_point = self.target.program_entry_point
 
@@ -287,8 +300,10 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 			#self.log_bold_text(">>> Tracing call block at 0x%x(%s), block size = 0x%x" % (address, self.unicorn_debugger.determine_location(address)  , size))
 		#	print(">>> Tracing call block at 0x%x(%s), block size = 0x%x" % (address, self.unicorn_debugger.determine_location(address)  , size))
 
-			if(address == 0x9f54cb):
-				self.stop_now()
+			self.unicorn_debugger.branch_logs.append(hex(address))
+
+#			if(address == 0x9f54cb):
+#				self.stop_now()
 #				raise Exception("bugs")
 #				exit(0)
 			self.log_text(uc.reg_read(UC_X86_REG_RBP))
@@ -354,6 +369,9 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 					except Exception as e:
 						self.log_bold_text(">>> Memory is being READ at 0x%x " %(address))
 
+			#if((address < 0x802110) and (0x802110 < (address + size))):
+			#	self.unicorn_debugger.handle_commands(memory_access=True)
+
 							
 			self.unicorn_debugger.memory_hook_check(address, access == UC_MEM_WRITE)
 			self.unicorn_debugger.check_memory_value(value)
@@ -393,6 +411,7 @@ class emulator(stack_handler, memory_mapper, msr_helper, strace, registers, conf
 		except Exception as e:
 			print(e)
 			print("Last instruction location 0x%x, size %i" % (self.unicorn_debugger.current_address, self.unicorn_debugger.current_size))
+			print("Last instruction location 0x%x, size %i" % (do_cross_check(self, self.unicorn_debugger.current_address)[2], self.unicorn_debugger.current_size))
 			self.unicorn_debugger.log_file.close()
 
 

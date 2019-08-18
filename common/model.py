@@ -23,7 +23,7 @@ def threaded(function):
 
 
 class model(model_configs):
-	def __init__(self, static, socket_io):
+	def __init__(self, static, socket_io, auto_boot=True, disable_args=False):
 		super().__init__()
 		self.static = static
 
@@ -44,8 +44,9 @@ class model(model_configs):
 		self.done_decompile = False
 		self.decompile_binary()
 
-		self.dynamic = emulator(self.static)
-		self.run_emulator()
+		self.dynamic = emulator(self.static, disable_args=disable_args)
+		if auto_boot:
+			self.run_emulator()
 		self.ran_emulator = False
 
 	#	self.cfg = self.create_CFG()

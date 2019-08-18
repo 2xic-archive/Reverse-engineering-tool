@@ -59,7 +59,8 @@ def hook_syscall64(mu, user_data):
 
 		for address in user_hooks.keys():
 			if(address <= input_address <= (input_address + margin)):
-				input("wow, overwriting a adress?")
+				bold_print("Sycall will change address")
+				user_data.unicorn_debugger.handle_commands(memory_access=True)
 				break
 
 	try:
@@ -194,6 +195,7 @@ def hook_syscall64(mu, user_data):
 			else:
 				print("lseek problem {}, {}, {}".format(fd, offset, whence))
 				mu.emu_stop()
+				
 
 		elif(rax == 0x9):
 			# mmap
@@ -204,12 +206,18 @@ def hook_syscall64(mu, user_data):
 			file_descripor = r8
 			offset = r9
 
+			'''
+				
+				for protection set
+					uc_mem_map(uc, address, size, (PROTECTION BITS) UC_PROT_READ | UC_PROT_WRITE);
+
+			'''
 
 			check_memory_hooks(address, length, user_data)
 
 			bold_print("mmap flag {}".format(check_flags(flags)))
-			bold_print("mmap address {}, length {}, fd {}, offset {}".format(address, length, file_descripor, offset))
-			# should accept adress hints in the future
+			bold_print("mmap address {}, mmap protection {}, length {}, fd {}, offset {}".format(address, protection, length, file_descripor, offset))
+		# should accept adress hints in the future
 		#	print(hex(address))
 		#	assert(address == 0)
 
@@ -384,6 +392,7 @@ def hook_syscall64(mu, user_data):
 			};
 			'''
 			#	STDERR_FILENO
+			written_bytes_count = 0
 			if(fd == 2):
 				location = vector
 				for i in range(vector_length):
@@ -394,6 +403,9 @@ def hook_syscall64(mu, user_data):
 					bold_print(mu.mem_read(string_location, size).decode(), end="")
 
 					location += 16
+					written_bytes_count += int.from_bytes(iov_len, byteorder='little')#iov_len
+
+			mu.reg_write(UC_X86_REG_RAX, written_bytes_count)
 
 		elif(rax == 0x15):
 			try:
@@ -457,12 +469,22 @@ def hook_syscall64(mu, user_data):
 		
 			fstat_structure["st_dev"] = file_stat.st_dev
 			fstat_structure["st_ino"] = file_stat.st_ino
-			fstat_structure["st_mode"] = file_stat.st_mode
+
+#			fstat_structure["st_mode"] = file_stat.st_mode
+#			fstat_structure["st_nlink"] = file_stat.st_nlink
+
 			fstat_structure["st_nlink"] = file_stat.st_nlink
+			fstat_structure["st_mode"] = file_stat.st_mode
+
 			fstat_structure["st_uid"] = file_stat.st_uid
-			fstat_structure["st_gid"] = file_stat.st_gid
-			fstat_structure["st_rdev"] = file_stat.st_rdev
+			fstat_structure["st_gid"] = file_stat.st_rdev# 0xdeadbeef#file_stat.st_gid
+			
+		#	fstat_structure["st_rdev"] = file_stat.st_rdev
+		#	fstat_structure["st_size"] = file_stat.st_size
+			
 			fstat_structure["st_size"] = file_stat.st_size
+			fstat_structure["st_rdev"] = file_stat.st_rdev
+			
 			fstat_structure["st_blksize"] = file_stat.st_blksize
 			fstat_structure["st_blocks"] = file_stat.st_blocks
 			fstat_structure["st_atime"] = int(file_stat.st_atime)
@@ -473,8 +495,13 @@ def hook_syscall64(mu, user_data):
 			fstat_structure["st_ctime_nano"] = int(file_stat.st_ctime)
 
 			strcuture_index = strcuture
+			print("Start {}".format(hex(strcuture_index)))
 			for key, value in fstat_structure.items():
 				strcuture_index = user_data.stack_write_at_index(strcuture_index, bytes(bytearray(struct.pack("<Q", value))))
+			print("End {}".format(hex(strcuture_index)))
+
+			mu.reg_write(UC_X86_REG_RAX, 0)
+			mu.reg_write(UC_X86_REG_RCX, 0x400994)		
 
 		elif(rax == 0x66):
 			mu.reg_write(UC_X86_REG_RAX, user_data.uid)
@@ -515,7 +542,7 @@ def hook_syscall64(mu, user_data):
 			#	since we are a emulator, how much do we actually need to exit/ clean up?
 			#	currently nothing :=)
 			user_data.add_syscall(["exit", hex(mu.reg_read(UC_X86_REG_RBP))])
-			print("normal exit")
+			print("exit, error code : {} ".format(rdi))
 			mu.emu_stop()
 
 		elif(rax == 0xca):

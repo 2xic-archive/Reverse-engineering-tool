@@ -8,6 +8,8 @@ from common.interface import *
 from keystone import *
 from common.printer import *
 from inspect import isfunction
+from .helper_scripts.stack_string import hex_2_string
+import hashlib
 
 def pretty_print_bytes(results, aschii=True, logging=True):
 	if(logging):
@@ -21,6 +23,7 @@ def pretty_print_bytes(results, aschii=True, logging=True):
 
 
 
+
 class unicorn_debug():
 	def __init__(self, emulator_class, section_virtual_map, section_map, address_space, logging, non_stop=False):
 		self.section_virtual_map = section_virtual_map
@@ -31,6 +34,11 @@ class unicorn_debug():
 		self.logging = logging
 
 		self.non_stop = non_stop
+
+
+		self.branch_logs = [
+
+		]
 
 		self.breakpoints = {
 
@@ -100,7 +108,7 @@ class unicorn_debug():
 				current_string = ""
 				jump_count += 1
 						
-				if(jump_count % 4 == 0 and jump_count > 0):
+				if(jump_count % count == 0 and jump_count > 0):
 					end += 16
 					print("\n{}".format(hex(end)), end="	")
 		print(current_string)
@@ -134,6 +142,16 @@ class unicorn_debug():
 		}
 		for name, unicorn_refrence in self.registers_2_trace.items():
 			self.register_state[name] = self.unicorn.reg_read(unicorn_refrence[0])
+
+	def pop_branch(self):
+		'''
+			need to check that branch is a function first.
+		'''
+		pass
+	#	self.branch_logs.pop()
+
+	def get_branches(self, tokens):
+		print(self.branch_logs)
 
 	def log_2_file(self, address=None):
 		if(not self.log_file.closed and 0 < self.instruction_count and self.logging_enabled):
@@ -257,6 +275,7 @@ class unicorn_debug():
 
 	def step(self, tokens):
 		print("one instruction step")
+		self.print_instruction([])
 		self.next_break = True
 
 	def parse_math(self, stream):
@@ -318,9 +337,24 @@ class unicorn_debug():
 			print("Add a address with size")
 
 	def peek_stack(self, tokens):
+		count = 16 if(0 < len(tokens) and tokens[0] == "w") else 8
 		stack_peek = self.unicorn.mem_read(self.unicorn.reg_read(UC_X86_REG_RSP) - 8, 100 * 8)
-		space_stack(self.unicorn.reg_read(UC_X86_REG_RSP) + 100 * 8, pretty_print_bytes(stack_peek, aschii=False))
-	
+		self.view_stack(self.unicorn.reg_read(UC_X86_REG_RSP) + 100 * 8, pretty_print_bytes(stack_peek, aschii=False), length=count)
+	#	print(count)
+	#	print(tokens)
+
+	def peek_data(self, tokens):
+		print(len(tokens))
+		size = tokens[2] if(2 < len(tokens)) else (100 * 8)
+		count = 16 if(1 < len(tokens) and tokens[1] == "w") else 8
+		location = self.parse_math(tokens[0])
+
+		print("LOL?")
+		stack_peek = self.unicorn.mem_read(location, size)
+		self.view_stack(location, pretty_print_bytes(stack_peek, aschii=False), length=count)		
+
+		print(count)
+
 	def read_2_null(self, start):
 		results = []
 		string = []
@@ -334,7 +368,7 @@ class unicorn_debug():
 		return bytes(bytearray(results)), "".join(string)
 
 	def read_null_terminated(self, tokens):
-		results, string = self.read_2_null(int(tokens[0], 16))
+		results, string = self.read_2_null(self.parse_math(tokens[0]))
 		pretty_print_bytes(bytes(bytearray(results)))
 
 	def db_register_commit(self, tokens):
@@ -346,6 +380,46 @@ class unicorn_debug():
 	def print_math(self, tokens):
 		results = (self.parse_math(tokens[0]))
 		print("0x%x, %i" % (results, results))
+
+	def print_instruction(self, tokens):
+		address, size = self.current_address, self.current_size
+		instruction_name, hook_instruction, hook_name = self.get_instruction(address, size)
+		print(instruction_name)
+
+	def hash_bytes(self, tokens):
+		'''
+		-	use this to test gdb
+import hashlib
+i = gdb.inferiors()[0]
+m = i.read_memory(0x7ffff7fe6000, 0x11f09)
+hash_data = hashlib.sha256()
+hash_data.update(m.tobytes())
+print(hash_data.hexdigest())
+		'''
+		if(len(tokens) == 2):
+			location = self.parse_math(tokens[0])
+			size = self.parse_math(tokens[1])
+			hash_data = hashlib.sha256()
+			hash_data.update(bytes(self.unicorn.mem_read(location, size)))
+			print(hash_data.hexdigest())
+		else:
+			print("hash_bytes *location* *size*")
+
+	def parse_hex_string(self, tokens):
+		if(len(tokens) == 0):
+			return
+		if(tokens[0] == "big"):
+			input_string = "\t".join(tokens[1:])
+			hex_2_string(input_string, big=True)
+
+		elif(tokens[0].isalpha()):
+			input_string = hex(self.parse_math(tokens[0]))
+			hex_2_string(input_string)			
+		else:
+			input_string = "\t".join(tokens)
+			hex_2_string(input_string)
+		print("")
+
 	def handle_commands(self, memory_access=False):
 		if(memory_access):
 			command = input("Memory access hit, write a command or press enter to continue\n")
@@ -356,9 +430,14 @@ class unicorn_debug():
 			"stepi":self.step,
 			"x":self.memory_handle,
 			"read_2_null":self.read_null_terminated,
-			"stack_peek":self.peek_stack,
+			"hex_string":self.parse_hex_string,
+			"peek_stack":self.peek_stack,
+			"peek":self.peek_data,
 			"last_commit":self.db_register_commit,
-			"do_math":self.print_math
+			"do_math":self.print_math,
+			"i":self.print_instruction,
+			"branch":self.get_branches,
+			"hash_bytes":self.hash_bytes
 		}
 		if(len(command) > 0):
 			command_tokens = command.split(" ")
@@ -503,7 +582,7 @@ class unicorn_debug():
 			else:
 				self.handle_commands()
 
-	def jump_op(self, string, patch):
+	def jump_op(self, string, patch, custom_code=None):
 		'''
 			keystone will check for illegal operations!
 
@@ -514,7 +593,7 @@ class unicorn_debug():
 		except KsError as e:
 			print("ERROR: %s" %e)	
 
-		self.jump_op_list[string] = [encoding, len(encoding), patch]
+		self.jump_op_list[string] = [encoding, len(encoding), patch, custom_code]
 
 	def panic_patch(self, address):
 		print("Did a panic_patch at 0x%x , okay ? " % (address))
@@ -538,11 +617,12 @@ class unicorn_debug():
 				size_blocks[value[1]] = list(self.unicorn.mem_read(self.current_address + self.current_size, value[1]))
 
 			if(value[0] == size_blocks[value[1]]):
-				self.next_jump = True
-				self.next_size = value[1]
-				self.patch_values = value[2]
-#				print("I did a OPSI")
-#				input("wut to do?")
+				if(value[3] == None):
+					self.next_jump = True
+					self.next_size = value[1]
+					self.patch_values = value[2]
+				else:
+					value[3]()
 	
 
 	def tick(self, address, size):

@@ -158,6 +158,14 @@ def linear_loop(gdb_val, unicorn_val):
 #	state = refrence.address_instruction_lookup[last_address][0]
 #	bold_print("Latest instruction with consensus : %s" % ("".join(state[0])))
 
+def do_cross_check(unicorn_refrence, address):
+	global unicorn_mappings_names
+	global unicorn_mappings
+	unicorn_mappings_names = list(unicorn_refrence.look_up_library.keys())
+	unicorn_mappings = list(unicorn_refrence.look_up_library.values())
+
+	return resolve_mapping(address, gdb=False)
+
 def run_check(unicorn_refrence=None):
 	global unicorn_mappings_names
 	global unicorn_mappings
@@ -186,6 +194,8 @@ def run_check(unicorn_refrence=None):
 	trace_register = False
 
 	op_count = 0
+	#mismatch_count = 0
+	max_mismatch_count = 2
 
 	last_register_state = None
 
@@ -193,7 +203,7 @@ def run_check(unicorn_refrence=None):
 
 	}
 
-	while i < len(unicorn) and j < len(gdb) and 0 < len(unicorn[i]):
+	while i < len(unicorn) and j < len(gdb) and 0 < len(unicorn[i]) and (disagreement_count < max_mismatch_count):
 		if(unicorn[i].strip() == (split_safe(gdb[j].strip().split(" "), 1)) or (unicorn[i].strip() ==  gdb[j].strip().split("\t")[0].split(" ")[-1])):
 			if("=>" in gdb[j]):
 				last_agrement = unicorn[i].strip()
@@ -228,11 +238,13 @@ def run_check(unicorn_refrence=None):
 						bold_print("Error in function %s" % (elf_get_symbol_name(elf_refrence, int(last_agrement, 16))))
 						bold_print("Last agreement {} (hit {})".format(hex(agreement), hit_count[last_agrement]))
 						bold_print("Binary location : gdb : {},  unicorn : {}".format(hex(gdb_real_location), hex(unicorn_real_location)))
+						#mismatch_count += 1
 					else:
 						bold_print("Error in function %s" % (elf_get_symbol_name(unicorn_refrence.target, int(int(last_agrement, 16)))))
 						bold_print("Last agreement {} (hit {})".format(last_agrement, hit_count[last_agrement]))
 						bold_print("Unicorn : %s, GDB : %s" % (unicorn[i].strip(), gdb[j].strip().split(" ")[1]))
-
+						#mismatch_count += 1
+				
 					
 					target = "unicorn" if(unicorn_val < gdb_val) else "gdb"
 
@@ -268,7 +280,8 @@ def run_check(unicorn_refrence=None):
 							bold_print("Gdb had to take %i steps" % (new_j - j))
 							i = new_i
 							j = new_j
-
+							#mismatch_count += 1
+				
 					elif(target == "gdb"):
 						linear_loop(gdb_val, unicorn_val)
 						j = simulate_variable
@@ -309,6 +322,7 @@ def run_check(unicorn_refrence=None):
 				print("From address : 0x%x" % int(unicorn[i - 3], 16))
 				print("unicorn %s, gdb %s " % (unicorn_val, gdb_val))
 				print(gdb[j])
+				#mismatch_count += 1
 
 				unicorn_report(unicorn_refrence, op_count, unicorn[i - 3])
 
@@ -332,9 +346,13 @@ def run_check(unicorn_refrence=None):
 			print("Last instruction {}".format(unicorn[i-2]))
 			print("Last instruction {}".format(unicorn[i-3]))
 
-	bold_print("Disagreement with gdb == %i" % (disagreement_count))
-	print("This can be error with handling of instruction or the simple fact that unicorn can have placed something more accesible than gdb.")
-	print("For instance, enviorment variables are stored more clossely with unicorn")
+	if not (disagreement_count < max_mismatch_count):
+		bold_print("Disagreement with gdb == %i (could be more, hit max count)" % (disagreement_count))
+
+	else:
+		bold_print("Disagreement with gdb == %i" % (disagreement_count))
+		print("This can be error with handling of instruction or the simple fact that unicorn can have placed something more accesible than gdb.")
+		print("For instance, enviorment variables are stored more clossely with unicorn")
 
 if __name__ == "__main__":
 	run_check()

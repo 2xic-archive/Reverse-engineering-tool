@@ -7,6 +7,10 @@ class memory_mapper(object):
 	def __init__(self):
 		self.base_program_address = self.target.base_address #0x400000
 
+
+		if(self.base_program_address == 0):
+			self.base_program_address = 0x200000
+
 		self.stack_address = None
 		self.stack_size = 1024 * 1024 * 4
 		self.current_library_address = 0x900000
@@ -61,7 +65,7 @@ class memory_mapper(object):
 		'''
 #		print(self.look_up_library)
 #		input("run?")
-		self.run(program_entry_point=self.look_up_library["ld-linux-x86-64.so.2"][0] + self.look_up_library["ld-linux-x86-64.so.2"][2].program_entry_point)
+		self.run_binary(program_entry_point=self.look_up_library["ld-linux-x86-64.so.2"][0] + self.look_up_library["ld-linux-x86-64.so.2"][2].program_entry_point)
 #		self.run(program_entry_point=libraries[libraries.index("ld-linux-x86-64.so.2")].program_entry_point)
 		#	program_entry_point
 #		exit(0)
@@ -356,8 +360,9 @@ class memory_mapper(object):
 
 	def map_page_zero(self):
 		self.map_target(self.msr_location, self.round_memory(8), None, "msr location")
-		if(self.base_program_address == 0):
+		if(self.base_program_address == 0 or not self.target.static_binary):
 			print("Probably loaded a dynamic binary. Page zero should be remapped.")
+			self.map_target(0, self.base_program_address, None, "paze zero")
 		else:
 			self.map_target(0, self.base_program_address, None, "paze zero")
 

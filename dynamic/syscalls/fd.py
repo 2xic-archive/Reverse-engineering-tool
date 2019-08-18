@@ -11,8 +11,8 @@ class file_descriptor:
 		self.file_name = file[:-1]
 
 		#	/lib/x86_64-linux-gnu/libc.so.6
-		if(self.file_name == "/lib/x86_64-linux-gnu/tls/x86_64/libc.so.6"):
-			self.file_name = "/lib/x86_64-linux-gnu/libc.so.6"
+	#	if(self.file_name == "/lib/x86_64-linux-gnu/tls/x86_64/libc.so.6"):
+	#		self.file_name = "/lib/x86_64-linux-gnu/libc.so.6"
 
 		self.file_position = 0
 #		self.file = open(file[:-1], "r")

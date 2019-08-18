@@ -34,6 +34,8 @@ if __name__ == "__main__":
 		if("--auto-stop" in sys.argv):
 			target.dynamic.unicorn_debugger.test = True
 
+
+		target.dynamic.run()
 	#	target.run_emulator(force=True, thread=False)
 
 		if not "--no-delta" in sys.argv:

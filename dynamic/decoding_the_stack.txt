@@ -1166,6 +1166,164 @@ loc_406cd0:
 					-	0xeb4fd9		-	unicorn
 					-	0x7fffffffee1b - gdb
 
+
+
+'''
+	0x7ffff7ffed68	is written to rdi
+	at 0x7234 ? 
+
+		LD writes the correct address at
+
+		000000000001b9ef         movups     xmm0, xmmword [rsi]
+		000000000001b9f2         movups     xmm1, xmmword [rsi+rdx-0x10]
+		000000000001b9f7         movups     xmmword [rdi], xmm0
+		000000000001b9fa         movups     xmmword [rdi+rdx-0x10], xmm1
+
+
+		(gdb) x/25x 0x7ffff7ffed68
+		0x7ffff7ffed68:	0x62696c2f	0x3638782f	0x2d34365f	0x756e696c
+		0x7ffff7ffed78:	0x6e672d78	0x696c2f75	0x732e6362	0x00362e6f
+		0x7ffff7ffed88:	0x00000000	0x00000000	0x00000000	0x00000000
+		0x7ffff7ffed98:	0x00000000	0x00000000	0x00000000	0x00000000
+		0x7ffff7ffeda8:	0x00000000	0x00000000	0x00000000	0x00000000
+		0x7ffff7ffedb8:	0x00000000	0x00000000	0x00000000	0x00000000
+		0x7ffff7ffedc8:	0x00000000
+
+
+		-	unicorn does not seem to write that data....
+
+
+		-	all data is from x/25x 0x7fffffffe1a0
+		RSI!
+
+			-	okay unicorn actually writes 
+				from .bss 
+					-	 aLibx8664linuxg:
+
+				0000000000012fe2         mov        r10d, esi
+				0000000000012fe5         xor        eax, eax
+				0000000000012fe7         mov        r9d, esi
+				0000000000012fea         lea        r15, qword [_rtld_global]                   ; _rtld_global
+				0000000000012ff1         lea        rbp, qword [aLibcso6]                       ; "libc.so.6"
+				0000000000012ff8         lea        r12, qword [aLibdlso2]                      ; "libdl.so.2"
+				0000000000012fff         lea        r13, qword [aLibpthreadso0]                 ; "libpthread.so.0"
+				0000000000013006         lea        r14, qword [aLdlinuxx8664so]                ; "ld-linux-x86-64.so.2"
+				000000000001300d         and        r9d, 0x1
+				0000000000013011         and        r10d, 0x2
+				0000000000013015         mov        rbx, rax
+
+
+				-	this writes the data???
+
+
+				libc is loaded at
+
+				mov qword ptr [rdi + rdx - 8], rcx (stack [0x3ff113][0x802113] ,unknown[0x362e6f732e6362]);
+				Breakpoint hit(0xcbba24), write a command or press enter to continue
+				stepi
+				one instruction step
+				mov qword ptr [rdi], rsi (stack [0x3ff111][0x802111] ,unknown[0x2e6f732e6362696c]);
+				Breakpoint hit(0xcbba27), write a command or press enter to continue
+				stepi
+				one instruction step
+				ret ;
+
+
+						ld-binary -> 	0x1ba24
+						
+
+
+			(gdb) c
+			Continuing.
+
+			Hardware watchpoint 2: *0x7ffff7ffed68
+
+			Old value = 0
+			New value = 1651076143
+			memmove () at ../sysdeps/x86_64/multiarch/../multiarch/memmove-vec-unaligned-erms.S:144
+			144	../sysdeps/x86_64/multiarch/../multiarch/memmove-vec-unaligned-erms.S: No such file or directory.
+			1: x/i $pc
+			=> 0x7ffff7df49fa <memmove+26>:	movups %xmm1,-0x10(%rdi,%rdx,1)
+			(gdb) watch *0x7ffff7ffed68Quit
+			(gdb) x 0x7ffff7ffed68
+
+
+			writes first path here 
+				000000000001b9ef         movups     xmm0, xmmword [rsi]
+				000000000001b9f2         movups     xmm1, xmmword [rsi+rdx-0x10]
+				000000000001b9f7         movups     xmmword [rdi], xmm0
+				000000000001b9fa         movups     xmmword [rdi+rdx-0x10], xmm1
+
+
+			SECOND PATH (actually same?)
+			Hardware watchpoint 2: *0x7ffff7ffed78
+				Old value = 0
+				New value = 1852255608
+				memmove () at ../sysdeps/x86_64/multiarch/../multiarch/memmove-vec-unaligned-erms.S:149
+				149	../sysdeps/x86_64/multiarch/../multiarch/memmove-vec-unaligned-erms.S: No such file or directory.
+				1: x/i $pc
+				=> 0x7ffff7df49ff <memmove+31>:	retq
+				(gdb) x/100x 0x7ffff7ffed68
+
+			000000000001b9ef         movups     xmm0, xmmword [rsi]
+			000000000001b9f2         movups     xmm1, xmmword [rsi+rdx-0x10]
+			000000000001b9f7         movups     xmmword [rdi], xmm0
+			000000000001b9fa         movups     xmmword [rdi+rdx-0x10], xmm1
+
+
+			-	bug is actually where rdx points!
+
+
+			-	libc string is here		0x1f810
+			-	normal string is here 0x1c500
+
+				huh, swing is 0x3310 bytes, on gdb it is 0x20
+
+
+			last location for rdx write.
+	
+		000000000000712a         mov        rdx, qword [r13+0x20]                       ; argument #3 for method sub_1b9d0, CODE XREF=sub_7060+959, sub_7060+1422
+		000000000000712e         mov        rsi, qword [r13+0x18]                       ; argument #2 for method sub_1b9d0
+		0000000000007132         mov        rdi, r15                                    ; argument #1 for method sub_1b9d0
+
+
+
+
+					00000000000105df         mov        rsi, qword [rsp+0xb8+var_88]
+					00000000000105e4         test       rsi, rsi
+					00000000000105e7         mov        qword [r12], rsi
+					00000000000105eb         jne        loc_10610
+
+						00000000000105df         mov        rsi, qword [rsp+0xb8+var_88]
+						written here ->	0x7fffffffe1c8
+
+(gdb) x $rsp+0xb8
+0x7fffffffe1c8:	0xf7def6a8
+
+
+			(gdb) c
+			Continuing.
+
+			Hardware watchpoint 2: *0x7fffffffe1c8
+
+			Old value = 0
+			New value = -136382808
+			_dl_sysdep_read_whole_file (file=file@entry=0x7ffff7df6988 "/etc/ld.so.cache",
+			    sizep=sizep@entry=0x7ffff7ffe0a0 <cachesize>, prot=prot@entry=1) at dl-misc.c:45
+			45	dl-misc.c: No such file or directory.
+			1: x/i $pc
+			=> 0x7ffff7de95a0 <_dl_sysdep_read_whole_file>:	push   %r13
+			(gdb) x 0x7fffffffe1c8
+			0x7fffffffe1c8:	0xf7def6a8
+
+
+
+			BINARY -> 0x7ffff7de95a0
+
+
+			actually this write comes from fstat!
+
+'''	
 				
 
 

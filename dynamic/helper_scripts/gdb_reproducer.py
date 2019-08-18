@@ -5,12 +5,8 @@ sys.path.insert(0, "/".join(os.path.realpath(__file__).split("/")[:-1]))
 sys.path.insert(0, "./")
 from reproducer import *
 from stack_string import *
-#gdb.execute('file /root/test/test_binaries/small_c_hello')
-#gdb.execute('file /root/test/test_binaries/static_small')
 
-# gdb -q -x ./dynamic/helper_scripts/gdb_reproducer.py /root/test/test_binaries/static_small
-
-# gdb -q -x ./dynamic/helper_scripts/gdb_reproducer.py /root/test/test_binaries/small_c_hello
+# gdb -q -x ./dynamic/helper_scripts/gdb_reproducer.py /root/test/test_binaries/getgid
 def break_point_handler():
 	try:
 		print( gdb.execute('i r rax', to_string=True))
@@ -37,9 +33,9 @@ def init_gdb(break_adress, hit_counts=None, on_break_point=break_point_handler):
 				response = gdb.execute("c", to_string=True)
 			except Exception as e:
 				break
-
-	gdb.execute('quit', to_string=True)
+	gdb.execute("display/i $pc")
+	#gdb.execute('quit', to_string=True)
 
 if __name__ == "__main__":
-	init_gdb(break_adress, hit_counts=hit_counts)
+	init_gdb(load_break_points(), hit_counts=hit_counts)
 
