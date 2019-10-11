@@ -40,6 +40,10 @@ gdb_resolve_mappings = [
 gdb_add_offset = [
 	0,
 	0,
+	0,
+
+	0,
+	0,
 	0
 ]
 
@@ -55,7 +59,7 @@ def mapping_range(address, start, end):
 	return  start <= address <= end
 	#((address - start) <= (end - start))
 
-def resolve_mapping(address, gdb=True, get_elf=False):
+def resolve_mapping(address, gdb=True, get_elf=False, debug=False):
 	if gdb:
 		for index, item in enumerate(gdb_mappings):
 			if(mapping_range(address, item[0], item[1])):
@@ -64,9 +68,10 @@ def resolve_mapping(address, gdb=True, get_elf=False):
 		for index, item in enumerate(unicorn_mappings):
 			if(mapping_range(address, item[0], item[0] + item[1])):
 				return unicorn_mappings_names[index], item[0], (address - item[0]), item[2]
-
-	print("did not find ??? 0x%x" % (address))
-	assert(False)
+	if not debug:
+		print("did not find ??? 0x%x" % (address))
+		assert(False)
+	return None, address, None, None
 
 def valid_dynamic(unicorn_item, gdb_item):
 	if(gdb_item == None or len(gdb_item) == 0 or len(unicorn_item) == 0):
@@ -228,16 +233,19 @@ def run_check(unicorn_refrence=None):
 							j += 1
 							op_count += 1		
 							continue
-						_, _, agreement, elf_refrence = resolve_mapping(int(last_agrement, 16), gdb=False)
+						if(last_agrement == None):
+							print("opsi. Disagree from lift off :(")
+						else:
+							_, _, agreement, elf_refrence = resolve_mapping(int(last_agrement, 16), gdb=False)
 
-						unicorn_location, _, unicorn_real_location, _ = resolve_mapping(unicorn_val, gdb=False)
-						bold_print("Disagreement gdb : {}, {}".format(gdb_location, hex(gdb_val)))
-						bold_print("Disagreement unicorn : {}, {}".format(unicorn_location, hex(unicorn_val)))	
+							unicorn_location, _, unicorn_real_location, _ = resolve_mapping(unicorn_val, gdb=False)
+							bold_print("Disagreement gdb : {}, {}".format(gdb_location, hex(gdb_val)))
+							bold_print("Disagreement unicorn : {}, {}".format(unicorn_location, hex(unicorn_val)))	
 
-						bold_print("Error in Elf %s" % (elf_refrence.file_name))
-						bold_print("Error in function %s" % (elf_get_symbol_name(elf_refrence, int(last_agrement, 16))))
-						bold_print("Last agreement {} (hit {})".format(hex(agreement), hit_count[last_agrement]))
-						bold_print("Binary location : gdb : {},  unicorn : {}".format(hex(gdb_real_location), hex(unicorn_real_location)))
+							bold_print("Error in Elf %s" % (elf_refrence.file_name))
+							bold_print("Error in function %s" % (elf_get_symbol_name(elf_refrence, int(last_agrement, 16))))
+							bold_print("Last agreement {} (hit {})".format(hex(agreement), hit_count[last_agrement]))
+							bold_print("Binary location : gdb : {},  unicorn : {}".format(hex(gdb_real_location), hex(unicorn_real_location)))
 						#mismatch_count += 1
 					else:
 						bold_print("Error in function %s" % (elf_get_symbol_name(unicorn_refrence.target, int(int(last_agrement, 16)))))

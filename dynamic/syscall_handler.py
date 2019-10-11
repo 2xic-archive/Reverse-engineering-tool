@@ -29,8 +29,23 @@ def syscall_info(mu):
 	print("Syscall at 0x%x RAX == 0x%x" % (mu.reg_read(UC_X86_REG_RIP), mu.reg_read(UC_X86_REG_RAX)))
 
 
+LOG_FILE = True
+def log_syscall_file(before, after):
+	global LOG_FILE
+	if(LOG_FILE):
+		file = open("log_unicorn.txt", "w")
+		file.write("before\n")
+		for i in before:
+			file.write(str(i) + "\n")
+#			file.write("")
+		file.write("after\n")
+		for i in after:
+			file.write(str(i) + "\n")
+#			file.write("")
+		file.write("=" * 16 + "\n")
+		#.write()
 
-def hook_syscall64(mu, user_data):
+def get_registers(mu):
 	rax = mu.reg_read(UC_X86_REG_RAX)
 	rdi = mu.reg_read(UC_X86_REG_RDI)
 	rsi = mu.reg_read(UC_X86_REG_RSI)
@@ -43,6 +58,22 @@ def hook_syscall64(mu, user_data):
 
 	rip = mu.reg_read(UC_X86_REG_RIP)
 	rsp = mu.reg_read(UC_X86_REG_RSP)
+
+	return (rax, rdi, rsi, rdx, r8, r9, r10, rip, rsp)
+
+def hook_syscall64(mu, user_data):
+	rax, rdi, rsi, rdx, r8, r9, r10, rip, rsp = get_registers(mu)
+#	rax = mu.reg_read(UC_X86_REG_RAX)
+#	rdi = mu.reg_read(UC_X86_REG_RDI)
+#	rsi = mu.reg_read(UC_X86_REG_RSI)
+#	rdx = mu.reg_read(UC_X86_REG_RDX)
+
+#	r8 = mu.reg_read(UC_X86_REG_R8)
+#	r9 = mu.reg_read(UC_X86_REG_R9)
+#	r10 = mu.reg_read(UC_X86_REG_R10)
+	
+#	rip = mu.reg_read(UC_X86_REG_RIP)
+#	rsp = mu.reg_read(UC_X86_REG_RSP)
 
 	#	https://filippo.io/linux-syscall-table/
 	syscall_info(mu)
@@ -64,6 +95,7 @@ def hook_syscall64(mu, user_data):
 				break
 
 	try:
+	#	log_syscall_file([rax, rdi, rsi, rdx, r8, r9, rip, rsp])
 		if(rax == 0x0):
 			#	http://man7.org/linux/man-pages/man2/read.2.html
 			fd = rdi 
@@ -630,6 +662,9 @@ def hook_syscall64(mu, user_data):
 			mu.emu_stop()
 			raise syscall_exception("unknown syscall(0x%x, %i). Fix! 0x%x" % (rax, rax, rip))
 #			input("Continue?")
+	#	rax, rdi, rsi, rdx, r8, r9, r10, rip, rsp = get_registers(mu)
+		log_syscall_file([rax, rdi, rsi, rdx, r8, r9, rip, rsp], get_registers(mu))
+
 	except syscall_exception as e:
 		raise e
 	except Exception:
